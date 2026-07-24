@@ -12,6 +12,7 @@ import {
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { getAgentCreditApplications, type AgentCreditApplication } from "@/lib/api.auth";
+import { MasterAgentCreditDocumentButton } from "@/components/dashboard/MasterAgentCreditDocumentButton";
 
 type SessionShape = {
   backendToken?: string;
@@ -53,6 +54,12 @@ function getStoredImageSrc(item: AgentCreditApplication, key: string) {
   if (!value || typeof value !== "object") return "";
   const image = value as { data_url?: unknown };
   return typeof image.data_url === "string" && image.data_url.startsWith("data:image/") ? image.data_url : "";
+}
+
+function getSignatureSrc(item: AgentCreditApplication) {
+  return typeof item.agent_signature_data === "string" && item.agent_signature_data.startsWith("data:image/")
+    ? item.agent_signature_data
+    : "";
 }
 
 const timeline = [
@@ -127,7 +134,7 @@ export default async function MasterDashboardPage() {
               })}
             </div>
 
-            <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
               <section className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -148,73 +155,75 @@ export default async function MasterDashboardPage() {
                       const wa = getApplicantText(item, "whatsapp", item.member_phone || "-");
                       const nik = getApplicantText(item, "nik");
                       const docs = [
-                        { label: "Foto KTP", ready: hasStoredImage(item, "ktp"), src: getStoredImageSrc(item, "ktp") },
-                        { label: "Foto Toko", ready: hasStoredImage(item, "store"), src: getStoredImageSrc(item, "store") },
-                        { label: "Selfie KTP", ready: hasStoredImage(item, "selfie"), src: getStoredImageSrc(item, "selfie") },
+                        { label: "Foto KTP", src: getStoredImageSrc(item, "ktp") },
+                        { label: "Foto Toko", src: getStoredImageSrc(item, "store") },
+                        { label: "Selfie KTP", src: getStoredImageSrc(item, "selfie") },
                       ];
+                      const signatureSrc = getSignatureSrc(item);
                       return (
-                        <article key={item.id} className="rounded-3xl border border-emerald-100 bg-linear-to-br from-white to-emerald-50/70 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_38px_rgba(5,122,69,0.12)]">
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <article key={item.id} className="rounded-[28px] border border-emerald-100 bg-linear-to-br from-white via-white to-emerald-50/80 p-4 shadow-[0_14px_34px_rgba(6,78,59,0.06)] transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_38px_rgba(5,122,69,0.12)] sm:p-5">
+                          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
                             <div className="flex min-w-0 items-start gap-3">
-                              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-950 text-sm font-black text-lime-300">
+                              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-emerald-950 text-sm font-black text-lime-300 shadow-[0_12px_24px_rgba(6,78,59,0.18)]">
                                 {agentName.slice(0, 2).toUpperCase()}
                               </div>
                               <div className="min-w-0">
-                                <h3 className="truncate font-black">{agentName}</h3>
-                                <p className="text-xs font-semibold text-slate-500">{storeName}</p>
-                                <div className="mt-3 grid gap-1 text-[11px] font-bold text-slate-500 sm:grid-cols-2">
-                                  <span>WA: {wa}</span>
-                                  <span>NIK: {nik}</span>
-                                  <span className="sm:col-span-2">Email: {getApplicantText(item, "email", item.member_email || "-")}</span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h3 className="max-w-full truncate text-lg font-black text-slate-950">{agentName}</h3>
+                                  <span className="rounded-full bg-lime-100 px-2.5 py-1 text-[9px] font-black uppercase text-emerald-700">{getStatusLabel(item.status)}</span>
+                                </div>
+                                <p className="mt-0.5 text-xs font-semibold text-slate-500">{storeName}</p>
+                                <div className="mt-4 grid gap-2 text-[11px] font-bold text-slate-500 sm:grid-cols-2">
+                                  <span className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100">WA: {wa}</span>
+                                  <span className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100">NIK: {nik}</span>
+                                  <span className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100 sm:col-span-2">Email: {getApplicantText(item, "email", item.member_email || "-")}</span>
                                 </div>
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto_auto] lg:text-right">
-                              <div>
-                                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Nominal</p>
-                                <p className="font-black text-emerald-700">{formatIDR(item.requested_amount)}</p>
+                            <div className="grid gap-3">
+                              <div className="rounded-3xl bg-emerald-950 p-4 text-white shadow-[0_14px_28px_rgba(6,78,59,0.18)]">
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-lime-200">Nominal</p>
+                                <p className="mt-1 text-2xl font-black">{formatIDR(item.requested_amount)}</p>
+                                <p className="mt-1 text-[10px] font-bold text-white/60">Status: {getStatusLabel(item.status)}</p>
                               </div>
-                              <div>
-                                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Status</p>
-                                <p className="font-bold text-slate-700">{getStatusLabel(item.status)}</p>
-                              </div>
-                              <button className="col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-sm font-black text-white shadow-[0_12px_24px_rgba(5,150,105,0.22)] transition hover:bg-emerald-700 sm:col-span-1">
+                              <button className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-sm font-black text-white shadow-[0_12px_24px_rgba(5,150,105,0.22)] transition hover:bg-emerald-700">
                                 Detail
                                 <ArrowUpRight className="h-4 w-4" />
                               </button>
                             </div>
                           </div>
-                          <div className="mt-4 grid gap-2 text-[11px] font-semibold text-slate-500 sm:grid-cols-2">
-                            <div className="rounded-2xl bg-white/80 p-3 ring-1 ring-emerald-100">
+                          <div className="mt-4 grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
+                            <div className="min-w-0 rounded-3xl bg-white/85 p-4 ring-1 ring-emerald-100">
                               <p className="font-black text-slate-950">Alamat Rumah</p>
-                              <p className="mt-1 leading-5">{getApplicantText(item, "home_address")}</p>
+                              <p className="mt-1 break-words leading-5">{getApplicantText(item, "home_address")}</p>
                             </div>
-                            <div className="rounded-2xl bg-white/80 p-3 ring-1 ring-emerald-100">
+                            <div className="min-w-0 rounded-3xl bg-white/85 p-4 ring-1 ring-emerald-100">
                               <p className="font-black text-slate-950">Alamat Toko</p>
-                              <p className="mt-1 leading-5">{getApplicantText(item, "store_address")}</p>
+                              <p className="mt-1 break-words leading-5">{getApplicantText(item, "store_address")}</p>
                             </div>
                           </div>
-                          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                            {docs.map((doc) => (
-                              <div
-                                key={doc.label}
-                                className={
-                                  doc.ready
-                                    ? "overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-[0_10px_22px_rgba(5,122,69,0.08)]"
-                                    : "rounded-2xl border border-dashed border-slate-200 bg-slate-50"
-                                }
-                              >
-                                <div
-                                  className="h-24 bg-slate-100 bg-cover bg-center"
-                                  style={doc.src ? { backgroundImage: `url(${doc.src})` } : undefined}
-                                />
-                                <div className="px-3 py-2">
-                                  <p className="truncate text-[10px] font-black text-slate-950">{doc.label}</p>
-                                  <p className={doc.ready ? "text-[9px] font-black text-emerald-700" : "text-[9px] font-black text-slate-400"}>
-                                    {doc.ready ? "Tersimpan" : "Kosong"}
-                                  </p>
-                                </div>
+                          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+                            <MasterAgentCreditDocumentButton agentName={agentName} documents={docs} />
+                            <div className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-[0_12px_26px_rgba(5,122,69,0.08)]">
+                              <div className="grid h-28 place-items-center bg-slate-50 bg-contain bg-center bg-no-repeat" style={signatureSrc ? { backgroundImage: `url(${signatureSrc})` } : undefined}>
+                                {!signatureSrc ? <span className="text-[10px] font-black text-slate-400">Belum ada tanda tangan</span> : null}
                               </div>
+                              <div className="px-3 py-2">
+                                <p className="truncate text-[10px] font-black text-slate-950">Tanda tangan PNG</p>
+                                <p className={signatureSrc ? "text-[9px] font-black text-emerald-700" : "text-[9px] font-black text-slate-400"}>
+                                  {signatureSrc ? "Tersimpan" : "Kosong"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {docs.map((doc) => (
+                              <span
+                                key={doc.label}
+                                className={hasStoredImage(item, doc.label === "Foto KTP" ? "ktp" : doc.label === "Foto Toko" ? "store" : "selfie") ? "rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-400"}
+                              >
+                                {doc.label} {doc.src ? "siap PDF" : "kosong"}
+                              </span>
                             ))}
                           </div>
                         </article>
