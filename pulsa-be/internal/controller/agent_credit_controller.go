@@ -1,0 +1,58 @@
+package controller
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"pulsa2/internal/helper"
+	"pulsa2/internal/service"
+)
+
+type AgentCreditController struct {
+	svc *service.AgentCreditService
+}
+
+func NewAgentCreditController(svc *service.AgentCreditService) *AgentCreditController {
+	return &AgentCreditController{svc: svc}
+}
+
+func (h *AgentCreditController) MyApplications(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
+		return
+	}
+	auth, ok := helper.GetAuth(r.Context())
+	if !ok {
+		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	var in service.AgentCreditSubmitInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"})
+		return
+	}
+	item, err := h.svc.SubmitApplication(r.Context(), auth, in)
+	if err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "item": item})
+}
+
+func (h *AgentCreditController) MasterApplications(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
+		return
+	}
+	auth, ok := helper.GetAuth(r.Context())
+	if !ok {
+		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	items, err := h.svc.ListApplications(r.Context(), auth)
+	if err != nil {
+		helper.WriteJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
+}

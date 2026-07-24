@@ -1,0 +1,19 @@
+package router
+
+import (
+	"database/sql"
+	"net/http"
+
+	"pulsa2/internal/controller"
+	"pulsa2/internal/repository"
+	"pulsa2/internal/service"
+)
+
+func AgentCreditRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB) {
+	repo := repository.NewAgentCreditRepository(db)
+	svc := service.NewAgentCreditService(repo)
+	ctrl := controller.NewAgentCreditController(svc)
+
+	mux.HandleFunc("/v1/me/agent-credit/applications", wrap(ctrl.MyApplications))
+	mux.HandleFunc("/v1/master/agent-credit/applications", wrap(ctrl.MasterApplications))
+}

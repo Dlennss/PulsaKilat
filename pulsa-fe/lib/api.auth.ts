@@ -6,6 +6,25 @@
 import { fetchAPIFull } from './api';
 import type { RetailCommissionSummary, UserSession, UserProfile } from '@/components/user/types';
 
+export type AgentCreditApplication = {
+  id: number;
+  member_id: number;
+  member_name: string;
+  member_email: string;
+  member_phone: string;
+  requested_amount: number;
+  approved_amount: number;
+  status: string;
+  applicant_data?: Record<string, unknown>;
+  document_data?: Record<string, unknown>;
+  has_agent_signature?: boolean;
+  agent_signature_data?: string;
+  agent_signature_at?: string;
+  marketing_note?: string;
+  created_at: string;
+  updated_at: string;
+};
+
 // ============================================
 // USER PROFILE
 // ============================================
@@ -80,4 +99,15 @@ export async function getRetailCommissionSummary(token: string): Promise<RetailC
   }
 
   return null;
+}
+
+export async function getAgentCreditApplications(token: string): Promise<AgentCreditApplication[]> {
+  const response = await fetchAPIFull<AgentCreditApplication>('/v1/master/agent-credit/applications', {
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return Array.isArray(response.items) ? response.items : [];
 }

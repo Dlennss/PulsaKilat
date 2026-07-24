@@ -34,6 +34,7 @@ func Register(mux *http.ServeMux, wrap Middleware, db *sql.DB, jwtSecret []byte,
 	AppOrderRefundAdminRouter(mux, wrap, db)
 	MemberSelfRouter(mux, wrap, db)
 	RetailRouter(mux, wrap, db)
+	AgentCreditRouter(mux, wrap, db)
 	H2HRouter(mux, wrap, db)
 	UserRouter(mux, wrap, db)
 	BankRouter(mux, wrap, db)
