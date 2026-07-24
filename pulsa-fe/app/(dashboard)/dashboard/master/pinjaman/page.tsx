@@ -199,7 +199,13 @@ export default async function MasterDashboardPage() {
                                 <p className="mt-1 text-2xl font-black">{formatIDR(item.requested_amount)}</p>
                                 <p className="mt-1 text-[10px] font-bold text-white/60">Status: {getStatusLabel(item.status)}</p>
                               </div>
-                              <MasterAgentCreditDecisionControls applicationId={item.id} requestedAmount={item.requested_amount} status={item.status} />
+                              <MasterAgentCreditDecisionControls
+                                applicationId={item.id}
+                                requestedAmount={item.requested_amount}
+                                approvedAmount={item.approved_amount}
+                                marketingNote={item.marketing_note}
+                                status={item.status}
+                              />
                             </div>
                           </div>
                           <div className="mt-4 grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
