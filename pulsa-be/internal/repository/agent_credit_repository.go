@@ -23,6 +23,14 @@ type AgentCreditApplicationInput struct {
 	AgentSignature  string
 }
 
+type AgentCreditDecisionInput struct {
+	ID             int64
+	MarketingID    int64
+	Status         string
+	ApprovedAmount int64
+	MarketingNote  string
+}
+
 type AgentCreditApplication struct {
 	ID                 int64          `json:"id"`
 	MemberID           int64          `json:"member_id"`
@@ -145,4 +153,106 @@ LIMIT $1
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+func (r *AgentCreditRepository) ListMemberApplications(ctx context.Context, memberID int64, limit int) ([]AgentCreditApplication, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	rows, err := r.db.QueryContext(ctx, `
+SELECT
+  a.id,
+  a.member_id,
+  COALESCE(m.nama, '') AS member_name,
+  COALESCE(m.email, '') AS member_email,
+  COALESCE(m.phone, '') AS member_phone,
+  a.requested_amount,
+  a.approved_amount,
+  a.status,
+  a.applicant_data,
+  a.document_data,
+  COALESCE(a.agent_signature_data, '') AS agent_signature_data,
+  a.agent_signature_at,
+  a.marketing_note,
+  a.created_at,
+  a.updated_at
+FROM public.agent_credit_application a
+JOIN public.member m ON m.id = a.member_id
+WHERE a.member_id = $1
+ORDER BY a.created_at DESC, a.id DESC
+LIMIT $2
+`, memberID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]AgentCreditApplication, 0)
+	for rows.Next() {
+		var item AgentCreditApplication
+		var applicantRaw, documentRaw []byte
+		if err := rows.Scan(
+			&item.ID,
+			&item.MemberID,
+			&item.MemberName,
+			&item.MemberEmail,
+			&item.MemberPhone,
+			&item.RequestedAmount,
+			&item.ApprovedAmount,
+			&item.Status,
+			&applicantRaw,
+			&documentRaw,
+			&item.AgentSignatureData,
+			&item.AgentSignatureAt,
+			&item.MarketingNote,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+		_ = json.Unmarshal(documentRaw, &item.DocumentData)
+		item.HasAgentSignature = item.AgentSignatureData != ""
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (r *AgentCreditRepository) DecideApplication(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
+	var item AgentCreditApplication
+	var applicantRaw, documentRaw []byte
+	err := r.db.QueryRowContext(ctx, `
+UPDATE public.agent_credit_application
+SET
+  status = $2,
+  approved_amount = CASE WHEN $2 = 'approved' THEN $3 ELSE 0 END,
+  marketing_user_id = $4,
+  marketing_reviewed_at = now(),
+  marketing_note = $5,
+  updated_at = now()
+WHERE id = $1
+RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
+  COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
+`, in.ID, in.Status, in.ApprovedAmount, in.MarketingID, in.MarketingNote).Scan(
+		&item.ID,
+		&item.MemberID,
+		&item.RequestedAmount,
+		&item.ApprovedAmount,
+		&item.Status,
+		&applicantRaw,
+		&documentRaw,
+		&item.AgentSignatureData,
+		&item.AgentSignatureAt,
+		&item.MarketingNote,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+	_ = json.Unmarshal(documentRaw, &item.DocumentData)
+	item.HasAgentSignature = item.AgentSignatureData != ""
+	return &item, nil
 }

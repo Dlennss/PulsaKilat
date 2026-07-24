@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  BadgeCheck,
   Camera,
   Check,
   ChevronRight,
@@ -17,13 +18,16 @@ import {
   UserRound,
   UsersRound,
   WalletCards,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
+import type { AgentCreditApplication } from "@/lib/api.auth";
 
 type UserAgentCreditPageContentProps = {
   name: string;
   email: string;
   phone: string;
+  initialApplications?: AgentCreditApplication[];
 };
 
 type InputProps = {
@@ -256,13 +260,57 @@ function SignaturePad({ signerName, onSignatureChange }: { signerName: string; o
   );
 }
 
-export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCreditPageContentProps) {
+function getApplicationNotice(application?: AgentCreditApplication) {
+  if (!application) return null;
+  switch (application.status) {
+    case "approved":
+      return {
+        title: "Pengajuan disetujui",
+        desc: `Limit kredit ${formatIDR(application.approved_amount || application.requested_amount)} sudah disetujui oleh master.`,
+        className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        icon: BadgeCheck,
+      };
+    case "rejected":
+      return {
+        title: "Pengajuan ditolak",
+        desc: application.marketing_note || "Data belum sesuai. Silakan perbaiki data dan ajukan kembali.",
+        className: "border-rose-200 bg-rose-50 text-rose-600",
+        icon: XCircle,
+      };
+    case "marketing_review":
+      return {
+        title: "Sedang dicek",
+        desc: "Marketing sedang mengecek data dan tanda tangan agent.",
+        className: "border-amber-200 bg-amber-50 text-amber-700",
+        icon: SearchCheck,
+      };
+    case "submitted":
+      return {
+        title: "Pengajuan dikirim",
+        desc: "Menunggu Marketing mengecek tanda tangan dan data agent.",
+        className: "border-amber-200 bg-amber-50 text-amber-700",
+        icon: SearchCheck,
+      };
+    default:
+      return null;
+  }
+}
+
+function formatIDR(value: number) {
+  return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
+}
+
+export function UserAgentCreditPageContent({ name, email, phone, initialApplications = [] }: UserAgentCreditPageContentProps) {
   const [agreed, setAgreed] = useState(false);
   const [signatureReady, setSignatureReady] = useState(false);
   const [signatureData, setSignatureData] = useState("");
-  const [agentSubmitted, setAgentSubmitted] = useState(false);
+  const [latestApplication, setLatestApplication] = useState<AgentCreditApplication | undefined>(initialApplications[0]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const notice = getApplicationNotice(latestApplication);
+  const NoticeIcon = notice?.icon;
+  const hasOpenApplication = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review";
+  const isApproved = latestApplication?.status === "approved";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -309,11 +357,11 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
           agent_signature: signatureData,
         }),
       });
-      const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; item?: AgentCreditApplication };
       if (!response.ok || !body.ok) {
         throw new Error(body.error || "Pengajuan gagal dikirim");
       }
-      setAgentSubmitted(true);
+      if (body.item) setLatestApplication(body.item);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pengajuan gagal dikirim");
     } finally {
@@ -439,14 +487,14 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
             </div>
           </div>
 
-          {agentSubmitted ? (
-            <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-700">
+          {notice ? (
+            <div className={`mb-4 flex items-center gap-3 rounded-[22px] border px-4 py-3 ${notice.className}`}>
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white">
-                <SearchCheck className="h-5 w-5" strokeWidth={2.4} />
+                {NoticeIcon ? <NoticeIcon className="h-5 w-5" strokeWidth={2.4} /> : null}
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-black">Pengajuan dikirim</p>
-                <p className="mt-0.5 text-[10px] font-semibold text-amber-700/70">Menunggu Marketing mengecek tanda tangan dan data agent.</p>
+                <p className="text-xs font-black">{notice.title}</p>
+                <p className="mt-0.5 text-[10px] font-semibold opacity-75">{notice.desc}</p>
               </div>
             </div>
           ) : null}
@@ -471,10 +519,10 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
 
         <button
           type="submit"
-          disabled={!agreed || !signatureReady || !signatureData || agentSubmitted || submitting}
+          disabled={!agreed || !signatureReady || !signatureData || hasOpenApplication || isApproved || submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
-          {agentSubmitted ? "Pengajuan Dikirim" : submitting ? "Mengirim..." : "Ajukan Kredit Saldo"}
+          {isApproved ? "Sudah Disetujui" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : "Ajukan Kredit Saldo"}
           <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
         </button>
 

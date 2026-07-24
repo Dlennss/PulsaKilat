@@ -1,5 +1,4 @@
 import {
-  ArrowUpRight,
   BadgeCheck,
   ClipboardCheck,
   Clock3,
@@ -13,6 +12,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { getAgentCreditApplications, type AgentCreditApplication } from "@/lib/api.auth";
 import { MasterAgentCreditDocumentButton } from "@/components/dashboard/MasterAgentCreditDocumentButton";
+import { MasterAgentCreditDecisionControls } from "@/components/dashboard/MasterAgentCreditDecisionControls";
 
 type SessionShape = {
   backendToken?: string;
@@ -39,6 +39,19 @@ function getStatusLabel(status: string) {
       return "Ditolak";
     default:
       return status || "-";
+  }
+}
+
+function getStatusClass(status: string) {
+  switch (status) {
+    case "approved":
+      return "bg-emerald-100 text-emerald-700";
+    case "rejected":
+      return "bg-rose-100 text-rose-600";
+    case "marketing_review":
+      return "bg-amber-100 text-amber-700";
+    default:
+      return "bg-lime-100 text-emerald-700";
   }
 }
 
@@ -170,7 +183,7 @@ export default async function MasterDashboardPage() {
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <h3 className="max-w-full truncate text-lg font-black text-slate-950">{agentName}</h3>
-                                  <span className="rounded-full bg-lime-100 px-2.5 py-1 text-[9px] font-black uppercase text-emerald-700">{getStatusLabel(item.status)}</span>
+                                  <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getStatusClass(item.status)}`}>{getStatusLabel(item.status)}</span>
                                 </div>
                                 <p className="mt-0.5 text-xs font-semibold text-slate-500">{storeName}</p>
                                 <div className="mt-4 grid gap-2 text-[11px] font-bold text-slate-500 sm:grid-cols-2">
@@ -186,10 +199,7 @@ export default async function MasterDashboardPage() {
                                 <p className="mt-1 text-2xl font-black">{formatIDR(item.requested_amount)}</p>
                                 <p className="mt-1 text-[10px] font-bold text-white/60">Status: {getStatusLabel(item.status)}</p>
                               </div>
-                              <button className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-sm font-black text-white shadow-[0_12px_24px_rgba(5,150,105,0.22)] transition hover:bg-emerald-700">
-                                Detail
-                                <ArrowUpRight className="h-4 w-4" />
-                              </button>
+                              <MasterAgentCreditDecisionControls applicationId={item.id} requestedAmount={item.requested_amount} status={item.status} />
                             </div>
                           </div>
                           <div className="mt-4 grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">

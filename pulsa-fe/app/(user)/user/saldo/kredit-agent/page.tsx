@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/nextauth";
-import { getUserProfile } from "@/lib/api.auth";
+import { getMyAgentCreditApplications, getUserProfile } from "@/lib/api.auth";
 import { UserAgentCreditPageContent } from "@/components/user/UserAgentCreditPageContent";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 import type { UserSession } from "@/components/user/types";
@@ -23,10 +23,11 @@ export default async function UserSaldoKreditAgentPage() {
   const name = profile?.nama || session.user?.name || "User";
   const email = profile?.email || session.user?.email || "-";
   const phone = profileWithPhone?.phone || profileWithPhone?.no_hp || profileWithPhone?.nomor_hp || profileWithPhone?.telepon || "-";
+  const applications = await getMyAgentCreditApplications(session.backendToken);
 
   return (
     <main className="min-h-screen bg-[#eef8f3]">
-      <UserAgentCreditPageContent name={name} email={email} phone={phone} />
+      <UserAgentCreditPageContent name={name} email={email} phone={phone} initialApplications={applications} />
       <UserBottomNav />
     </main>
   );

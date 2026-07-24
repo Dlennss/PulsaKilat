@@ -24,6 +24,13 @@ type AgentCreditSubmitInput struct {
 	AgentSignature  string         `json:"agent_signature"`
 }
 
+type AgentCreditDecisionInput struct {
+	ID             int64  `json:"id"`
+	Decision       string `json:"decision"`
+	ApprovedAmount int64  `json:"approved_amount"`
+	Note           string `json:"note"`
+}
+
 func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditSubmitInput) (*repository.AgentCreditApplication, error) {
 	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAgent {
 		return nil, errors.New("agent only")
@@ -57,4 +64,49 @@ func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.A
 		return nil, errors.New("master only")
 	}
 	return s.repo.ListApplications(ctx, 50)
+}
+
+func (s *AgentCreditService) ListMyApplications(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditApplication, error) {
+	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAgent {
+		return nil, errors.New("agent only")
+	}
+	return s.repo.ListMemberApplications(ctx, auth.MemberID, 10)
+}
+
+func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditDecisionInput) (*repository.AgentCreditApplication, error) {
+	if helper.NormalizeRole(auth.Role) != helper.RoleRetailMaster {
+		return nil, errors.New("master only")
+	}
+	if in.ID <= 0 {
+		return nil, errors.New("pengajuan tidak valid")
+	}
+
+	decision := strings.TrimSpace(strings.ToLower(in.Decision))
+	status := ""
+	switch decision {
+	case "approve", "approved", "setujui":
+		status = "approved"
+	case "reject", "rejected", "tolak":
+		status = "rejected"
+	default:
+		return nil, errors.New("keputusan wajib setujui atau tolak")
+	}
+
+	approvedAmount := in.ApprovedAmount
+	if status == "approved" {
+		if approvedAmount <= 0 {
+			return nil, errors.New("nominal disetujui wajib diisi")
+		}
+		if approvedAmount > 500000 {
+			return nil, errors.New("nominal disetujui maksimal Rp500.000")
+		}
+	}
+
+	return s.repo.DecideApplication(ctx, repository.AgentCreditDecisionInput{
+		ID:             in.ID,
+		MarketingID:    auth.MemberID,
+		Status:         status,
+		ApprovedAmount: approvedAmount,
+		MarketingNote:  strings.TrimSpace(in.Note),
+	})
 }

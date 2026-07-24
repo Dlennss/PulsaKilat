@@ -111,3 +111,14 @@ export async function getAgentCreditApplications(token: string): Promise<AgentCr
 
   return Array.isArray(response.items) ? response.items : [];
 }
+
+export async function getMyAgentCreditApplications(token: string): Promise<AgentCreditApplication[]> {
+  const response = await fetchAPIFull<AgentCreditApplication>('/v1/me/agent-credit/applications', {
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return Array.isArray(response.items) ? response.items : [];
+}
