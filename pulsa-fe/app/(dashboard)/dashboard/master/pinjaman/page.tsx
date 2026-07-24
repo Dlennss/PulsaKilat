@@ -187,9 +187,18 @@ export default async function MasterDashboardPage() {
                                 </div>
                                 <p className="mt-0.5 text-xs font-semibold text-slate-500">{storeName}</p>
                                 <div className="mt-4 grid gap-2 text-[11px] font-bold text-slate-500 sm:grid-cols-2">
-                                  <span className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100">WA: {wa}</span>
-                                  <span className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100">NIK: {nik}</span>
-                                  <span className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100 sm:col-span-2">Email: {getApplicantText(item, "email", item.member_email || "-")}</span>
+                                  <span className="min-w-0 rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100">
+                                    <span className="block text-slate-400">WA:</span>
+                                    <span className="block break-all leading-4">{wa}</span>
+                                  </span>
+                                  <span className="min-w-0 rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100">
+                                    <span className="block text-slate-400">NIK:</span>
+                                    <span className="block break-all leading-4">{nik}</span>
+                                  </span>
+                                  <span className="min-w-0 rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100 sm:col-span-2">
+                                    <span className="block text-slate-400">Email:</span>
+                                    <span className="block break-all leading-4">{getApplicantText(item, "email", item.member_email || "-")}</span>
+                                  </span>
                                 </div>
                               </div>
                             </div>
