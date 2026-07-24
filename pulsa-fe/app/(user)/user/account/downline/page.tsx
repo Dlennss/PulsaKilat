@@ -1,0 +1,28 @@
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/nextauth";
+import { getUserProfile } from "@/lib/api.auth";
+import type { UserSession } from "@/components/user/types";
+import { UserBottomNav } from "@/components/user/UserBottomNav";
+import { RetailDownlineManager } from "@/components/user/RetailDownlineManager";
+
+type SessionShape = {
+  user?: UserSession;
+  backendToken?: string;
+};
+
+export default async function UserAccountDownlinePage() {
+  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  if (!session?.backendToken) redirect("/login");
+  const profile = await getUserProfile(session.backendToken);
+  const role = String(profile?.role || session.user?.role || "").toLowerCase();
+
+  return (
+    <main className="min-h-screen bg-sky-50 px-4 pb-24 pt-5">
+      <div className="mx-auto w-full max-w-md space-y-4">
+        <RetailDownlineManager authToken={session.backendToken} role={role} />
+      </div>
+      <UserBottomNav />
+    </main>
+  );
+}

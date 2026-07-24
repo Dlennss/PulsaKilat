@@ -1,0 +1,35 @@
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/nextauth";
+import { getUserProfile } from "@/lib/api.auth";
+import { UserBottomNav } from "@/components/user/UserBottomNav";
+import { UserSaldoPageContent } from "@/components/user/UserSaldoPageContent";
+import type { UserSession } from "@/components/user/types";
+
+type SessionShape = {
+  user?: UserSession;
+  backendToken?: string;
+};
+
+export default async function UserSaldoPage() {
+  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  if (!session?.backendToken) redirect("/login");
+
+  const profile = await getUserProfile(session.backendToken);
+  const userCode = profile?.id ? `USR-${String(profile.id).padStart(3, "0")}` : "USR-001";
+  const role = String(profile?.role || session.user?.role || "").trim().toLowerCase();
+  const canUseAgentCredit = role === "agent" || role === "master";
+
+  return (
+    <main className="min-h-screen bg-[#eef8f3] px-3 pb-24 pt-3">
+      <div className="mx-auto w-full max-w-md">
+        <UserSaldoPageContent
+          saldo={Number(profile?.saldo || 0)}
+          userCode={userCode}
+          showCredit={canUseAgentCredit}
+        />
+      </div>
+      <UserBottomNav />
+    </main>
+  );
+}

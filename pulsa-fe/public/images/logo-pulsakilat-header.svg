@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="96" viewBox="0 0 420 96" role="img" aria-labelledby="title">
+  <title id="title">PulsaKilat</title>
+  <defs>
+    <linearGradient id="navy" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#052e26"/>
+      <stop offset="0.58" stop-color="#047857"/>
+      <stop offset="1" stop-color="#064e3b"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#d9f99d"/>
+      <stop offset="0.5" stop-color="#a3e635"/>
+      <stop offset="1" stop-color="#22c55e"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(8 8)">
+    <path d="M42 6h52c8 0 15 4 19 11l-11 11H51c-8 0-13 4-15 12L24 78c-2 7 2 11 9 11h31c8 0 13-4 15-12l7-22" fill="none" stroke="url(#navy)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M63 18h19" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+    <path d="M3 35 38 29 34 40 5 45Z" fill="url(#navy)"/>
+    <path d="M0 51 34 46 31 56 3 61Z" fill="url(#navy)"/>
+    <path d="M6 67 29 63 27 71 8 75Z" fill="url(#navy)"/>
+    <path d="M116 6 47 60l33-3-31 43 78-61-35 3Z" fill="url(#bolt)"/>
+  </g>
+
+  <g transform="translate(126 26) skewX(-9)">
+    <text x="0" y="40" fill="url(#navy)" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="42" font-weight="900" letter-spacing="-2.2">Pulsa</text>
+    <text x="132" y="40" fill="url(#bolt)" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="42" font-weight="900" letter-spacing="-2.2">Kilat</text>
+  </g>
+  <path d="M126 80c48-6 100-8 156-6l-19 7c-48 0-94 2-137 7Z" fill="url(#navy)"/>
+  <path d="M282 80 339 74l57 2-53 6Z" fill="url(#bolt)"/>
+</svg>

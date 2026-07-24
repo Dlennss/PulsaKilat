@@ -1,0 +1,47 @@
+import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/nextauth";
+import { getCategories } from "@/lib/api.products";
+import type { UserCategoryItem, UserSession } from "@/components/user/types";
+import { GuestBottomNav } from "@/components/guest/GuestBottomNav";
+import { ServiceDirectory } from "@/components/shared/ServiceDirectory";
+import { buildBreadcrumbJsonLd, buildCollectionJsonLd, buildPageMetadata } from "@/lib/site-search";
+
+type SessionShape = {
+  user?: UserSession;
+  backendToken?: string;
+};
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Semua Kategori Produk | PulsaKilat",
+  description: "Lihat semua kategori produk PulsaKilat, mulai dari pulsa, paket data, e-wallet, game, sampai tagihan.",
+  path: "/kategori",
+  keywords: ["kategori produk pulsakilat", "semua produk", "pulsakilat"],
+});
+
+export default async function GuestKategoriPage() {
+  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const categories = (await getCategories()) as UserCategoryItem[];
+  const collectionJsonLd = buildCollectionJsonLd({
+    title: "Semua Kategori Produk | PulsaKilat",
+    description: "Lihat semua kategori produk PulsaKilat, mulai dari pulsa, paket data, e-wallet, game, sampai tagihan.",
+    path: "/kategori",
+    itemNames: categories.map((category) => category.nama),
+  });
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Beranda", path: "/" },
+    { name: "Kategori", path: "/kategori" },
+  ]);
+
+  return (
+    <main className="bg-sky-50">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <div className="space-y-4 px-4 pt-4">
+        <ServiceDirectory mode="guest" />
+      </div>
+
+      <GuestBottomNav isLoggedIn={!!session?.backendToken} />
+    </main>
+  );
+}

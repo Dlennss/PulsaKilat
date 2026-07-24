@@ -1,0 +1,80 @@
+name: CD Pulsa-FE NextJS (systemd)
+
+on:
+  push:
+    branches: [ main, dev ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remote via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            APP_DIR_PROD="/home/syarif/app/pulsa-fe"
+            SERVICE_PROD="pulsa-fe-prod.service"
+            PROD_RELEASE_SCRIPT="/home/syarif/app/pulsa-fe/scripts/deploy-prod-release.sh"
+
+            APP_DIR_STG="/home/syarif/app/staging/pulsa-fe"
+            SERVICE_STG="pulsa-fe-stg.service"
+
+            REF="${{ github.ref }}"
+
+            if [ "$REF" = "refs/heads/main" ]; then
+              BRANCH="main"
+              APP_DIR="$APP_DIR_PROD"
+              SERVICE="$SERVICE_PROD"
+              DEPLOY_MODE="release"
+              echo "Deploying PROD (branch: $BRANCH) -> $APP_DIR, service: $SERVICE"
+            elif [ "$REF" = "refs/heads/dev" ]; then
+              BRANCH="dev"
+              APP_DIR="$APP_DIR_STG"
+              SERVICE="$SERVICE_STG"
+              DEPLOY_MODE="source"
+              echo "Deploying STG (branch: $BRANCH) -> $APP_DIR, service: $SERVICE"
+            else
+              echo "Unsupported ref: $REF"
+              exit 1
+            fi
+
+            cd "$APP_DIR"
+
+            echo "Syncing repo to origin/$BRANCH..."
+            git fetch origin
+            git checkout "$BRANCH"
+            git reset --hard "origin/$BRANCH"
+            git clean -fd
+
+            if [ "$DEPLOY_MODE" = "release" ]; then
+              echo "Running production release deploy..."
+              "$PROD_RELEASE_SCRIPT"
+              echo "Service status (last 30 lines):"
+              sudo -n systemctl status "$SERVICE" --no-pager -l || true
+              echo "Deployment completed successfully."
+              exit 0
+            fi
+
+            echo "Removing previous .next build directory..."
+            rm -rf .next
+
+            echo "Installing dependencies..."
+            npm ci
+
+            echo "Building application..."
+            npm run build
+
+            echo "Restarting systemd service: $SERVICE"
+            sudo -n systemctl restart "$SERVICE"
+
+            echo "Service status (last 30 lines):"
+            sudo -n systemctl status "$SERVICE" --no-pager -l || true
+
+            echo "Deployment completed successfully."
