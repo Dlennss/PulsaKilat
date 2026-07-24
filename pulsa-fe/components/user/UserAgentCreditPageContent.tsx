@@ -4,7 +4,6 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
-  BellRing,
   Camera,
   Check,
   ChevronRight,
@@ -257,56 +256,13 @@ function SignaturePad({ signerName, onSignatureChange }: { signerName: string; o
   );
 }
 
-function ReviewCard({
-  title,
-  desc,
-  icon: Icon,
-  active,
-}: {
-  title: string;
-  desc: string;
-  icon: typeof SearchCheck;
-  active?: boolean;
-}) {
-  return (
-    <div
-      className={
-        active
-          ? "rounded-[24px] border border-emerald-200 bg-emerald-50 p-4 text-center shadow-[0_10px_22px_rgba(4,120,87,0.08)]"
-          : "rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-center"
-      }
-    >
-      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">{title}</p>
-      <Icon className={active ? "mx-auto mt-8 h-8 w-8 text-[#047857]" : "mx-auto mt-8 h-8 w-8 text-slate-400"} strokeWidth={2.4} />
-      <p className={active ? "mt-3 text-[10px] font-black leading-4 text-[#047857]" : "mt-3 text-[10px] font-black leading-4 text-slate-500"}>
-        {desc}
-      </p>
-    </div>
-  );
-}
-
 export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCreditPageContentProps) {
   const [agreed, setAgreed] = useState(false);
   const [signatureReady, setSignatureReady] = useState(false);
   const [signatureData, setSignatureData] = useState("");
   const [agentSubmitted, setAgentSubmitted] = useState(false);
-  const [marketingApproved, setMarketingApproved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        const status = window.localStorage.getItem("pulsakilat_agent_credit_status");
-        setAgentSubmitted(status === "pending" || status === "approved");
-        setMarketingApproved(status === "approved");
-      } catch {
-        setAgentSubmitted(false);
-        setMarketingApproved(false);
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -356,11 +312,6 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!response.ok || !body.ok) {
         throw new Error(body.error || "Pengajuan gagal dikirim");
-      }
-      try {
-        window.localStorage.setItem("pulsakilat_agent_credit_status", "pending");
-      } catch {
-        // Abaikan jika storage browser tidak tersedia.
       }
       setAgentSubmitted(true);
     } catch (err) {
@@ -488,17 +439,7 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
             </div>
           </div>
 
-          {marketingApproved ? (
-            <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-[#047857]">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white">
-                <BellRing className="h-5 w-5" strokeWidth={2.4} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-black">Pengajuan disetujui Marketing</p>
-                <p className="mt-0.5 text-[10px] font-semibold text-[#047857]/70">Limit kredit saldo akan diproses ke akun agent.</p>
-              </div>
-            </div>
-          ) : agentSubmitted ? (
+          {agentSubmitted ? (
             <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-700">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white">
                 <SearchCheck className="h-5 w-5" strokeWidth={2.4} />
@@ -519,14 +460,6 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
                 if (!ready) setSignatureData("");
               }}
             />
-            {marketingApproved ? (
-              <ReviewCard
-                title="Marketing"
-                icon={SearchCheck}
-                active
-                desc="Sudah disetujui"
-              />
-            ) : null}
           </div>
         </section>
 
