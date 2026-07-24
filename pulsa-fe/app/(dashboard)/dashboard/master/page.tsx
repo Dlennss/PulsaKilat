@@ -41,6 +41,20 @@ function getStatusLabel(status: string) {
   }
 }
 
+function hasStoredImage(item: AgentCreditApplication, key: string) {
+  const value = item.document_data?.[key];
+  if (!value || typeof value !== "object") return false;
+  const image = value as { data_url?: unknown };
+  return typeof image.data_url === "string" && image.data_url.startsWith("data:image/");
+}
+
+function getStoredImageSrc(item: AgentCreditApplication, key: string) {
+  const value = item.document_data?.[key];
+  if (!value || typeof value !== "object") return "";
+  const image = value as { data_url?: unknown };
+  return typeof image.data_url === "string" && image.data_url.startsWith("data:image/") ? image.data_url : "";
+}
+
 const timeline = [
   { title: "Tanda tangan agent", desc: "Agent mengirim pengajuan kredit saldo.", active: true },
   { title: "Cek marketing", desc: "Marketing validasi dokumen dan tanda tangan.", active: true },
@@ -133,6 +147,11 @@ export default async function MasterDashboardPage() {
                       const storeName = getApplicantText(item, "store_name", "Toko belum diisi");
                       const wa = getApplicantText(item, "whatsapp", item.member_phone || "-");
                       const nik = getApplicantText(item, "nik");
+                      const docs = [
+                        { label: "Foto KTP", ready: hasStoredImage(item, "ktp"), src: getStoredImageSrc(item, "ktp") },
+                        { label: "Foto Toko", ready: hasStoredImage(item, "store"), src: getStoredImageSrc(item, "store") },
+                        { label: "Selfie KTP", ready: hasStoredImage(item, "selfie"), src: getStoredImageSrc(item, "selfie") },
+                      ];
                       return (
                         <article key={item.id} className="rounded-3xl border border-emerald-100 bg-linear-to-br from-white to-emerald-50/70 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_38px_rgba(5,122,69,0.12)]">
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -174,6 +193,29 @@ export default async function MasterDashboardPage() {
                               <p className="font-black text-slate-950">Alamat Toko</p>
                               <p className="mt-1 leading-5">{getApplicantText(item, "store_address")}</p>
                             </div>
+                          </div>
+                          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                            {docs.map((doc) => (
+                              <div
+                                key={doc.label}
+                                className={
+                                  doc.ready
+                                    ? "overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-[0_10px_22px_rgba(5,122,69,0.08)]"
+                                    : "rounded-2xl border border-dashed border-slate-200 bg-slate-50"
+                                }
+                              >
+                                <div
+                                  className="h-24 bg-slate-100 bg-cover bg-center"
+                                  style={doc.src ? { backgroundImage: `url(${doc.src})` } : undefined}
+                                />
+                                <div className="px-3 py-2">
+                                  <p className="truncate text-[10px] font-black text-slate-950">{doc.label}</p>
+                                  <p className={doc.ready ? "text-[9px] font-black text-emerald-700" : "text-[9px] font-black text-slate-400"}>
+                                    {doc.ready ? "Tersimpan" : "Kosong"}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </article>
                       );

@@ -18,6 +18,7 @@ import {
   UserRound,
   UsersRound,
   WalletCards,
+  type LucideIcon,
 } from "lucide-react";
 
 type UserAgentCreditPageContentProps = {
@@ -59,17 +60,82 @@ function Field({ name, label, placeholder, defaultValue = "", className = "", te
   );
 }
 
-function UploadBox({ name, title, desc, icon: Icon }: { name: string; title: string; desc: string; icon: typeof Upload }) {
+type StoredImage = {
+  name: string;
+  type: string;
+  size: number;
+  data_url: string;
+};
+
+function fileFromForm(form: FormData, name: string) {
+  const value = form.get(name);
+  return value instanceof File && value.size > 0 ? value : null;
+}
+
+function readStoredImage(file: File | null): Promise<StoredImage | null> {
+  if (!file) return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Gagal membaca file ${file.name}`));
+    reader.onload = () => {
+      resolve({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data_url: String(reader.result || ""),
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function UploadBox({ name, title, desc, icon: Icon }: { name: string; title: string; desc: string; icon: LucideIcon }) {
+  const [fileName, setFileName] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   return (
     <label className="flex cursor-pointer items-center gap-4 rounded-[22px] border border-dashed border-emerald-200 bg-[#fbfffd] p-4 transition hover:border-[#047857] hover:bg-emerald-50/60">
       <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100">
-        <Icon className="h-6 w-6" strokeWidth={2.3} />
+        {previewUrl ? (
+          <span
+            className="h-full w-full rounded-2xl bg-cover bg-center"
+            style={{ backgroundImage: `url(${previewUrl})` }}
+            aria-hidden="true"
+          />
+        ) : (
+          <Icon className="h-6 w-6" strokeWidth={2.3} />
+        )}
       </span>
-      <span className="min-w-0 flex-1 text-center">
+      <span className="min-w-0 flex-1 text-left">
         <span className="block text-sm font-black text-slate-950">{title}</span>
-        <span className="mt-1 block text-[10px] font-semibold leading-4 text-slate-400">{desc}</span>
+        <span className="mt-1 block truncate text-[10px] font-semibold leading-4 text-slate-400">{fileName || desc}</span>
+        {fileName ? <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-black text-[#047857]">Siap disimpan</span> : null}
       </span>
-      <input name={name} type="file" className="hidden" />
+      <input
+        name={name}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (!file) {
+            setFileName("");
+            setPreviewUrl("");
+            return;
+          }
+          setFileName(file.name);
+          setPreviewUrl((oldUrl) => {
+            if (oldUrl) URL.revokeObjectURL(oldUrl);
+            return URL.createObjectURL(file);
+          });
+        }}
+      />
     </label>
   );
 }
@@ -159,7 +225,7 @@ function SignaturePad({ signerName, onSignatureChange }: { signerName: string; o
       <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">Agent</p>
         <button
-          type="submit"
+          type="button"
           onClick={clearSignature}
           className="grid h-7 w-7 place-items-center rounded-full bg-rose-50 text-rose-500 transition hover:bg-rose-100"
           aria-label="Hapus tanda tangan"
@@ -251,6 +317,15 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
     setSubmitting(true);
     setError("");
     try {
+      const [ktpImage, storeImage, selfieImage] = await Promise.all([
+        readStoredImage(fileFromForm(form, "document_ktp")),
+        readStoredImage(fileFromForm(form, "document_store")),
+        readStoredImage(fileFromForm(form, "document_selfie")),
+      ]);
+      if (!ktpImage || !storeImage || !selfieImage) {
+        throw new Error("Foto KTP, foto toko, dan selfie wajib diupload");
+      }
+
       const response = await fetch("/api/agent-credit/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -271,9 +346,9 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
             family_address: String(form.get("family_address") || ""),
           },
           document_data: {
-            ktp_uploaded: Boolean(form.get("document_ktp")),
-            store_uploaded: Boolean(form.get("document_store")),
-            selfie_uploaded: Boolean(form.get("document_selfie")),
+            ktp: ktpImage,
+            store: storeImage,
+            selfie: selfieImage,
           },
           agent_signature: signatureData,
         }),
