@@ -16,6 +16,7 @@ export function NavItem({ href, label, onClick }: Props) {
     "/dashboard/member",
     "/dashboard/operator",
     "/dashboard/wallet",
+    "/dashboard/master",
   ]);
   const active = exactOnlyHrefs.has(href) ? pathname === href : pathname === href || pathname.startsWith(href + "/");
 

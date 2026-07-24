@@ -220,4 +220,11 @@ export const auditorNavSections: NavSection[] = [
 ];
 
 export const masterNavSections: NavSection[] = [
+  {
+    title: "Master",
+    items: [
+      { href: "/dashboard/master", label: "Dashboard" },
+      { href: "/dashboard/master/pinjaman", label: "Data Pinjaman" },
+    ],
+  },
 ];
