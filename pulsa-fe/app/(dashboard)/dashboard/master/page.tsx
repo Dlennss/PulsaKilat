@@ -1,5 +1,4 @@
 import {
-  ArrowUpRight,
   BadgeCheck,
   ClipboardCheck,
   Clock3,
@@ -11,17 +10,13 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { label: "Total Pengajuan", value: "12", hint: "Semua data agent", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
-  { label: "Perlu Dicek", value: "4", hint: "Menunggu marketing", icon: Clock3, tone: "from-amber-400 to-orange-500" },
-  { label: "Disetujui", value: "7", hint: "Siap pencairan", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
-  { label: "Limit Aktif", value: "Rp 8,5jt", hint: "Berjalan bulan ini", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
+  { label: "Total Pengajuan", value: "0", hint: "Belum ada data", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
+  { label: "Perlu Dicek", value: "0", hint: "Menunggu marketing", icon: Clock3, tone: "from-amber-400 to-orange-500" },
+  { label: "Disetujui", value: "0", hint: "Belum ada ACC", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
+  { label: "Limit Aktif", value: "Rp 0", hint: "Belum berjalan", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
 ];
 
-const reviews = [
-  { name: "Agent Pulsa Kilat", store: "Kios Pulsa Maju", amount: "Rp 500.000", status: "Tanda tangan masuk", step: "Review marketing" },
-  { name: "Fadlan Cell", store: "Konter Digital", amount: "Rp 300.000", status: "Data lengkap", step: "Cek dokumen" },
-  { name: "Kupra Store", store: "Pulsa Harian", amount: "Rp 750.000", status: "Menunggu acc", step: "Keputusan master" },
-];
+const reviews: Array<{ name: string; store: string; amount: string; status: string; step: string }> = [];
 
 const timeline = [
   { title: "Tanda tangan agent", desc: "Agent mengirim pengajuan kredit saldo.", active: true },
@@ -96,37 +91,20 @@ export default function MasterDashboardPage() {
                   </label>
                 </div>
 
-                <div className="mt-5 space-y-3">
-                  {reviews.map((item) => (
-                    <article key={item.name} className="rounded-3xl border border-emerald-100 bg-linear-to-br from-white to-emerald-50/70 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_38px_rgba(5,122,69,0.12)]">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-950 text-sm font-black text-lime-300">
-                            {item.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <h3 className="font-black">{item.name}</h3>
-                            <p className="text-xs font-semibold text-slate-500">{item.store}</p>
-                          </div>
+                <div className="mt-5">
+                  {reviews.length ? null : (
+                    <div className="grid min-h-[260px] place-items-center rounded-[26px] border border-dashed border-emerald-200 bg-[linear-gradient(135deg,#f8fffb_0%,#eefbf4_100%)] px-5 py-10 text-center">
+                      <div>
+                        <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-white text-emerald-700 shadow-[0_14px_32px_rgba(5,122,69,0.10)] ring-1 ring-emerald-100">
+                          <FileSignature className="h-8 w-8" strokeWidth={2.3} />
                         </div>
-                        <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center">
-                          <div>
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Nominal</p>
-                            <p className="font-black text-emerald-700">{item.amount}</p>
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Tahap</p>
-                            <p className="font-bold text-slate-700">{item.step}</p>
-                          </div>
-                          <button className="col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-sm font-black text-white shadow-[0_12px_24px_rgba(5,150,105,0.22)] transition hover:bg-emerald-700 sm:col-span-1">
-                            Detail
-                            <ArrowUpRight className="h-4 w-4" />
-                          </button>
-                        </div>
+                        <h3 className="mt-4 text-base font-black text-slate-950">Belum ada pengajuan</h3>
+                        <p className="mx-auto mt-1 max-w-sm text-sm font-semibold leading-6 text-slate-500">
+                          Pengajuan kredit saldo dari agent akan tampil otomatis setelah dikirim.
+                        </p>
                       </div>
-                      <div className="mt-3 inline-flex rounded-full bg-lime-100 px-3 py-1 text-xs font-black text-emerald-800">{item.status}</div>
-                    </article>
-                  ))}
+                    </div>
+                  )}
                 </div>
               </section>
 

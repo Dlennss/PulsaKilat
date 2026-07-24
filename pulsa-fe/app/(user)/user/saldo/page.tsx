@@ -18,7 +18,7 @@ export default async function UserSaldoPage() {
   const profile = await getUserProfile(session.backendToken);
   const userCode = profile?.id ? `USR-${String(profile.id).padStart(3, "0")}` : "USR-001";
   const role = String(profile?.role || session.user?.role || "").trim().toLowerCase();
-  const canUseAgentCredit = role === "agent" || role === "master";
+  const canUseAgentCredit = role === "agent";
 
   return (
     <main className="min-h-screen bg-[#eef8f3] px-3 pb-24 pt-3">

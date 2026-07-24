@@ -94,7 +94,7 @@ function fallbackPath(mode: DirectoryMode, slug: string) {
 function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
   const path = mode === "user" ? userPath : guestPath;
   const normalizedRole = String(role || "").trim().toLowerCase();
-  const canUseAgentCredit = mode === "user" && (normalizedRole === "agent" || normalizedRole === "master");
+  const canUseAgentCredit = mode === "user" && normalizedRole === "agent";
 
   return [
     {

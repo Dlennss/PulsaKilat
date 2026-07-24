@@ -17,7 +17,7 @@ export default async function UserSaldoKreditAgentPage() {
 
   const profile = await getUserProfile(session.backendToken);
   const role = String(profile?.role || session.user?.role || "").trim().toLowerCase();
-  if (role !== "agent" && role !== "master") redirect("/user/saldo");
+  if (role !== "agent") redirect("/user/saldo");
 
   const profileWithPhone = profile as typeof profile & { phone?: string; no_hp?: string; nomor_hp?: string; telepon?: string };
   const name = profile?.nama || session.user?.name || "User";
