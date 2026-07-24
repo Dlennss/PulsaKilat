@@ -470,7 +470,7 @@ export function UserAgentCreditPageContent({ name, email, phone }: UserAgentCred
         ) : null}
 
         <button
-          type="button"
+          type="submit"
           disabled={!agreed || !signatureReady || !signatureData || agentSubmitted || submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
