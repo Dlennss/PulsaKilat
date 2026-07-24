@@ -175,7 +175,7 @@ export default async function MasterDashboardPage() {
                       const signatureSrc = getSignatureSrc(item);
                       return (
                         <article key={item.id} className="rounded-[28px] border border-emerald-100 bg-linear-to-br from-white via-white to-emerald-50/80 p-4 shadow-[0_14px_34px_rgba(6,78,59,0.06)] transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_38px_rgba(5,122,69,0.12)] sm:p-5">
-                          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+                          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
                             <div className="flex min-w-0 items-start gap-3">
                               <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-emerald-950 text-sm font-black text-lime-300 shadow-[0_12px_24px_rgba(6,78,59,0.18)]">
                                 {agentName.slice(0, 2).toUpperCase()}
@@ -199,14 +199,16 @@ export default async function MasterDashboardPage() {
                                 <p className="mt-1 text-2xl font-black">{formatIDR(item.requested_amount)}</p>
                                 <p className="mt-1 text-[10px] font-bold text-white/60">Status: {getStatusLabel(item.status)}</p>
                               </div>
-                              <MasterAgentCreditDecisionControls
-                                applicationId={item.id}
-                                requestedAmount={item.requested_amount}
-                                approvedAmount={item.approved_amount}
-                                marketingNote={item.marketing_note}
-                                status={item.status}
-                              />
                             </div>
+                          </div>
+                          <div className="mt-4">
+                            <MasterAgentCreditDecisionControls
+                              applicationId={item.id}
+                              requestedAmount={item.requested_amount}
+                              approvedAmount={item.approved_amount}
+                              marketingNote={item.marketing_note}
+                              status={item.status}
+                            />
                           </div>
                           <div className="mt-4 grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
                             <div className="min-w-0 rounded-3xl bg-white/85 p-4 ring-1 ring-emerald-100">
