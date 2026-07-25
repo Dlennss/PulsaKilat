@@ -202,42 +202,6 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
             <p className="mt-1 text-sm font-black text-slate-950">{formatDate(dueDate)}</p>
           </div>
         </div>
-        {selectedBill && !isPaid ? (
-          <div className="mt-4 rounded-[24px] bg-slate-50 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Pilih bulan cicilan</p>
-              <button
-                type="button"
-                onClick={() => setSelectedInstallments(installmentChoices)}
-                className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#047857] ring-1 ring-emerald-100"
-              >
-                Pilih semua
-              </button>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {installmentChoices.map((month) => {
-                const checked = activeInstallments.includes(month);
-                return (
-                  <label
-                    key={month}
-                    className={checked ? "flex cursor-pointer items-center gap-2 rounded-2xl bg-white px-3 py-3 text-slate-950 shadow-[0_10px_22px_rgba(15,23,42,0.08)] ring-1 ring-emerald-300" : "flex cursor-pointer items-center gap-2 rounded-2xl bg-white/70 px-3 py-3 text-slate-500 ring-1 ring-slate-200"}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleInstallment(month)}
-                      className="h-4 w-4 rounded border-slate-300 text-[#047857] focus:ring-emerald-300"
-                    />
-                    <span className="text-xs font-black">Bulan {month}</span>
-                  </label>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-[10px] font-semibold leading-4 text-slate-500">
-              Jika semua bulan dicentang, pinjaman akan langsung lunas.
-            </p>
-          </div>
-        ) : null}
       </section>
 
       {bills.length ? (
@@ -259,9 +223,9 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                     key={item.id}
                     type="button"
                     onClick={() => selectBill(item.id)}
-                    className={selected ? "flex w-full items-center gap-3 rounded-[22px] border border-emerald-300 bg-emerald-50 p-3 text-left shadow-[0_12px_24px_rgba(5,150,105,0.08)]" : "flex w-full items-center gap-3 rounded-[22px] border border-slate-200 bg-white p-3 text-left transition hover:bg-emerald-50/50"}
+                    className={selected ? "flex w-full items-center gap-3 rounded-[24px] border border-emerald-300 bg-[linear-gradient(135deg,#ecfdf5,#ffffff)] p-3 text-left shadow-[0_12px_24px_rgba(5,150,105,0.08)]" : "flex w-full items-center gap-3 rounded-[24px] border border-slate-200 bg-white p-3 text-left transition hover:bg-emerald-50/50"}
                   >
-                    <span className={selected ? "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#047857] text-white" : "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-500"}>
+                    <span className={selected ? "grid h-12 w-12 shrink-0 place-items-center rounded-[19px] bg-[#047857] text-white shadow-[0_10px_20px_rgba(4,120,87,0.20)]" : "grid h-12 w-12 shrink-0 place-items-center rounded-[19px] bg-slate-100 text-slate-500"}>
                       <ReceiptText className="h-5 w-5" />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -278,6 +242,49 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                 );
               })}
             </div>
+            {selectedBill && !isPaid ? (
+              <div className="mt-3 rounded-[26px] border border-emerald-100 bg-[linear-gradient(180deg,#f8fffb_0%,#ffffff_100%)] p-3 shadow-[0_12px_28px_rgba(6,78,59,0.06)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#047857]">Pilih Cicilan</p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">Centang bulan yang ingin dibayar.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedInstallments(installmentChoices)}
+                    className="h-9 rounded-full bg-emerald-950 px-3 text-[10px] font-black text-white shadow-[0_10px_20px_rgba(6,78,59,0.16)]"
+                  >
+                    Semua
+                  </button>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {installmentChoices.map((month) => {
+                    const checked = activeInstallments.includes(month);
+                    return (
+                      <label
+                        key={month}
+                        className={checked ? "flex cursor-pointer items-center justify-between gap-2 rounded-[18px] border border-emerald-300 bg-emerald-50 px-3 py-3 text-slate-950" : "flex cursor-pointer items-center justify-between gap-2 rounded-[18px] border border-slate-200 bg-white px-3 py-3 text-slate-600"}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleInstallment(month)}
+                            className="h-4 w-4 rounded border-slate-300 text-[#047857] focus:ring-emerald-300"
+                          />
+                          <span className="text-xs font-black">Bulan {month}</span>
+                        </span>
+                        <span className="text-[10px] font-black text-[#047857]">{formatIDR(monthlyBill)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center justify-between rounded-[20px] bg-slate-950 px-4 py-3 text-white">
+                  <span className="text-[11px] font-semibold text-white/70">{activeInstallments.length} bulan dipilih</span>
+                  <span className="text-sm font-black">{formatIDR(paymentAmount)}</span>
+                </div>
+              </div>
+            ) : null}
           </section>
 
           {selectedBill ? (
