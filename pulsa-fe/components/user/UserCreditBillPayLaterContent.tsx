@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   ChevronRight,
   CreditCard,
+  Eye,
+  EyeOff,
   ReceiptText,
   ShieldCheck,
   WalletCards,
@@ -92,6 +94,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   const selectedDefault = activeBills[0]?.id || bills[0]?.id || 0;
   const [selectedBillId, setSelectedBillId] = useState(selectedDefault);
   const [selectedInstallments, setSelectedInstallments] = useState<number[]>([]);
+  const [installmentPickerOpen, setInstallmentPickerOpen] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0].id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -124,6 +127,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   function selectBill(id: number) {
     setSelectedBillId(id);
     setSelectedInstallments([]);
+    setInstallmentPickerOpen(false);
   }
 
   function toggleInstallment(month: number) {
@@ -247,38 +251,52 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#047857]">Pilih Cicilan</p>
-                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">Centang bulan yang ingin dibayar.</p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                      {activeInstallments.length ? `${activeInstallments.length} bulan dipilih` : "Belum ada bulan dipilih"}
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedInstallments(installmentChoices)}
-                    className="h-9 rounded-full bg-emerald-950 px-3 text-[10px] font-black text-white shadow-[0_10px_20px_rgba(6,78,59,0.16)]"
-                  >
-                    Semua
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedInstallments(installmentChoices)}
+                      className="h-9 rounded-full bg-emerald-950 px-3 text-[10px] font-black text-white shadow-[0_10px_20px_rgba(6,78,59,0.16)]"
+                    >
+                      Semua
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInstallmentPickerOpen((value) => !value)}
+                      className="grid h-9 w-9 place-items-center rounded-full bg-white text-[#047857] ring-1 ring-emerald-100"
+                      aria-label={installmentPickerOpen ? "Tutup pilihan cicilan" : "Buka pilihan cicilan"}
+                    >
+                      {installmentPickerOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {installmentChoices.map((month) => {
-                    const checked = activeInstallments.includes(month);
-                    return (
-                      <label
-                        key={month}
-                        className={checked ? "flex cursor-pointer items-center justify-between gap-2 rounded-[18px] border border-emerald-300 bg-emerald-50 px-3 py-3 text-slate-950" : "flex cursor-pointer items-center justify-between gap-2 rounded-[18px] border border-slate-200 bg-white px-3 py-3 text-slate-600"}
-                      >
-                        <span className="flex min-w-0 items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleInstallment(month)}
-                            className="h-4 w-4 rounded border-slate-300 text-[#047857] focus:ring-emerald-300"
-                          />
-                          <span className="text-xs font-black">Bulan {month}</span>
-                        </span>
-                        <span className="text-[10px] font-black text-[#047857]">{formatIDR(monthlyBill)}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                {installmentPickerOpen ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {installmentChoices.map((month) => {
+                      const checked = activeInstallments.includes(month);
+                      return (
+                        <label
+                          key={month}
+                          className={checked ? "flex cursor-pointer items-center justify-between gap-2 rounded-[18px] border border-emerald-300 bg-emerald-50 px-3 py-3 text-slate-950" : "flex cursor-pointer items-center justify-between gap-2 rounded-[18px] border border-slate-200 bg-white px-3 py-3 text-slate-600"}
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleInstallment(month)}
+                              className="h-4 w-4 rounded border-slate-300 text-[#047857] focus:ring-emerald-300"
+                            />
+                            <span className="text-xs font-black">Bulan {month}</span>
+                          </span>
+                          <span className="text-[10px] font-black text-[#047857]">{formatIDR(monthlyBill)}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className="mt-3 flex items-center justify-between rounded-[20px] bg-slate-950 px-4 py-3 text-white">
                   <span className="text-[11px] font-semibold text-white/70">{activeInstallments.length} bulan dipilih</span>
                   <span className="text-sm font-black">{formatIDR(paymentAmount)}</span>
