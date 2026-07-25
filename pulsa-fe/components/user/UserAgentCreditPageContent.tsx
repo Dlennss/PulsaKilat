@@ -300,11 +300,19 @@ function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
+const fixedCreditAmount = 500000;
+const tenorOptions = [
+  { months: 3, label: "3 Bulan" },
+  { months: 6, label: "6 Bulan" },
+  { months: 12, label: "12 Bulan" },
+];
+
 export function UserAgentCreditPageContent({ name, email, phone, initialApplications = [] }: UserAgentCreditPageContentProps) {
   const [agreed, setAgreed] = useState(false);
   const [signatureReady, setSignatureReady] = useState(false);
   const [signatureData, setSignatureData] = useState("");
   const [latestApplication, setLatestApplication] = useState<AgentCreditApplication | undefined>(initialApplications[0]);
+  const [tenorMonths, setTenorMonths] = useState(3);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const notice = getApplicationNotice(latestApplication);
@@ -317,7 +325,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
     if (!agreed || !signatureReady || !signatureData || submitting) return;
 
     const form = new FormData(event.currentTarget);
-    const requestedAmount = Number(String(form.get("requested_amount") || "0").replace(/[^\d]/g, ""));
+    const requestedAmount = fixedCreditAmount;
     setSubmitting(true);
     setError("");
     try {
@@ -348,6 +356,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             family_whatsapp: String(form.get("family_whatsapp") || ""),
             family_relation: String(form.get("family_relation") || ""),
             family_address: String(form.get("family_address") || ""),
+            tenor_months: Number(form.get("tenor_months") || tenorMonths),
           },
           document_data: {
             ktp: ktpImage,
@@ -408,9 +417,39 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             <Field name="monthly_transactions" label="Transaksi/Bulan" placeholder="Contoh: 150 transaksi" />
             <Field name="home_address" label="Alamat Rumah" placeholder="Alamat lengkap rumah" textarea className="sm:col-span-2" />
             <Field name="store_address" label="Alamat Toko" placeholder="Alamat lengkap toko" textarea className="sm:col-span-2" />
-            <Field name="requested_amount" label="Nominal Kredit Saldo" placeholder="Maksimal 500.000" defaultValue="500000" className="sm:col-span-2" />
+            <div className="rounded-[22px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)] p-4 sm:col-span-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Nominal Kredit Saldo</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(fixedCreditAmount)}</p>
+              <p className="mt-1 text-[10px] font-semibold text-slate-400">Nominal pinjaman agent dikunci dan tidak bisa diubah.</p>
+              <input type="hidden" name="requested_amount" value={fixedCreditAmount} />
+            </div>
+            <div className="sm:col-span-2">
+              <p className="text-[10px] font-black text-slate-950">Pilih Tenor Cicilan</p>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {tenorOptions.map((item) => {
+                  const selected = tenorMonths === item.months;
+                  return (
+                    <label
+                      key={item.months}
+                      className={selected ? "cursor-pointer rounded-2xl border border-emerald-400 bg-emerald-50 px-2 py-3 text-center shadow-[0_10px_22px_rgba(4,120,87,0.10)]" : "cursor-pointer rounded-2xl border border-slate-200 bg-white px-2 py-3 text-center"}
+                    >
+                      <input
+                        type="radio"
+                        name="tenor_months"
+                        value={item.months}
+                        checked={selected}
+                        onChange={() => setTenorMonths(item.months)}
+                        className="sr-only"
+                      />
+                      <span className="block text-sm font-black text-slate-950">{item.label}</span>
+                      <span className="mt-1 block text-[10px] font-bold text-slate-500">{formatIDR(Math.ceil(fixedCreditAmount / item.months))}/bln</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <p className="mt-2 text-[10px] font-semibold text-slate-400">Maksimal pengajuan Rp500.000</p>
+          <p className="mt-2 text-[10px] font-semibold text-slate-400">Cicilan otomatis mengikuti tenor yang dipilih.</p>
         </section>
 
         <section className="rounded-[26px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">

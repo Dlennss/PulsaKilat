@@ -34,6 +34,7 @@ export function MarketingAgentCreditCreateForm() {
             whatsapp: String(form.get("whatsapp") || ""),
             email: String(form.get("email") || ""),
             monthly_transactions: String(form.get("monthly_transactions") || ""),
+            tenor_months: Number(form.get("tenor_months") || 3),
             home_address: String(form.get("home_address") || ""),
             store_address: String(form.get("store_address") || ""),
             input_by: "marketing",
@@ -89,6 +90,14 @@ export function MarketingAgentCreditCreateForm() {
               <input name={name} placeholder={placeholder} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-black text-slate-950 outline-none focus:border-emerald-400 focus:bg-white" />
             </label>
           ))}
+          <label className="block sm:col-span-2">
+            <span className="text-[10px] font-black text-slate-500">Tenor Cicilan</span>
+            <select name="tenor_months" defaultValue="3" className="mt-1 h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-black text-slate-950 outline-none focus:border-emerald-400 focus:bg-white">
+              <option value="3">3 bulan</option>
+              <option value="6">6 bulan</option>
+              <option value="12">12 bulan</option>
+            </select>
+          </label>
           <label className="block sm:col-span-2">
             <span className="text-[10px] font-black text-slate-500">Alamat Rumah</span>
             <textarea name="home_address" rows={2} placeholder="Alamat rumah" className="mt-1 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-950 outline-none focus:border-emerald-400 focus:bg-white" />

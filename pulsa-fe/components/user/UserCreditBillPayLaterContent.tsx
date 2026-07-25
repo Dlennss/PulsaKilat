@@ -26,19 +26,11 @@ function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
-function addOneMonth(value: string) {
+function addMonths(value: string, months: number) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  date.setMonth(date.getMonth() + 1);
+  date.setMonth(date.getMonth() + months);
   return date;
-}
-
-function resolveDueDate(item: AgentCreditApplication) {
-  if (item.loan_due_date) {
-    const dueDate = new Date(item.loan_due_date);
-    if (!Number.isNaN(dueDate.getTime())) return dueDate;
-  }
-  return addOneMonth(item.loan_approved_at || item.updated_at || item.created_at);
 }
 
 function formatDate(value: Date | null) {
@@ -47,14 +39,40 @@ function formatDate(value: Date | null) {
 }
 
 function getTenorMonths(item: AgentCreditApplication) {
-  const start = new Date(item.loan_approved_at || item.updated_at || item.created_at).getTime();
-  const end = resolveDueDate(item)?.getTime() || 0;
-  if (!start || !end) return 1;
-  const days = Math.max(1, Math.ceil((end - start) / 86400000));
-  return Math.max(1, Math.ceil(days / 30));
+  const value = item.applicant_data?.tenor_months;
+  const tenor = typeof value === "number" ? value : Number(value || 0);
+  return tenor === 3 || tenor === 6 || tenor === 12 ? tenor : 1;
+}
+
+function getInstallmentNo(item: AgentCreditApplication) {
+  const tenor = getTenorMonths(item);
+  const paidCount = Math.max(0, Number(item.payment_count || 0));
+  return Math.min(tenor, paidCount + 1);
+}
+
+function getDueDate(item: AgentCreditApplication) {
+  const baseDate = item.loan_approved_at || item.updated_at || item.created_at;
+  const dueDate = addMonths(baseDate, getInstallmentNo(item));
+  if (!dueDate && item.loan_due_date) {
+    const fallback = new Date(item.loan_due_date);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+  }
+  return dueDate;
+}
+
+function getMonthlyInstallment(item: AgentCreditApplication) {
+  const approved = Number(item.approved_amount || item.requested_amount || 0);
+  const tenor = getTenorMonths(item);
+  return Math.ceil(approved / tenor);
+}
+
+function getCurrentBill(item: AgentCreditApplication) {
+  const outstanding = Number(item.outstanding_amount || 0);
+  return Math.min(outstanding, getMonthlyInstallment(item));
 }
 
 function getPaidAmount(item: AgentCreditApplication) {
+  if (typeof item.paid_amount === "number") return Math.max(0, item.paid_amount);
   return Math.max(0, Number(item.approved_amount || 0) - Number(item.outstanding_amount || 0));
 }
 
@@ -78,12 +96,14 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
     [bills, selectedBillId],
   );
   const totalOutstanding = activeBills.reduce((total, item) => total + Number(item.outstanding_amount || 0), 0);
-  const monthlyBill = selectedBill ? Number(selectedBill.outstanding_amount || 0) : 0;
-  const dueDate = selectedBill ? resolveDueDate(selectedBill) : null;
+  const monthlyBill = selectedBill ? getCurrentBill(selectedBill) : 0;
+  const dueDate = selectedBill ? getDueDate(selectedBill) : null;
   const approved = selectedBill ? Number(selectedBill.approved_amount || selectedBill.requested_amount || 0) : 0;
   const paid = selectedBill ? getPaidAmount(selectedBill) : 0;
   const progress = approved > 0 ? Math.min(100, Math.round((paid / approved) * 100)) : 0;
   const isPaid = selectedBill ? Number(selectedBill.outstanding_amount || 0) <= 0 : false;
+  const selectedTenor = selectedBill ? getTenorMonths(selectedBill) : 0;
+  const selectedInstallmentNo = selectedBill ? getInstallmentNo(selectedBill) : 0;
   const method = paymentMethods.find((item) => item.id === selectedMethod) || paymentMethods[0];
   const MethodIcon = method.icon;
 
@@ -137,7 +157,9 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
         <div className="mt-3 flex items-end justify-between gap-3">
           <div>
             <p className="text-3xl font-black tracking-tight text-slate-950">{formatIDR(monthlyBill)}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">Tagihan bulan ini</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              {selectedBill ? `Cicilan ke-${selectedInstallmentNo} dari ${selectedTenor}` : "Tagihan bulan ini"}
+            </p>
           </div>
           <span className={isPaid ? "rounded-full bg-emerald-100 px-3 py-1.5 text-[10px] font-black text-emerald-700" : "rounded-full bg-amber-100 px-3 py-1.5 text-[10px] font-black text-amber-700"}>
             {isPaid ? "Lunas" : "Belum lunas"}
@@ -165,6 +187,9 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
             <div className="space-y-2">
               {bills.map((item) => {
                 const outstanding = Number(item.outstanding_amount || 0);
+                const bill = getCurrentBill(item);
+                const tenor = getTenorMonths(item);
+                const installmentNo = getInstallmentNo(item);
                 const selected = item.id === selectedBillId;
                 return (
                   <button
@@ -178,10 +203,12 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-black text-slate-950">Pinjaman #{item.id}</span>
-                      <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">Tenor {getTenorMonths(item)} bulan sampai lunas</span>
+                      <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">
+                        Cicilan {installmentNo}/{tenor} - sisa {formatIDR(outstanding)}
+                      </span>
                     </span>
                     <span className="text-right">
-                      <span className="block text-sm font-black text-slate-950">{formatIDR(outstanding)}</span>
+                      <span className="block text-sm font-black text-slate-950">{formatIDR(bill)}</span>
                       <span className="mt-0.5 block text-[9px] font-black text-slate-400">{outstanding <= 0 ? "Lunas" : "Bayar"}</span>
                     </span>
                   </button>
@@ -208,8 +235,16 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                     <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(approved)}</p>
                   </div>
                   <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">
-                    <p className="text-[9px] font-black uppercase text-slate-400">Sisa</p>
+                    <p className="text-[9px] font-black uppercase text-slate-400">Cicilan Bulan Ini</p>
                     <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(monthlyBill)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">
+                    <p className="text-[9px] font-black uppercase text-slate-400">Tenor</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{selectedTenor} bulan</p>
+                  </div>
+                  <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">
+                    <p className="text-[9px] font-black uppercase text-slate-400">Sisa Pinjaman</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(Number(selectedBill.outstanding_amount || 0))}</p>
                   </div>
                 </div>
                 <div className="mt-4">

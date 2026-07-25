@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math"
 	"strings"
 
 	"pulsa2/internal/helper"
@@ -44,6 +46,33 @@ func isCreditReviewer(role string) bool {
 	return normalized == helper.RoleRetailMaster || normalized == helper.RoleRetailMarketing
 }
 
+func normalizeCreditTenor(value any) int64 {
+	var tenor int64
+	switch v := value.(type) {
+	case int:
+		tenor = int64(v)
+	case int64:
+		tenor = v
+	case float64:
+		tenor = int64(math.Round(v))
+	case string:
+		switch strings.TrimSpace(v) {
+		case "3":
+			tenor = 3
+		case "6":
+			tenor = 6
+		case "12":
+			tenor = 12
+		}
+	}
+	switch tenor {
+	case 3, 6, 12:
+		return tenor
+	default:
+		return 0
+	}
+}
+
 func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditSubmitInput) (*repository.AgentCreditApplication, error) {
 	role := helper.NormalizeRole(auth.Role)
 	targetMemberID := auth.MemberID
@@ -59,6 +88,18 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	} else {
 		return nil, errors.New("tidak punya akses pengajuan kredit")
 	}
+	if in.ApplicantData == nil {
+		in.ApplicantData = map[string]any{}
+	}
+	tenorMonths := normalizeCreditTenor(in.ApplicantData["tenor_months"])
+	if tenorMonths == 0 {
+		return nil, errors.New("tenor cicilan wajib pilih 3, 6, atau 12 bulan")
+	}
+	in.ApplicantData["tenor_months"] = tenorMonths
+	in.ApplicantData["tenor_label"] = fmt.Sprintf("%d bulan", tenorMonths)
+	if role == helper.RoleRetailAgent {
+		in.RequestedAmount = 500000
+	}
 	if in.RequestedAmount <= 0 {
 		return nil, errors.New("nominal kredit wajib diisi")
 	}
@@ -67,9 +108,6 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	}
 	if role == helper.RoleRetailAgent && strings.TrimSpace(in.AgentSignature) == "" {
 		return nil, errors.New("tanda tangan wajib diisi")
-	}
-	if in.ApplicantData == nil {
-		in.ApplicantData = map[string]any{}
 	}
 	if in.DocumentData == nil {
 		in.DocumentData = map[string]any{}
