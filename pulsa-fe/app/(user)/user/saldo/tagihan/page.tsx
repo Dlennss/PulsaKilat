@@ -16,15 +16,31 @@ function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
-function formatDate(value?: string) {
+function addOneMonth(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setMonth(date.getMonth() + 1);
+  return date;
+}
+
+function resolveDueDate(item: AgentCreditApplication) {
+  if (item.loan_due_date) {
+    const dueDate = new Date(item.loan_due_date);
+    if (!Number.isNaN(dueDate.getTime())) return dueDate;
+  }
+  return addOneMonth(item.loan_approved_at || item.updated_at || item.created_at);
+}
+
+function formatDate(value: Date | null) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(value);
 }
 
 function getTenorMonths(item: AgentCreditApplication) {
-  if (!item.loan_approved_at || !item.loan_due_date) return 1;
-  const start = new Date(item.loan_approved_at).getTime();
-  const end = new Date(item.loan_due_date).getTime();
+  const start = new Date(item.loan_approved_at || item.updated_at || item.created_at).getTime();
+  const dueDate = resolveDueDate(item);
+  const end = dueDate?.getTime() || 0;
+  if (!start || !end) return 1;
   const days = Math.max(1, Math.ceil((end - start) / 86400000));
   return Math.max(1, Math.ceil(days / 30));
 }
@@ -85,6 +101,7 @@ export default async function UserSaldoTagihanPage() {
               const approved = Number(item.approved_amount || item.requested_amount || 0);
               const progress = approved > 0 ? Math.min(100, Math.round((paid / approved) * 100)) : 0;
               const isPaid = outstanding <= 0;
+              const dueDate = resolveDueDate(item);
               return (
                 <article key={item.id} className="overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
                   <div className={isPaid ? "bg-emerald-50 px-4 py-4" : "bg-[linear-gradient(135deg,#ffffff,#f0fdf4)] px-4 py-4"}>
@@ -131,7 +148,7 @@ export default async function UserSaldoTagihanPage() {
                     </span>
                     <div className="min-w-0">
                       <p className="text-[10px] font-black text-slate-400">Jatuh Tempo</p>
-                      <p className="text-xs font-black text-slate-950">{formatDate(item.loan_due_date)}</p>
+                      <p className="text-xs font-black text-slate-950">{formatDate(dueDate)}</p>
                     </div>
                     <span className="ml-auto grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
                       <WalletCards className="h-5 w-5" />
