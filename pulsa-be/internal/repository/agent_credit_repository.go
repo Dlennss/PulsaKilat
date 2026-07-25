@@ -405,7 +405,7 @@ func (r *AgentCreditRepository) PayInstallment(ctx context.Context, in AgentCred
 	}
 	defer tx.Rollback()
 
-	var loanID, memberID, principal, outstanding, paymentCount int64
+	var loanID, memberID, principal, outstanding int64
 	var approvedAt, finalDueDate time.Time
 	var applicantRaw []byte
 	err = tx.QueryRowContext(ctx, `
@@ -416,18 +416,12 @@ SELECT
   l.outstanding_amount,
   l.approved_at,
   l.due_date,
-  a.applicant_data,
-  COALESCE(pay.payment_count, 0) AS payment_count
+  a.applicant_data
 FROM public.agent_credit_loan l
 JOIN public.agent_credit_application a ON a.id = l.application_id
-LEFT JOIN LATERAL (
-  SELECT COUNT(*)::bigint AS payment_count
-  FROM public.agent_credit_payment p
-  WHERE p.loan_id = l.id
-) pay ON TRUE
 WHERE l.application_id = $1 AND l.status IN ('active', 'overdue')
 FOR UPDATE
-`, in.ApplicationID).Scan(&loanID, &memberID, &principal, &outstanding, &approvedAt, &finalDueDate, &applicantRaw, &paymentCount)
+`, in.ApplicationID).Scan(&loanID, &memberID, &principal, &outstanding, &approvedAt, &finalDueDate, &applicantRaw)
 	if err != nil {
 		return err
 	}
@@ -437,19 +431,23 @@ FOR UPDATE
 	applicantData := map[string]any{}
 	_ = json.Unmarshal(applicantRaw, &applicantData)
 	tenorMonths := tenorMonthsFromApplicant(applicantData)
-	installmentNo := paymentCount + 1
-	if installmentNo > tenorMonths {
-		installmentNo = tenorMonths
+	currentBill := installmentAmount(principal, tenorMonths)
+	remainingInstallments := int64(1)
+	if currentBill > 0 {
+		remainingInstallments = (outstanding + currentBill - 1) / currentBill
+	}
+	if remainingInstallments > tenorMonths {
+		remainingInstallments = tenorMonths
+	}
+	installmentNo := tenorMonths - remainingInstallments + 1
+	if installmentNo < 1 {
+		installmentNo = 1
 	}
 	dueDate := approvedAt.AddDate(0, int(installmentNo), 0)
 	if dueDate.After(finalDueDate) {
 		dueDate = finalDueDate
 	}
-	currentBill := installmentAmount(principal, tenorMonths)
 	amount := in.Amount
-	if currentBill > 0 && amount > currentBill && amount < outstanding {
-		amount = currentBill
-	}
 	if amount > outstanding {
 		amount = outstanding
 	}

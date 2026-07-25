@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -46,8 +46,12 @@ function getTenorMonths(item: AgentCreditApplication) {
 
 function getInstallmentNo(item: AgentCreditApplication) {
   const tenor = getTenorMonths(item);
-  const paidCount = Math.max(0, Number(item.payment_count || 0));
-  return Math.min(tenor, paidCount + 1);
+  const monthlyInstallment = getMonthlyInstallment(item);
+  const outstanding = Number(item.outstanding_amount || 0);
+  if (monthlyInstallment <= 0) return 1;
+  if (outstanding <= 0) return tenor;
+  const remainingInstallments = Math.min(tenor, Math.ceil(outstanding / monthlyInstallment));
+  return Math.min(tenor, tenor - remainingInstallments + 1);
 }
 
 function getDueDate(item: AgentCreditApplication) {
@@ -87,7 +91,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   const activeBills = bills.filter((item) => Number(item.outstanding_amount || 0) > 0);
   const selectedDefault = activeBills[0]?.id || bills[0]?.id || 0;
   const [selectedBillId, setSelectedBillId] = useState(selectedDefault);
-  const [paymentMode, setPaymentMode] = useState<"installment" | "full">("installment");
+  const [selectedInstallments, setSelectedInstallments] = useState<number[]>([]);
   const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0].id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -99,7 +103,6 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   const totalOutstanding = activeBills.reduce((total, item) => total + Number(item.outstanding_amount || 0), 0);
   const monthlyBill = selectedBill ? getCurrentBill(selectedBill) : 0;
   const selectedOutstanding = selectedBill ? Number(selectedBill.outstanding_amount || 0) : 0;
-  const paymentAmount = paymentMode === "full" ? selectedOutstanding : monthlyBill;
   const dueDate = selectedBill ? getDueDate(selectedBill) : null;
   const approved = selectedBill ? Number(selectedBill.approved_amount || selectedBill.requested_amount || 0) : 0;
   const paid = selectedBill ? getPaidAmount(selectedBill) : 0;
@@ -107,8 +110,29 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   const isPaid = selectedBill ? Number(selectedBill.outstanding_amount || 0) <= 0 : false;
   const selectedTenor = selectedBill ? getTenorMonths(selectedBill) : 0;
   const selectedInstallmentNo = selectedBill ? getInstallmentNo(selectedBill) : 0;
+  const remainingInstallmentCount = selectedBill && monthlyBill > 0 ? Math.min(selectedTenor, Math.ceil(selectedOutstanding / monthlyBill)) : 0;
+  const installmentChoices = Array.from({ length: remainingInstallmentCount }, (_, index) => selectedInstallmentNo + index);
+  const activeInstallments = selectedInstallments.filter((item) => installmentChoices.includes(item));
+  const paymentAmount = selectedBill ? Math.min(selectedOutstanding, monthlyBill * activeInstallments.length) : 0;
   const method = paymentMethods.find((item) => item.id === selectedMethod) || paymentMethods[0];
   const MethodIcon = method.icon;
+
+  useEffect(() => {
+    setSelectedInstallments(selectedInstallmentNo > 0 ? [selectedInstallmentNo] : []);
+  }, [selectedBillId, selectedInstallmentNo]);
+
+  function selectBill(id: number) {
+    setSelectedBillId(id);
+    setSelectedInstallments([]);
+  }
+
+  function toggleInstallment(month: number) {
+    setSelectedInstallments((current) => {
+      const exists = current.includes(month);
+      const next = exists ? current.filter((item) => item !== month) : [...current, month];
+      return next.sort((a, b) => a - b);
+    });
+  }
 
   async function paySelectedBill() {
     if (!selectedBill || paymentAmount <= 0 || busy) return;
@@ -121,7 +145,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
         body: JSON.stringify({
           application_id: selectedBill.id,
           amount: paymentAmount,
-          note: `${paymentMode === "full" ? "Pelunasan" : "Cicilan bulanan"} via ${method.title}`,
+          note: `Cicilan ${activeInstallments.join(", ")} via ${method.title}`,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
@@ -161,7 +185,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
           <div>
             <p className="text-3xl font-black tracking-tight text-slate-950">{formatIDR(paymentAmount)}</p>
             <p className="mt-1 text-xs font-semibold text-slate-500">
-              {paymentMode === "full" ? "Pelunasan semua sisa pinjaman" : selectedBill ? `Cicilan ke-${selectedInstallmentNo} dari ${selectedTenor}` : "Tagihan bulan ini"}
+              {selectedBill ? `${activeInstallments.length} cicilan dipilih dari tenor ${selectedTenor}` : "Tagihan bulan ini"}
             </p>
           </div>
           <span className={isPaid ? "rounded-full bg-emerald-100 px-3 py-1.5 text-[10px] font-black text-emerald-700" : "rounded-full bg-amber-100 px-3 py-1.5 text-[10px] font-black text-amber-700"}>
@@ -179,25 +203,39 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
           </div>
         </div>
         {selectedBill && !isPaid ? (
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-[24px] bg-slate-50 p-2">
-            <button
-              type="button"
-              onClick={() => setPaymentMode("installment")}
-              className={paymentMode === "installment" ? "rounded-[19px] bg-white px-3 py-3 text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] ring-1 ring-emerald-200" : "rounded-[19px] px-3 py-3 text-left"}
-            >
-              <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-emerald-600">Cicilan</span>
-              <span className="mt-1 block text-sm font-black text-slate-950">{formatIDR(monthlyBill)}</span>
-              <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">Bayar bulan ini</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentMode("full")}
-              className={paymentMode === "full" ? "rounded-[19px] bg-white px-3 py-3 text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] ring-1 ring-lime-300" : "rounded-[19px] px-3 py-3 text-left"}
-            >
-              <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-lime-700">Lunas</span>
-              <span className="mt-1 block text-sm font-black text-slate-950">{formatIDR(selectedOutstanding)}</span>
-              <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">Bayar semua</span>
-            </button>
+          <div className="mt-4 rounded-[24px] bg-slate-50 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Pilih bulan cicilan</p>
+              <button
+                type="button"
+                onClick={() => setSelectedInstallments(installmentChoices)}
+                className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#047857] ring-1 ring-emerald-100"
+              >
+                Pilih semua
+              </button>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {installmentChoices.map((month) => {
+                const checked = activeInstallments.includes(month);
+                return (
+                  <label
+                    key={month}
+                    className={checked ? "flex cursor-pointer items-center gap-2 rounded-2xl bg-white px-3 py-3 text-slate-950 shadow-[0_10px_22px_rgba(15,23,42,0.08)] ring-1 ring-emerald-300" : "flex cursor-pointer items-center gap-2 rounded-2xl bg-white/70 px-3 py-3 text-slate-500 ring-1 ring-slate-200"}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleInstallment(month)}
+                      className="h-4 w-4 rounded border-slate-300 text-[#047857] focus:ring-emerald-300"
+                    />
+                    <span className="text-xs font-black">Bulan {month}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-[10px] font-semibold leading-4 text-slate-500">
+              Jika semua bulan dicentang, pinjaman akan langsung lunas.
+            </p>
           </div>
         ) : null}
       </section>
@@ -220,7 +258,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setSelectedBillId(item.id)}
+                    onClick={() => selectBill(item.id)}
                     className={selected ? "flex w-full items-center gap-3 rounded-[22px] border border-emerald-300 bg-emerald-50 p-3 text-left shadow-[0_12px_24px_rgba(5,150,105,0.08)]" : "flex w-full items-center gap-3 rounded-[22px] border border-slate-200 bg-white p-3 text-left transition hover:bg-emerald-50/50"}
                   >
                     <span className={selected ? "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#047857] text-white" : "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-500"}>
@@ -325,7 +363,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
             </div>
             <div className="mt-4 space-y-2 rounded-[22px] bg-slate-50 p-3 text-sm">
               <div className="flex justify-between gap-3">
-                <span className="font-semibold text-slate-500">{paymentMode === "full" ? "Pelunasan" : "Tagihan"}</span>
+                <span className="font-semibold text-slate-500">Cicilan dipilih</span>
                 <span className="font-black text-slate-950">{formatIDR(paymentAmount)}</span>
               </div>
               <div className="flex justify-between gap-3">
@@ -344,7 +382,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
               className="mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_34px_rgba(5,150,105,0.22)] disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <BadgeCheck className="h-5 w-5" />}
-              {busy ? "Memproses..." : paymentMode === "full" ? "Lunasi Sekarang" : "Bayar Cicilan"}
+              {busy ? "Memproses..." : activeInstallments.length >= remainingInstallmentCount ? "Bayar & Lunasi" : "Bayar Cicilan"}
             </button>
             {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-xs font-black text-rose-600">{error}</p> : null}
           </section>
