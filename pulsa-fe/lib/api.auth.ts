@@ -21,6 +21,8 @@ export type AgentCreditApplication = {
   agent_signature_data?: string;
   agent_signature_at?: string;
   marketing_note?: string;
+  loan_status?: string;
+  outstanding_amount?: number;
   created_at: string;
   updated_at: string;
 };

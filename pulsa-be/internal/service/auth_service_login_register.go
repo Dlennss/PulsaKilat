@@ -91,6 +91,7 @@ func (s *AuthService) Register(ctx context.Context, in repository.UserCreateInpu
 		in.Role != helper.RoleUser &&
 		in.Role != helper.RoleRetailAgent &&
 		in.Role != helper.RoleRetailMaster &&
+		in.Role != helper.RoleRetailMarketing &&
 		in.Role != helper.RoleH2HAgent &&
 		in.Role != helper.RoleH2HMaster &&
 		in.Role != helper.RoleOperatorTrx &&

@@ -10,7 +10,7 @@ import { SidebarDesktop } from "@/components/dashboard/SidebarDesktop";
 import { SidebarMobile } from "@/components/dashboard/SidebarMobile";
 import { adminNavSections, auditorNavSections, getMemberNavSections, masterNavSections, operatorNavSections, staffNavSections, walletNavSections, type H2HRole } from "@/components/dashboard/nav";
 
-type AppRole = "admin" | "staff" | "auditor" | "member" | "agent_member" | "master_member" | "operator_trx" | "operator_wallet" | "user" | "agent" | "master";
+type AppRole = "admin" | "staff" | "auditor" | "member" | "agent_member" | "master_member" | "operator_trx" | "operator_wallet" | "user" | "agent" | "master" | "marketing";
 
 const staffBlockedAdminPrefixes = [
   "/dashboard/admin/master/members",
@@ -23,7 +23,7 @@ function targetPathByRole(role: AppRole): string {
   if (role === "admin" || role === "staff") return "/dashboard/admin";
   if (role === "auditor") return "/dashboard/auditor";
   if (role === "member" || role === "agent_member" || role === "master_member") return "/dashboard/member";
-  if (role === "master") return "/dashboard/master";
+  if (role === "master" || role === "marketing") return "/dashboard/master";
   if (role === "operator_trx") return "/dashboard/operator";
   if (role === "operator_wallet") return "/dashboard/wallet";
   return "/user";
@@ -49,11 +49,13 @@ function normalizeAppRole(role?: string): AppRole {
                 ? "agent"
                 : rawRole === "master"
                   ? "master"
-                  : rawRole === "operator_trx"
-                    ? "operator_trx"
-                    : rawRole === "operator_wallet"
-                      ? "operator_wallet"
-                      : "user";
+                  : rawRole === "marketing"
+                    ? "marketing"
+                    : rawRole === "operator_trx"
+                      ? "operator_trx"
+                      : rawRole === "operator_wallet"
+                        ? "operator_wallet"
+                        : "user";
 }
 
 async function refreshDashboardTokenIfNeeded(token: string, claims: JwtClaims): Promise<{ token: string; claims: JwtClaims } | null> {
@@ -176,7 +178,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
         return;
       }
 
-      if (normalizedRole === "master" && !inMasterArea) {
+      if ((normalizedRole === "master" || normalizedRole === "marketing") && !inMasterArea) {
         router.replace("/dashboard/master");
         return;
       }

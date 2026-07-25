@@ -23,6 +23,13 @@ type AgentCreditApplicationInput struct {
 	AgentSignature  string
 }
 
+type AgentCreditPaymentInput struct {
+	ApplicationID int64
+	MemberID      int64
+	Amount        int64
+	Note          string
+}
+
 type AgentCreditDecisionInput struct {
 	ID             int64
 	MarketingID    int64
@@ -46,6 +53,8 @@ type AgentCreditApplication struct {
 	AgentSignatureData string         `json:"agent_signature_data,omitempty"`
 	AgentSignatureAt   *time.Time     `json:"agent_signature_at,omitempty"`
 	MarketingNote      string         `json:"marketing_note"`
+	LoanStatus         string         `json:"loan_status"`
+	OutstandingAmount  int64          `json:"outstanding_amount"`
 	CreatedAt          time.Time      `json:"created_at"`
 	UpdatedAt          time.Time      `json:"updated_at"`
 }
@@ -112,10 +121,13 @@ SELECT
   COALESCE(a.agent_signature_data, '') AS agent_signature_data,
   a.agent_signature_at,
   a.marketing_note,
+  COALESCE(l.status, '') AS loan_status,
+  COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
   a.created_at,
   a.updated_at
 FROM public.agent_credit_application a
 JOIN public.member m ON m.id = a.member_id
+LEFT JOIN public.agent_credit_loan l ON l.application_id = a.id
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT $1
 `, limit)
@@ -142,6 +154,8 @@ LIMIT $1
 			&item.AgentSignatureData,
 			&item.AgentSignatureAt,
 			&item.MarketingNote,
+			&item.LoanStatus,
+			&item.OutstandingAmount,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 		); err != nil {
@@ -175,10 +189,13 @@ SELECT
   COALESCE(a.agent_signature_data, '') AS agent_signature_data,
   a.agent_signature_at,
   a.marketing_note,
+  COALESCE(l.status, '') AS loan_status,
+  COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
   a.created_at,
   a.updated_at
 FROM public.agent_credit_application a
 JOIN public.member m ON m.id = a.member_id
+LEFT JOIN public.agent_credit_loan l ON l.application_id = a.id
 WHERE a.member_id = $1
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT $2
@@ -206,6 +223,8 @@ LIMIT $2
 			&item.AgentSignatureData,
 			&item.AgentSignatureAt,
 			&item.MarketingNote,
+			&item.LoanStatus,
+			&item.OutstandingAmount,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 		); err != nil {
@@ -220,9 +239,15 @@ LIMIT $2
 }
 
 func (r *AgentCreditRepository) DecideApplication(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
 	var item AgentCreditApplication
 	var applicantRaw, documentRaw []byte
-	err := r.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 UPDATE public.agent_credit_application
 SET
   status = $2,
@@ -251,8 +276,100 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	if err != nil {
 		return nil, err
 	}
+	if in.Status == "approved" {
+		_, err = tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_loan
+  (application_id, member_id, principal_amount, outstanding_amount, status, approved_at, due_date)
+VALUES
+  ($1, $2, $3, $3, 'active', now(), (now() + interval '30 days')::date)
+ON CONFLICT (application_id) DO UPDATE SET
+  principal_amount = EXCLUDED.principal_amount,
+  outstanding_amount = LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount),
+  status = CASE WHEN public.agent_credit_loan.outstanding_amount <= 0 THEN 'paid' ELSE 'active' END,
+  updated_at = now()
+`, item.ID, item.MemberID, in.ApprovedAmount)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		_, err = tx.ExecContext(ctx, `
+UPDATE public.agent_credit_loan
+SET status = 'cancelled', updated_at = now()
+WHERE application_id = $1 AND status <> 'paid'
+`, item.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
 	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
 	_ = json.Unmarshal(documentRaw, &item.DocumentData)
 	item.HasAgentSignature = item.AgentSignatureData != ""
 	return &item, nil
+}
+
+func (r *AgentCreditRepository) PayInstallment(ctx context.Context, in AgentCreditPaymentInput) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var loanID, memberID, outstanding int64
+	var dueDate time.Time
+	err = tx.QueryRowContext(ctx, `
+SELECT id, member_id, outstanding_amount, due_date
+FROM public.agent_credit_loan
+WHERE application_id = $1 AND status IN ('active', 'overdue')
+FOR UPDATE
+`, in.ApplicationID).Scan(&loanID, &memberID, &outstanding, &dueDate)
+	if err != nil {
+		return err
+	}
+	if in.MemberID > 0 && in.MemberID != memberID {
+		return sql.ErrNoRows
+	}
+	amount := in.Amount
+	if amount > outstanding {
+		amount = outstanding
+	}
+	if amount <= 0 {
+		return sql.ErrNoRows
+	}
+	daysLate := 0
+	now := time.Now()
+	if now.After(dueDate) {
+		daysLate = int(now.Sub(dueDate).Hours() / 24)
+	}
+	paymentStatus := "on_time"
+	if daysLate > 0 {
+		paymentStatus = "late"
+	}
+	if amount < outstanding {
+		paymentStatus = "partial"
+	}
+	_, err = tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_payment
+  (loan_id, member_id, amount, due_date, days_late, status, note)
+VALUES
+  ($1, $2, $3, $4, $5, $6, $7)
+`, loanID, memberID, amount, dueDate, daysLate, paymentStatus, in.Note)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `
+UPDATE public.agent_credit_loan
+SET
+  outstanding_amount = GREATEST(outstanding_amount - $2, 0),
+  status = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN 'paid' ELSE status END,
+  paid_at = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN now() ELSE paid_at END,
+  updated_at = now()
+WHERE id = $1
+`, loanID, amount)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }

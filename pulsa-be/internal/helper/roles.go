@@ -3,17 +3,18 @@ package helper
 import "strings"
 
 const (
-	RoleAdmin          = "admin"
-	RoleStaff          = "staff"
-	RoleAuditor        = "auditor"
-	RoleMember         = "member"
-	RoleUser           = "user"
-	RoleRetailAgent    = "agent"
-	RoleRetailMaster   = "master"
-	RoleH2HAgent       = "agent_member"
-	RoleH2HMaster      = "master_member"
-	RoleOperatorTrx    = "operator_trx"
-	RoleOperatorWallet = "operator_wallet"
+	RoleAdmin           = "admin"
+	RoleStaff           = "staff"
+	RoleAuditor         = "auditor"
+	RoleMember          = "member"
+	RoleUser            = "user"
+	RoleRetailAgent     = "agent"
+	RoleRetailMaster    = "master"
+	RoleRetailMarketing = "marketing"
+	RoleH2HAgent        = "agent_member"
+	RoleH2HMaster       = "master_member"
+	RoleOperatorTrx     = "operator_trx"
+	RoleOperatorWallet  = "operator_wallet"
 
 	DefaultRetailCommissionRp int64 = 100
 )
@@ -41,7 +42,7 @@ func IsAdminLikeRole(role string) bool {
 
 func IsRetailRole(role string) bool {
 	switch NormalizeRole(role) {
-	case RoleUser, RoleRetailAgent, RoleRetailMaster:
+	case RoleUser, RoleRetailAgent, RoleRetailMaster, RoleRetailMarketing:
 		return true
 	default:
 		return false

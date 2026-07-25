@@ -11,8 +11,10 @@ import {
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { getAgentCreditApplications, type AgentCreditApplication } from "@/lib/api.auth";
+import { MarketingAgentCreditCreateForm } from "@/components/dashboard/MarketingAgentCreditCreateForm";
 import { MasterAgentCreditDocumentButton } from "@/components/dashboard/MasterAgentCreditDocumentButton";
 import { MasterAgentCreditDecisionControls } from "@/components/dashboard/MasterAgentCreditDecisionControls";
+import { MasterAgentCreditPaymentControls } from "@/components/dashboard/MasterAgentCreditPaymentControls";
 
 type SessionShape = {
   backendToken?: string;
@@ -147,6 +149,8 @@ export default async function MasterDashboardPage() {
               })}
             </div>
 
+            <MarketingAgentCreditCreateForm />
+
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
               <section className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -219,6 +223,12 @@ export default async function MasterDashboardPage() {
                               status={item.status}
                             />
                           </div>
+                          <MasterAgentCreditPaymentControls
+                            applicationId={item.id}
+                            memberId={item.member_id}
+                            outstandingAmount={Number(item.outstanding_amount || 0)}
+                            status={item.status}
+                          />
                           <div className="mt-4 grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
                             <div className="min-w-0 rounded-3xl bg-white/85 p-4 ring-1 ring-emerald-100">
                               <p className="font-black text-slate-950">Alamat Rumah</p>

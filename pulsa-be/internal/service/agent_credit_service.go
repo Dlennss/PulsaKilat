@@ -18,6 +18,7 @@ func NewAgentCreditService(repo *repository.AgentCreditRepository) *AgentCreditS
 }
 
 type AgentCreditSubmitInput struct {
+	MemberID        int64          `json:"member_id"`
 	RequestedAmount int64          `json:"requested_amount"`
 	ApplicantData   map[string]any `json:"applicant_data"`
 	DocumentData    map[string]any `json:"document_data"`
@@ -31,9 +32,32 @@ type AgentCreditDecisionInput struct {
 	Note           string `json:"note"`
 }
 
+type AgentCreditPaymentInput struct {
+	ApplicationID int64  `json:"application_id"`
+	MemberID      int64  `json:"member_id"`
+	Amount        int64  `json:"amount"`
+	Note          string `json:"note"`
+}
+
+func isCreditReviewer(role string) bool {
+	normalized := helper.NormalizeRole(role)
+	return normalized == helper.RoleRetailMaster || normalized == helper.RoleRetailMarketing
+}
+
 func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditSubmitInput) (*repository.AgentCreditApplication, error) {
-	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAgent {
-		return nil, errors.New("agent only")
+	role := helper.NormalizeRole(auth.Role)
+	targetMemberID := auth.MemberID
+	if role == helper.RoleRetailAgent {
+		if in.MemberID > 0 && in.MemberID != auth.MemberID {
+			return nil, errors.New("agent hanya bisa mengajukan untuk akun sendiri")
+		}
+	} else if isCreditReviewer(role) {
+		if in.MemberID <= 0 {
+			return nil, errors.New("member_id peminjam wajib diisi")
+		}
+		targetMemberID = in.MemberID
+	} else {
+		return nil, errors.New("tidak punya akses pengajuan kredit")
 	}
 	if in.RequestedAmount <= 0 {
 		return nil, errors.New("nominal kredit wajib diisi")
@@ -41,7 +65,7 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	if in.RequestedAmount > 500000 {
 		return nil, errors.New("nominal kredit maksimal Rp500.000")
 	}
-	if strings.TrimSpace(in.AgentSignature) == "" {
+	if role == helper.RoleRetailAgent && strings.TrimSpace(in.AgentSignature) == "" {
 		return nil, errors.New("tanda tangan wajib diisi")
 	}
 	if in.ApplicantData == nil {
@@ -51,7 +75,7 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 		in.DocumentData = map[string]any{}
 	}
 	return s.repo.CreateApplication(ctx, repository.AgentCreditApplicationInput{
-		MemberID:        auth.MemberID,
+		MemberID:        targetMemberID,
 		RequestedAmount: in.RequestedAmount,
 		ApplicantData:   in.ApplicantData,
 		DocumentData:    in.DocumentData,
@@ -60,8 +84,8 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 }
 
 func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditApplication, error) {
-	if helper.NormalizeRole(auth.Role) != helper.RoleRetailMaster {
-		return nil, errors.New("master only")
+	if !isCreditReviewer(auth.Role) {
+		return nil, errors.New("reviewer only")
 	}
 	return s.repo.ListApplications(ctx, 50)
 }
@@ -74,8 +98,8 @@ func (s *AgentCreditService) ListMyApplications(ctx context.Context, auth helper
 }
 
 func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditDecisionInput) (*repository.AgentCreditApplication, error) {
-	if helper.NormalizeRole(auth.Role) != helper.RoleRetailMaster {
-		return nil, errors.New("master only")
+	if !isCreditReviewer(auth.Role) {
+		return nil, errors.New("reviewer only")
 	}
 	if in.ID <= 0 {
 		return nil, errors.New("pengajuan tidak valid")
@@ -108,5 +132,23 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 		Status:         status,
 		ApprovedAmount: approvedAmount,
 		MarketingNote:  strings.TrimSpace(in.Note),
+	})
+}
+
+func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.AuthInfo, in AgentCreditPaymentInput) error {
+	if !isCreditReviewer(auth.Role) {
+		return errors.New("reviewer only")
+	}
+	if in.ApplicationID <= 0 {
+		return errors.New("pengajuan tidak valid")
+	}
+	if in.Amount <= 0 {
+		return errors.New("nominal cicilan wajib diisi")
+	}
+	return s.repo.PayInstallment(ctx, repository.AgentCreditPaymentInput{
+		ApplicationID: in.ApplicationID,
+		MemberID:      in.MemberID,
+		Amount:        in.Amount,
+		Note:          strings.TrimSpace(in.Note),
 	})
 }
