@@ -33,7 +33,7 @@ export function UserSaldoPageContent({ saldo, userCode }: UserSaldoPageContentPr
     { label: "Isi Saldo", sub: "Tambah dana", href: "/user/account/topup", icon: Plus, tone: "bg-lime-100 text-[#047857]" },
     { label: "Kirim", sub: "Ke pengguna", href: "/user/saldo/kirim", icon: ArrowUpRight, tone: "bg-emerald-100 text-[#047857]" },
     { label: "Tarik", sub: "Ke rekening", href: "/user/account/withdraw", icon: ArrowDownToLine, tone: "bg-sky-100 text-sky-700" },
-    { label: "Tagihan", sub: "Bayar cepat", href: "/user/listrik", icon: ReceiptText, tone: "bg-amber-100 text-amber-700" },
+    { label: "Tagihan", sub: "Cicilan agent", href: "/user/saldo/tagihan", icon: ReceiptText, tone: "bg-amber-100 text-amber-700" },
   ];
 
   const topupMethods = [

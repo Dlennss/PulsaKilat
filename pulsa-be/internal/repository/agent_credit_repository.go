@@ -55,6 +55,8 @@ type AgentCreditApplication struct {
 	MarketingNote      string         `json:"marketing_note"`
 	LoanStatus         string         `json:"loan_status"`
 	OutstandingAmount  int64          `json:"outstanding_amount"`
+	LoanApprovedAt     *time.Time     `json:"loan_approved_at,omitempty"`
+	LoanDueDate        *time.Time     `json:"loan_due_date,omitempty"`
 	CreatedAt          time.Time      `json:"created_at"`
 	UpdatedAt          time.Time      `json:"updated_at"`
 }
@@ -123,6 +125,8 @@ SELECT
   a.marketing_note,
   COALESCE(l.status, '') AS loan_status,
   COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
+  l.approved_at AS loan_approved_at,
+  l.due_date AS loan_due_date,
   a.created_at,
   a.updated_at
 FROM public.agent_credit_application a
@@ -140,6 +144,7 @@ LIMIT $1
 	for rows.Next() {
 		var item AgentCreditApplication
 		var applicantRaw, documentRaw []byte
+		var loanApprovedAt, loanDueDate sql.NullTime
 		if err := rows.Scan(
 			&item.ID,
 			&item.MemberID,
@@ -156,6 +161,8 @@ LIMIT $1
 			&item.MarketingNote,
 			&item.LoanStatus,
 			&item.OutstandingAmount,
+			&loanApprovedAt,
+			&loanDueDate,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 		); err != nil {
@@ -164,6 +171,12 @@ LIMIT $1
 		_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
 		_ = json.Unmarshal(documentRaw, &item.DocumentData)
 		item.HasAgentSignature = item.AgentSignatureData != ""
+		if loanApprovedAt.Valid {
+			item.LoanApprovedAt = &loanApprovedAt.Time
+		}
+		if loanDueDate.Valid {
+			item.LoanDueDate = &loanDueDate.Time
+		}
 		items = append(items, item)
 	}
 	return items, rows.Err()
@@ -191,6 +204,8 @@ SELECT
   a.marketing_note,
   COALESCE(l.status, '') AS loan_status,
   COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
+  l.approved_at AS loan_approved_at,
+  l.due_date AS loan_due_date,
   a.created_at,
   a.updated_at
 FROM public.agent_credit_application a
@@ -209,6 +224,7 @@ LIMIT $2
 	for rows.Next() {
 		var item AgentCreditApplication
 		var applicantRaw, documentRaw []byte
+		var loanApprovedAt, loanDueDate sql.NullTime
 		if err := rows.Scan(
 			&item.ID,
 			&item.MemberID,
@@ -225,6 +241,8 @@ LIMIT $2
 			&item.MarketingNote,
 			&item.LoanStatus,
 			&item.OutstandingAmount,
+			&loanApprovedAt,
+			&loanDueDate,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 		); err != nil {
@@ -233,6 +251,12 @@ LIMIT $2
 		_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
 		_ = json.Unmarshal(documentRaw, &item.DocumentData)
 		item.HasAgentSignature = item.AgentSignatureData != ""
+		if loanApprovedAt.Valid {
+			item.LoanApprovedAt = &loanApprovedAt.Time
+		}
+		if loanDueDate.Valid {
+			item.LoanDueDate = &loanDueDate.Time
+		}
 		items = append(items, item)
 	}
 	return items, rows.Err()

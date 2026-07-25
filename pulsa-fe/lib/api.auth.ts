@@ -23,6 +23,8 @@ export type AgentCreditApplication = {
   marketing_note?: string;
   loan_status?: string;
   outstanding_amount?: number;
+  loan_approved_at?: string;
+  loan_due_date?: string;
   created_at: string;
   updated_at: string;
 };
