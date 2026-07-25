@@ -25,7 +25,7 @@ function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
-export function UserSaldoPageContent({ saldo, userCode }: UserSaldoPageContentProps) {
+export function UserSaldoPageContent({ saldo, userCode, showCredit = false }: UserSaldoPageContentProps) {
   const [revealed, setRevealed] = useState(true);
   const displaySaldo = revealed ? formatIDR(saldo) : "Rp ******";
 
@@ -33,7 +33,9 @@ export function UserSaldoPageContent({ saldo, userCode }: UserSaldoPageContentPr
     { label: "Isi Saldo", sub: "Tambah dana", href: "/user/account/topup", icon: Plus, tone: "bg-lime-100 text-[#047857]" },
     { label: "Kirim", sub: "Ke pengguna", href: "/user/saldo/kirim", icon: ArrowUpRight, tone: "bg-emerald-100 text-[#047857]" },
     { label: "Tarik", sub: "Ke rekening", href: "/user/account/withdraw", icon: ArrowDownToLine, tone: "bg-sky-100 text-sky-700" },
-    { label: "Tagihan", sub: "Cicilan agent", href: "/user/saldo/tagihan", icon: ReceiptText, tone: "bg-amber-100 text-amber-700" },
+    ...(showCredit
+      ? [{ label: "Tagihan", sub: "Cicilan agent", href: "/user/saldo/tagihan", icon: ReceiptText, tone: "bg-amber-100 text-amber-700" }]
+      : []),
   ];
 
   const topupMethods = [
@@ -76,7 +78,7 @@ export function UserSaldoPageContent({ saldo, userCode }: UserSaldoPageContentPr
       </section>
 
       <section className="rounded-[24px] border border-emerald-950/5 bg-white p-3 shadow-[0_16px_36px_rgba(6,78,59,0.08)]">
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className={`grid gap-1.5 ${showCredit ? "grid-cols-4" : "grid-cols-3"}`}>
           {actions.map((item) => {
             const Icon = item.icon;
             return (
