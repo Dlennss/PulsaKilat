@@ -447,7 +447,7 @@ FOR UPDATE
 	}
 	currentBill := installmentAmount(principal, tenorMonths)
 	amount := in.Amount
-	if currentBill > 0 && amount > currentBill {
+	if currentBill > 0 && amount > currentBill && amount < outstanding {
 		amount = currentBill
 	}
 	if amount > outstanding {
