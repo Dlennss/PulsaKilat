@@ -14,7 +14,6 @@ import { getAgentCreditApplications, type AgentCreditApplication } from "@/lib/a
 import { MarketingAgentCreditCreateForm } from "@/components/dashboard/MarketingAgentCreditCreateForm";
 import { MasterAgentCreditDocumentButton } from "@/components/dashboard/MasterAgentCreditDocumentButton";
 import { MasterAgentCreditDecisionControls } from "@/components/dashboard/MasterAgentCreditDecisionControls";
-import { MasterAgentCreditPaymentControls } from "@/components/dashboard/MasterAgentCreditPaymentControls";
 
 type SessionShape = {
   backendToken?: string;
@@ -223,12 +222,6 @@ export default async function MasterDashboardPage() {
                               status={item.status}
                             />
                           </div>
-                          <MasterAgentCreditPaymentControls
-                            applicationId={item.id}
-                            memberId={item.member_id}
-                            outstandingAmount={Number(item.outstanding_amount || 0)}
-                            status={item.status}
-                          />
                           <div className="mt-4 grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
                             <div className="min-w-0 rounded-3xl bg-white/85 p-4 ring-1 ring-emerald-100">
                               <p className="font-black text-slate-950">Alamat Rumah</p>

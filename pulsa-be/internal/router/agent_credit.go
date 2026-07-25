@@ -15,7 +15,7 @@ func AgentCreditRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB) {
 	ctrl := controller.NewAgentCreditController(svc)
 
 	mux.HandleFunc("/v1/me/agent-credit/applications", wrap(ctrl.MyApplications))
+	mux.HandleFunc("/v1/me/agent-credit/payments", wrap(ctrl.PayInstallment))
 	mux.HandleFunc("/v1/master/agent-credit/applications", wrap(ctrl.MasterApplications))
 	mux.HandleFunc("/v1/master/agent-credit/applications/decision", wrap(ctrl.MasterDecision))
-	mux.HandleFunc("/v1/master/agent-credit/payments", wrap(ctrl.PayInstallment))
 }

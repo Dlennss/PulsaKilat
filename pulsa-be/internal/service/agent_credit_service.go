@@ -137,8 +137,9 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 }
 
 func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.AuthInfo, in AgentCreditPaymentInput) error {
-	if !isCreditReviewer(auth.Role) {
-		return errors.New("reviewer only")
+	role := helper.NormalizeRole(auth.Role)
+	if role != helper.RoleRetailAgent && role != helper.RoleUser {
+		return errors.New("user only")
 	}
 	if in.ApplicationID <= 0 {
 		return errors.New("pengajuan tidak valid")
@@ -148,7 +149,7 @@ func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.Aut
 	}
 	return s.repo.PayInstallment(ctx, repository.AgentCreditPaymentInput{
 		ApplicationID: in.ApplicationID,
-		MemberID:      in.MemberID,
+		MemberID:      auth.MemberID,
 		Amount:        in.Amount,
 		Note:          strings.TrimSpace(in.Note),
 	})

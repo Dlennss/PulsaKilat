@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -13,6 +14,7 @@ import {
   ReceiptText,
   ShieldCheck,
   WalletCards,
+  Loader2,
 } from "lucide-react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 
@@ -63,10 +65,13 @@ const paymentMethods = [
 ];
 
 export function UserCreditBillPayLaterContent({ bills }: Props) {
+  const router = useRouter();
   const activeBills = bills.filter((item) => Number(item.outstanding_amount || 0) > 0);
   const selectedDefault = activeBills[0]?.id || bills[0]?.id || 0;
   const [selectedBillId, setSelectedBillId] = useState(selectedDefault);
   const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0].id);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const selectedBill = useMemo(
     () => bills.find((item) => item.id === selectedBillId) || bills[0],
@@ -81,6 +86,32 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   const isPaid = selectedBill ? Number(selectedBill.outstanding_amount || 0) <= 0 : false;
   const method = paymentMethods.find((item) => item.id === selectedMethod) || paymentMethods[0];
   const MethodIcon = method.icon;
+
+  async function paySelectedBill() {
+    if (!selectedBill || monthlyBill <= 0 || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/agent-credit/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          application_id: selectedBill.id,
+          amount: monthlyBill,
+          note: `Pembayaran via ${method.title}`,
+        }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!response.ok || !body.ok) {
+        throw new Error(body.error || "Pembayaran gagal diproses");
+      }
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Pembayaran gagal diproses");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
@@ -248,12 +279,14 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
             </div>
             <button
               type="button"
-              disabled={monthlyBill <= 0}
+              onClick={paySelectedBill}
+              disabled={monthlyBill <= 0 || busy}
               className="mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_34px_rgba(5,150,105,0.22)] disabled:opacity-50"
             >
-              <BadgeCheck className="h-5 w-5" />
-              Bayar Sekarang
+              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <BadgeCheck className="h-5 w-5" />}
+              {busy ? "Memproses..." : "Bayar Sekarang"}
             </button>
+            {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-xs font-black text-rose-600">{error}</p> : null}
           </section>
         </>
       ) : (
