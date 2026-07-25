@@ -91,8 +91,9 @@ func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.A
 }
 
 func (s *AgentCreditService) ListMyApplications(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditApplication, error) {
-	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAgent {
-		return nil, errors.New("agent only")
+	role := helper.NormalizeRole(auth.Role)
+	if role != helper.RoleRetailAgent && role != helper.RoleUser {
+		return nil, errors.New("user only")
 	}
 	return s.repo.ListMemberApplications(ctx, auth.MemberID, 10)
 }

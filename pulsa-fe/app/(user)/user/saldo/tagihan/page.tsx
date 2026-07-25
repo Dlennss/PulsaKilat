@@ -39,7 +39,7 @@ export default async function UserSaldoTagihanPage() {
 
   const profile = await getUserProfile(session.backendToken);
   const role = String(profile?.role || session.user?.role || "").trim().toLowerCase();
-  if (role !== "agent") redirect("/user/saldo");
+  if (role !== "agent" && role !== "user") redirect("/user/saldo");
 
   const applications = await getMyAgentCreditApplications(session.backendToken);
   const bills = applications.filter((item) => item.status === "approved");
