@@ -8,6 +8,8 @@ export type MemberRole =
   | "user"
   | "agent"
   | "master"
+  | "marketing"
+  | "analis"
   | "operator_trx"
   | "operator_wallet";
 export type ManageableRole =
@@ -19,6 +21,8 @@ export type ManageableRole =
   | "user"
   | "agent"
   | "master"
+  | "marketing"
+  | "analis"
   | "operator_trx"
   | "operator_wallet";
 
@@ -34,6 +38,8 @@ export const ALL_MEMBER_ROLES: MemberRole[] = [
   "user",
   "agent",
   "master",
+  "marketing",
+  "analis",
   "operator_trx",
   "operator_wallet",
 ];
@@ -47,12 +53,14 @@ export const CREATE_USER_ROLES: ManageableRole[] = [
   "user",
   "agent",
   "master",
+  "marketing",
+  "analis",
   "operator_trx",
   "operator_wallet",
 ];
 
 export const H2H_ROLES: ManageableRole[] = ["member", "agent_member", "master_member"];
-export const RETAIL_ROLES: ManageableRole[] = ["user", "agent", "master"];
+export const RETAIL_ROLES: ManageableRole[] = ["user", "agent", "master", "marketing", "analis"];
 export const INTERNAL_ROLES: ManageableRole[] = ["staff", "auditor", "operator_trx", "operator_wallet"];
 export const INTERNAL_ALL_ROLES: MemberRole[] = ["admin", "staff", "auditor", "operator_trx", "operator_wallet"];
 
@@ -119,6 +127,10 @@ export function roleLabel(role: string): string {
       return "Agent";
     case "master":
       return "Master";
+    case "marketing":
+      return "Marketing";
+    case "analis":
+      return "Analis";
     case "operator_trx":
       return "Operator Transaksi";
     case "operator_wallet":

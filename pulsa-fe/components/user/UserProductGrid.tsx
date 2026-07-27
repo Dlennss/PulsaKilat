@@ -32,7 +32,8 @@ function isPackageStyleItem(item: UserProductItem) {
 }
 
 function isEMoneyItem(item: UserProductItem) {
-  return String(item.kategori_nama || "").toUpperCase().includes("E-MONEY");
+  const category = String(item.kategori_nama || "").toUpperCase();
+  return category.includes("E-MONEY") || category.includes("E-WALLET");
 }
 
 function escapeRegExp(value: string) {
@@ -109,6 +110,8 @@ function UserProductCard({
   const displayName = getDisplayProductName(item);
 
   if (emoneyStyle) {
+    const nominalLabel = getEMoneyCardTitle(item);
+    const brandLabel = String(item.brand_nama || "E-Wallet").trim();
     return (
       <button
         type="button"
@@ -117,19 +120,33 @@ function UserProductCard({
           onBuy(item);
         }}
         disabled={!canBuy}
-        className="relative overflow-hidden rounded-md px-4 py-4 text-left text-white shadow-[0_14px_30px_rgba(0,132,209,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(0,132,209,0.28)] disabled:cursor-not-allowed disabled:opacity-60 bg-[#1491db]"
+        className="group relative min-h-36 overflow-hidden rounded-[22px] border border-emerald-950/10 bg-white p-3 text-left shadow-[0_14px_30px_rgba(6,78,59,0.10)] transition-all duration-300 hover:-translate-y-0.5 hover:border-lime-300 hover:shadow-[0_18px_36px_rgba(6,78,59,0.16)] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.22),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]" />
-        <div className="absolute inset-0 opacity-30 bg-[repeating-radial-gradient(circle_at_0_100%,rgba(255,255,255,0.35)_0,rgba(255,255,255,0.35)_2px,transparent_2px,transparent_12px)] bg-size-[170%_130%]" />
-
-        <div className="relative flex min-h-20 flex-col justify-between gap-4">
-          <div className="flex flex-1 items-center justify-center text-center">
-            <p className={item.tipe_harga === "OPEN_AMOUNT" ? "line-clamp-2 text-[18px] font-bold leading-tight text-white" : "text-[28px] font-extrabold leading-none tracking-tight text-white"}>
-              {getEMoneyCardTitle(item)}
-            </p>
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-linear-to-r from-[#052e26] via-[#047857] to-[#b8f138]" />
+        <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-lime-200/55 blur-2xl" />
+        <div className="relative flex h-full min-h-30 flex-col justify-between gap-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#047857]">Nominal Top Up</p>
+              <p className={item.tipe_harga === "OPEN_AMOUNT" ? "mt-2 line-clamp-2 text-[21px] font-black leading-tight text-slate-950" : "mt-2 text-[26px] font-black leading-none tracking-tight text-slate-950"}>
+                {nominalLabel}
+              </p>
+            </div>
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100 transition group-hover:scale-105">
+              <Icon className="h-4 w-4" />
+            </span>
           </div>
-          <div className="text-right text-[11px] font-semibold leading-none tracking-tight text-white/65">
-            {canBuy ? formatRupiah(finalPrice) : (buyBlockedLabel || "Lengkapi dulu")}
+
+          <div className="space-y-2">
+            <div>
+              <p className="line-clamp-1 text-[11px] font-bold text-slate-500">Top up {brandLabel}</p>
+              <p className="text-sm font-black text-[#052e26]">
+                {canBuy ? formatRupiah(finalPrice) : (buyBlockedLabel || "Lengkapi dulu")}
+              </p>
+            </div>
+            <span className="inline-flex h-8 w-full items-center justify-center rounded-2xl bg-[#052e26] px-3 text-xs font-black text-white shadow-[0_10px_20px_rgba(5,46,38,0.18)] transition group-hover:bg-[#047857]">
+              {canBuy ? (buyLabel || "Top Up") : (buyBlockedLabel || "Lengkapi dulu")}
+            </span>
           </div>
         </div>
       </button>

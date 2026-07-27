@@ -32,7 +32,9 @@ export default async function UserBrandProductsPage({ params }: PageProps) {
   const brand = products[0]?.brand_nama || "Brand";
   const categoryName = products[0]?.kategori_nama || "";
   const isDataCategory = String(categoryName).toUpperCase().includes("DATA");
-  const isBillingCategory = ["3", "7", "11", "17", "18", "20"].includes(String(id));
+  const normalizedCategoryName = String(categoryName).toUpperCase();
+  const isWalletCategory = normalizedCategoryName.includes("E-WALLET") || normalizedCategoryName.includes("E-MONEY");
+  const isBillingCategory = !isWalletCategory && ["7", "11", "17", "18", "20"].includes(String(id));
   const billingPlaceholder = id === "11"
     ? "Masukkan ID pelanggan / nomor meter"
     : id === "17"
@@ -64,7 +66,7 @@ export default async function UserBrandProductsPage({ params }: PageProps) {
               forcedBrand={{ id: Number(brandId), nama: brand, aktif: true }}
               brandHrefPrefix="/user/kategori"
             />
-          ) : id === "2" ? (
+          ) : id === "2" || isWalletCategory ? (
             <EMoneyBrandFlow items={products} isLoggedIn={isLoggedIn} authToken={backendToken} mode="user" buyerRole={buyerRole} />
           ) : id === "1" ? (
             <GuestPulsaQuickOrder

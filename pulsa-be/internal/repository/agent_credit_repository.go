@@ -34,34 +34,60 @@ type AgentCreditPaymentInput struct {
 type AgentCreditDecisionInput struct {
 	ID             int64
 	MarketingID    int64
+	AnalystID      int64
+	MasterID       int64
 	Status         string
 	ApprovedAmount int64
 	MarketingNote  string
+	AnalystNote    string
+	Recommendation string
+}
+
+type AgentCreditProfile struct {
+	LevelCode          string `json:"credit_level_code"`
+	LevelName          string `json:"credit_level_name"`
+	LimitAmount        int64  `json:"credit_limit_amount"`
+	NeedsRepair        bool   `json:"credit_needs_repair"`
+	QualifiedPaidTotal int64  `json:"qualified_paid_total"`
 }
 
 type AgentCreditApplication struct {
-	ID                 int64          `json:"id"`
-	MemberID           int64          `json:"member_id"`
-	MemberName         string         `json:"member_name"`
-	MemberEmail        string         `json:"member_email"`
-	MemberPhone        string         `json:"member_phone"`
-	RequestedAmount    int64          `json:"requested_amount"`
-	ApprovedAmount     int64          `json:"approved_amount"`
-	Status             string         `json:"status"`
-	ApplicantData      map[string]any `json:"applicant_data"`
-	DocumentData       map[string]any `json:"document_data"`
-	HasAgentSignature  bool           `json:"has_agent_signature"`
-	AgentSignatureData string         `json:"agent_signature_data,omitempty"`
-	AgentSignatureAt   *time.Time     `json:"agent_signature_at,omitempty"`
-	MarketingNote      string         `json:"marketing_note"`
-	LoanStatus         string         `json:"loan_status"`
-	OutstandingAmount  int64          `json:"outstanding_amount"`
-	PaidAmount         int64          `json:"paid_amount"`
-	PaymentCount       int64          `json:"payment_count"`
-	LoanApprovedAt     *time.Time     `json:"loan_approved_at,omitempty"`
-	LoanDueDate        *time.Time     `json:"loan_due_date,omitempty"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UpdatedAt          time.Time      `json:"updated_at"`
+	ID                       int64          `json:"id"`
+	MemberID                 int64          `json:"member_id"`
+	MemberName               string         `json:"member_name"`
+	MemberEmail              string         `json:"member_email"`
+	MemberPhone              string         `json:"member_phone"`
+	RequestedAmount          int64          `json:"requested_amount"`
+	ApprovedAmount           int64          `json:"approved_amount"`
+	Status                   string         `json:"status"`
+	ApplicantData            map[string]any `json:"applicant_data"`
+	DocumentData             map[string]any `json:"document_data"`
+	HasAgentSignature        bool           `json:"has_agent_signature"`
+	AgentSignatureData       string         `json:"agent_signature_data,omitempty"`
+	AgentSignatureAt         *time.Time     `json:"agent_signature_at,omitempty"`
+	MarketingNote            string         `json:"marketing_note"`
+	AnalystNote              string         `json:"analyst_note"`
+	AnalystRecommendation    string         `json:"analyst_recommendation"`
+	AnalystRecommendedAmount int64          `json:"analyst_recommended_amount"`
+	LoanStatus               string         `json:"loan_status"`
+	OutstandingAmount        int64          `json:"outstanding_amount"`
+	PaidAmount               int64          `json:"paid_amount"`
+	PaymentCount             int64          `json:"payment_count"`
+	CreditLevelCode          string         `json:"credit_level_code"`
+	CreditLevelName          string         `json:"credit_level_name"`
+	CreditNeedsRepair        bool           `json:"credit_needs_repair"`
+	QualifiedPaidTotal       int64          `json:"qualified_paid_total"`
+	CreditLimitAmount        int64          `json:"credit_limit_amount"`
+	LoanApprovedAt           *time.Time     `json:"loan_approved_at,omitempty"`
+	LoanDueDate              *time.Time     `json:"loan_due_date,omitempty"`
+	CreatedAt                time.Time      `json:"created_at"`
+	UpdatedAt                time.Time      `json:"updated_at"`
+}
+
+type AgentCreditReviewState struct {
+	Status                   string
+	AnalystRecommendation    string
+	AnalystRecommendedAmount int64
 }
 
 func (r *AgentCreditRepository) CreateApplication(ctx context.Context, in AgentCreditApplicationInput) (*AgentCreditApplication, error) {
@@ -80,7 +106,7 @@ func (r *AgentCreditRepository) CreateApplication(ctx context.Context, in AgentC
 INSERT INTO public.agent_credit_application
   (member_id, requested_amount, status, applicant_data, document_data, agent_signature_data, agent_signature_at)
 VALUES
-  ($1, $2, 'submitted', $3::jsonb, $4::jsonb, NULLIF($5, ''), CASE WHEN NULLIF($5, '') IS NULL THEN NULL ELSE now() END)
+  ($1, $2, 'analysis_review', $3::jsonb, $4::jsonb, NULLIF($5, ''), CASE WHEN NULLIF($5, '') IS NULL THEN NULL ELSE now() END)
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
 `, in.MemberID, in.RequestedAmount, string(applicantJSON), string(documentJSON), in.AgentSignature).Scan(
@@ -104,6 +130,19 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	_ = json.Unmarshal(documentRaw, &item.DocumentData)
 	item.HasAgentSignature = item.AgentSignatureData != ""
 	return &item, nil
+}
+
+func (r *AgentCreditRepository) GetApplicationReviewState(ctx context.Context, applicationID int64) (*AgentCreditReviewState, error) {
+	var state AgentCreditReviewState
+	err := r.db.QueryRowContext(ctx, `
+SELECT status, COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0)
+FROM public.agent_credit_application
+WHERE id = $1
+`, applicationID).Scan(&state.Status, &state.AnalystRecommendation, &state.AnalystRecommendedAmount)
+	if err != nil {
+		return nil, err
+	}
+	return &state, nil
 }
 
 func tenorMonthsFromApplicant(data map[string]any) int64 {
@@ -147,6 +186,72 @@ func installmentAmount(principal int64, tenorMonths int64) int64 {
 	return (principal + tenorMonths - 1) / tenorMonths
 }
 
+func creditLevelFromProgress(qualifiedPaidTotal int64, needsRepair bool) (string, string, int64) {
+	if needsRepair {
+		return "start", "Kilat Start", 500000
+	}
+	switch {
+	case qualifiedPaidTotal >= 5000000:
+		return "elite", "Kilat Elite", 5000000
+	case qualifiedPaidTotal >= 3000000:
+		return "max", "Kilat Max", 3000000
+	case qualifiedPaidTotal >= 2000000:
+		return "pro", "Kilat Pro", 2000000
+	case qualifiedPaidTotal >= 1000000:
+		return "plus", "Kilat Plus", 1000000
+	default:
+		return "start", "Kilat Start", 500000
+	}
+}
+
+func (r *AgentCreditRepository) GetMemberCreditProfile(ctx context.Context, memberID int64) (*AgentCreditProfile, error) {
+	var qualifiedPaidTotal int64
+	var needsRepair bool
+	err := r.db.QueryRowContext(ctx, `
+SELECT
+  COALESCE(SUM(pl.principal_amount) FILTER (
+    WHERE pl.status = 'paid'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.agent_credit_payment pp
+        WHERE pp.loan_id = pl.id
+          AND COALESCE(pp.days_late, 0) > 0
+      )
+  ), 0)::bigint AS qualified_paid_total,
+  EXISTS (
+    SELECT 1
+    FROM public.agent_credit_payment rp
+    WHERE rp.member_id = $1
+      AND COALESCE(rp.days_late, 0) > 3
+  ) AS needs_repair
+FROM public.agent_credit_loan pl
+WHERE pl.member_id = $1
+`, memberID).Scan(&qualifiedPaidTotal, &needsRepair)
+	if err != nil {
+		return nil, err
+	}
+	code, name, limit := creditLevelFromProgress(qualifiedPaidTotal, needsRepair)
+	return &AgentCreditProfile{
+		LevelCode:          code,
+		LevelName:          name,
+		LimitAmount:        limit,
+		NeedsRepair:        needsRepair,
+		QualifiedPaidTotal: qualifiedPaidTotal,
+	}, nil
+}
+
+func (r *AgentCreditRepository) GetApplicationCreditLimit(ctx context.Context, applicationID int64) (int64, error) {
+	var memberID int64
+	if err := r.db.QueryRowContext(ctx, `SELECT member_id FROM public.agent_credit_application WHERE id = $1`, applicationID).Scan(&memberID); err != nil {
+		return 0, err
+	}
+	profile, err := r.GetMemberCreditProfile(ctx, memberID)
+	if err != nil {
+		return 0, err
+	}
+	return profile.LimitAmount, nil
+}
+
 func (r *AgentCreditRepository) ListApplications(ctx context.Context, limit int) ([]AgentCreditApplication, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 50
@@ -167,10 +272,39 @@ SELECT
   COALESCE(a.agent_signature_data, '') AS agent_signature_data,
   a.agent_signature_at,
   a.marketing_note,
+  COALESCE(a.analyst_note, '') AS analyst_note,
+  COALESCE(a.analyst_recommendation, '') AS analyst_recommendation,
+  COALESCE(a.analyst_recommended_amount, 0) AS analyst_recommended_amount,
   COALESCE(l.status, '') AS loan_status,
   COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
   COALESCE(pay.paid_amount, 0) AS paid_amount,
   COALESCE(pay.payment_count, 0) AS payment_count,
+  CASE
+    WHEN COALESCE(credit.needs_repair, false) THEN 'start'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 'elite'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 'max'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'pro'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'plus'
+    ELSE 'start'
+  END AS credit_level_code,
+  CASE
+    WHEN COALESCE(credit.needs_repair, false) THEN 'Kilat Start'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 'Kilat Elite'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 'Kilat Max'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'Kilat Pro'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'Kilat Plus'
+    ELSE 'Kilat Start'
+  END AS credit_level_name,
+  COALESCE(credit.needs_repair, false) AS credit_needs_repair,
+  COALESCE(credit.qualified_paid_total, 0) AS qualified_paid_total,
+  CASE
+    WHEN COALESCE(credit.needs_repair, false) THEN 500000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 5000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 3000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 2000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 1000000
+    ELSE 500000
+  END AS credit_limit_amount,
   l.approved_at AS loan_approved_at,
   l.due_date AS loan_due_date,
   a.created_at,
@@ -183,6 +317,26 @@ LEFT JOIN LATERAL (
   FROM public.agent_credit_payment p
   WHERE p.loan_id = l.id
 ) pay ON TRUE
+LEFT JOIN LATERAL (
+  SELECT
+    COALESCE(SUM(pl.principal_amount) FILTER (
+      WHERE pl.status = 'paid'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.agent_credit_payment pp
+          WHERE pp.loan_id = pl.id
+            AND COALESCE(pp.days_late, 0) > 0
+        )
+    ), 0)::bigint AS qualified_paid_total,
+    EXISTS (
+      SELECT 1
+      FROM public.agent_credit_payment rp
+      WHERE rp.member_id = a.member_id
+        AND COALESCE(rp.days_late, 0) > 3
+    ) AS needs_repair
+  FROM public.agent_credit_loan pl
+  WHERE pl.member_id = a.member_id
+) credit ON TRUE
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT $1
 `, limit)
@@ -210,10 +364,18 @@ LIMIT $1
 			&item.AgentSignatureData,
 			&item.AgentSignatureAt,
 			&item.MarketingNote,
+			&item.AnalystNote,
+			&item.AnalystRecommendation,
+			&item.AnalystRecommendedAmount,
 			&item.LoanStatus,
 			&item.OutstandingAmount,
 			&item.PaidAmount,
 			&item.PaymentCount,
+			&item.CreditLevelCode,
+			&item.CreditLevelName,
+			&item.CreditNeedsRepair,
+			&item.QualifiedPaidTotal,
+			&item.CreditLimitAmount,
 			&loanApprovedAt,
 			&loanDueDate,
 			&item.CreatedAt,
@@ -255,10 +417,39 @@ SELECT
   COALESCE(a.agent_signature_data, '') AS agent_signature_data,
   a.agent_signature_at,
   a.marketing_note,
+  COALESCE(a.analyst_note, '') AS analyst_note,
+  COALESCE(a.analyst_recommendation, '') AS analyst_recommendation,
+  COALESCE(a.analyst_recommended_amount, 0) AS analyst_recommended_amount,
   COALESCE(l.status, '') AS loan_status,
   COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
   COALESCE(pay.paid_amount, 0) AS paid_amount,
   COALESCE(pay.payment_count, 0) AS payment_count,
+  CASE
+    WHEN COALESCE(credit.needs_repair, false) THEN 'start'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 'elite'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 'max'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'pro'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'plus'
+    ELSE 'start'
+  END AS credit_level_code,
+  CASE
+    WHEN COALESCE(credit.needs_repair, false) THEN 'Kilat Start'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 'Kilat Elite'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 'Kilat Max'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'Kilat Pro'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'Kilat Plus'
+    ELSE 'Kilat Start'
+  END AS credit_level_name,
+  COALESCE(credit.needs_repair, false) AS credit_needs_repair,
+  COALESCE(credit.qualified_paid_total, 0) AS qualified_paid_total,
+  CASE
+    WHEN COALESCE(credit.needs_repair, false) THEN 500000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 5000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 3000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 2000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 1000000
+    ELSE 500000
+  END AS credit_limit_amount,
   l.approved_at AS loan_approved_at,
   l.due_date AS loan_due_date,
   a.created_at,
@@ -271,6 +462,26 @@ LEFT JOIN LATERAL (
   FROM public.agent_credit_payment p
   WHERE p.loan_id = l.id
 ) pay ON TRUE
+LEFT JOIN LATERAL (
+  SELECT
+    COALESCE(SUM(pl.principal_amount) FILTER (
+      WHERE pl.status = 'paid'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.agent_credit_payment pp
+          WHERE pp.loan_id = pl.id
+            AND COALESCE(pp.days_late, 0) > 0
+        )
+    ), 0)::bigint AS qualified_paid_total,
+    EXISTS (
+      SELECT 1
+      FROM public.agent_credit_payment rp
+      WHERE rp.member_id = a.member_id
+        AND COALESCE(rp.days_late, 0) > 3
+    ) AS needs_repair
+  FROM public.agent_credit_loan pl
+  WHERE pl.member_id = a.member_id
+) credit ON TRUE
 WHERE a.member_id = $1
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT $2
@@ -299,10 +510,18 @@ LIMIT $2
 			&item.AgentSignatureData,
 			&item.AgentSignatureAt,
 			&item.MarketingNote,
+			&item.AnalystNote,
+			&item.AnalystRecommendation,
+			&item.AnalystRecommendedAmount,
 			&item.LoanStatus,
 			&item.OutstandingAmount,
 			&item.PaidAmount,
 			&item.PaymentCount,
+			&item.CreditLevelCode,
+			&item.CreditLevelName,
+			&item.CreditNeedsRepair,
+			&item.QualifiedPaidTotal,
+			&item.CreditLimitAmount,
 			&loanApprovedAt,
 			&loanDueDate,
 			&item.CreatedAt,
@@ -324,6 +543,87 @@ LIMIT $2
 	return items, rows.Err()
 }
 
+func (r *AgentCreditRepository) MarketingReviewApplication(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
+	var item AgentCreditApplication
+	var applicantRaw, documentRaw []byte
+	err := r.db.QueryRowContext(ctx, `
+UPDATE public.agent_credit_application
+SET
+  status = $2,
+  marketing_user_id = $3,
+  marketing_reviewed_at = now(),
+  marketing_note = $4,
+  updated_at = now()
+WHERE id = $1 AND status IN ('submitted', 'marketing_review')
+RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
+  COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
+`, in.ID, in.Status, in.MarketingID, in.MarketingNote).Scan(
+		&item.ID,
+		&item.MemberID,
+		&item.RequestedAmount,
+		&item.ApprovedAmount,
+		&item.Status,
+		&applicantRaw,
+		&documentRaw,
+		&item.AgentSignatureData,
+		&item.AgentSignatureAt,
+		&item.MarketingNote,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+	_ = json.Unmarshal(documentRaw, &item.DocumentData)
+	item.HasAgentSignature = item.AgentSignatureData != ""
+	return &item, nil
+}
+
+func (r *AgentCreditRepository) AnalystReviewApplication(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
+	var item AgentCreditApplication
+	var applicantRaw, documentRaw []byte
+	err := r.db.QueryRowContext(ctx, `
+UPDATE public.agent_credit_application
+SET
+  status = 'master_review',
+  analyst_user_id = $2,
+  analyst_reviewed_at = now(),
+  analyst_note = $3,
+  analyst_recommendation = $4,
+  analyst_recommended_amount = $5,
+  updated_at = now()
+WHERE id = $1 AND status IN ('submitted', 'marketing_review', 'analysis_review', 'master_review')
+RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
+  COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note,
+  COALESCE(analyst_note, ''), COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0),
+  created_at, updated_at
+`, in.ID, in.AnalystID, in.AnalystNote, in.Recommendation, in.ApprovedAmount).Scan(
+		&item.ID,
+		&item.MemberID,
+		&item.RequestedAmount,
+		&item.ApprovedAmount,
+		&item.Status,
+		&applicantRaw,
+		&documentRaw,
+		&item.AgentSignatureData,
+		&item.AgentSignatureAt,
+		&item.MarketingNote,
+		&item.AnalystNote,
+		&item.AnalystRecommendation,
+		&item.AnalystRecommendedAmount,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+	_ = json.Unmarshal(documentRaw, &item.DocumentData)
+	item.HasAgentSignature = item.AgentSignatureData != ""
+	return &item, nil
+}
+
 func (r *AgentCreditRepository) DecideApplication(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -342,10 +642,10 @@ SET
   marketing_reviewed_at = now(),
   marketing_note = $5,
   updated_at = now()
-WHERE id = $1
+WHERE id = $1 AND status IN ('master_review', 'approved', 'rejected')
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
-`, in.ID, in.Status, in.ApprovedAmount, in.MarketingID, in.MarketingNote).Scan(
+`, in.ID, in.Status, in.ApprovedAmount, in.MasterID, in.MarketingNote).Scan(
 		&item.ID,
 		&item.MemberID,
 		&item.RequestedAmount,

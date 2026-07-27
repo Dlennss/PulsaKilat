@@ -21,10 +21,18 @@ export type AgentCreditApplication = {
   agent_signature_data?: string;
   agent_signature_at?: string;
   marketing_note?: string;
+  analyst_note?: string;
+  analyst_recommendation?: string;
+  analyst_recommended_amount?: number;
   loan_status?: string;
   outstanding_amount?: number;
   paid_amount?: number;
   payment_count?: number;
+  credit_level_code?: string;
+  credit_level_name?: string;
+  credit_needs_repair?: boolean;
+  qualified_paid_total?: number;
+  credit_limit_amount?: number;
   loan_approved_at?: string;
   loan_due_date?: string;
   created_at: string;

@@ -1,34 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  BadgePercent,
   BookOpen,
-  BriefcaseBusiness,
-  Car,
   ChevronRight,
-  CircleDollarSign,
-  CreditCard,
-  Gamepad2,
-  GraduationCap,
-  HandHeart,
-  HeartPulse,
-  Home,
-  Landmark,
-  MonitorPlay,
-  Plane,
-  QrCode,
-  ReceiptText,
   Search,
-  ShieldCheck,
-  Smartphone,
-  Tv,
-  WalletCards,
-  Waves,
-  Wifi,
   Zap,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,8 +16,7 @@ type DirectoryMode = "guest" | "user";
 type ServiceItem = {
   label: string;
   href: string;
-  icon: LucideIcon;
-  tone: string;
+  iconSrc: string;
 };
 
 type ServiceGroup = {
@@ -91,6 +69,39 @@ function fallbackPath(mode: DirectoryMode, slug: string) {
   return mode === "user" ? `/user/kategori?layanan=${slug}` : `/kategori?layanan=${slug}`;
 }
 
+const iconPath = {
+  pulsa: "/service-icons/pulsa.png",
+  paketData: "/service-icons/paket-data.png",
+  hpPascabayar: "/service-icons/hp-pascabayar.png",
+  esimRoaming: "/service-icons/esim-roaming.png",
+  ewallet: "/service-icons/ewallet.png",
+  transferBank: "/service-icons/transfer-bank.png",
+  qris: "/service-icons/qris.png",
+  uangElektronik: "/service-icons/uang-elektronik.png",
+  kartuKredit: "/service-icons/kartu-kredit.png",
+  asuransi: "/service-icons/asuransi.png",
+  bpjs: "/service-icons/bpjs.png",
+  tokenPln: "/service-icons/token-pln.png",
+  pdam: "/service-icons/pdam.png",
+  gasPgn: "/service-icons/gas-pgn.png",
+  internetWifi: "/service-icons/internet-wifi.png",
+  tvKabel: "/service-icons/tv-kabel.png",
+  voucherGame: "/service-icons/voucher-game.png",
+  voucherDigital: "/service-icons/voucher-digital.png",
+  streamingMusik: "/service-icons/streaming-musik.png",
+  klinikKesehatan: "/service-icons/klinik-kesehatan.png",
+  uangSekolah: "/service-icons/uang-sekolah.png",
+  cicilanKendaraan: "/service-icons/cicilan-kendaraan.png",
+  cicilanMultifinance: "/service-icons/cicilan-multifinance.png",
+  pbb: "/service-icons/pbb.png",
+  pajakNegara: "/service-icons/pajak-negara.png",
+  tiketPerjalanan: "/service-icons/tiket-perjalanan.png",
+  saldoKartuTol: "/service-icons/saldo-kartu-tol.png",
+  parkirDigital: "/service-icons/parkir-digital.png",
+  kurirPengiriman: "/service-icons/kurir-pengiriman.png",
+  zakatDonasi: "/service-icons/zakat-donasi.png",
+};
+
 function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
   const path = mode === "user" ? userPath : guestPath;
   const normalizedRole = String(role || "").trim().toLowerCase();
@@ -102,10 +113,10 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Komunikasi",
       eyebrow: "Kebutuhan nomor",
       items: [
-        { label: "Pulsa", href: path.pulsaData, icon: Smartphone, tone: "from-[#052e26] via-[#047857] to-[#a3e635]" },
-        { label: "Paket Data", href: path.pulsaData, icon: Wifi, tone: "from-[#052e26] via-[#047857] to-[#a3e635]" },
-        { label: "HP Pascabayar", href: path.hpPascabayar, icon: ReceiptText, tone: "from-sky-500 to-cyan-400" },
-        { label: "eSIM & Roaming", href: fallbackPath(mode, "esim-roaming"), icon: Smartphone, tone: "from-violet-500 to-indigo-400" },
+        { label: "Pulsa", href: path.pulsaData, iconSrc: iconPath.pulsa },
+        { label: "Paket Data", href: path.pulsaData, iconSrc: iconPath.paketData },
+        { label: "HP Pascabayar", href: path.hpPascabayar, iconSrc: iconPath.hpPascabayar },
+        { label: "eSIM & Roaming", href: fallbackPath(mode, "esim-roaming"), iconSrc: iconPath.esimRoaming },
       ],
     },
     {
@@ -113,13 +124,13 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Keuangan",
       eyebrow: "Saldo & pembayaran",
       items: [
-        { label: "E-Wallet", href: path.ewallet, icon: WalletCards, tone: "from-emerald-500 to-lime-400" },
-        { label: "Transfer Bank", href: mode === "user" ? path.transferBank : fallbackPath(mode, "transfer-bank"), icon: Landmark, tone: "from-blue-500 to-cyan-400" },
-        { label: "Pembayaran QRIS", href: fallbackPath(mode, "qris"), icon: QrCode, tone: "from-purple-500 to-fuchsia-400" },
-        { label: "Uang Elektronik", href: fallbackPath(mode, "uang-elektronik"), icon: CreditCard, tone: "from-indigo-500 to-blue-400" },
-        ...(canUseAgentCredit ? [{ label: "Kredit Saldo Agent", href: "/user/saldo/kredit-agent", icon: BadgePercent, tone: "from-amber-500 to-yellow-400" }] : []),
-        { label: "Kartu Kredit", href: fallbackPath(mode, "kartu-kredit"), icon: CreditCard, tone: "from-violet-500 to-indigo-400" },
-        { label: "Asuransi", href: fallbackPath(mode, "asuransi"), icon: ShieldCheck, tone: "from-green-500 to-emerald-400" },
+        { label: "E-Wallet", href: path.ewallet, iconSrc: iconPath.ewallet },
+        { label: "Transfer Bank", href: mode === "user" ? path.transferBank : fallbackPath(mode, "transfer-bank"), iconSrc: iconPath.transferBank },
+        { label: "Pembayaran QRIS", href: fallbackPath(mode, "qris"), iconSrc: iconPath.qris },
+        { label: "Uang Elektronik", href: fallbackPath(mode, "uang-elektronik"), iconSrc: iconPath.uangElektronik },
+        ...(canUseAgentCredit ? [{ label: "Kredit Saldo Agent", href: "/user/saldo/kredit-agent", iconSrc: iconPath.cicilanMultifinance }] : []),
+        { label: "Kartu Kredit", href: fallbackPath(mode, "kartu-kredit"), iconSrc: iconPath.kartuKredit },
+        { label: "Asuransi", href: fallbackPath(mode, "asuransi"), iconSrc: iconPath.asuransi },
       ],
     },
     {
@@ -127,7 +138,7 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Tagihan",
       eyebrow: "Bayar rutin",
       items: [
-        { label: "BPJS", href: path.bpjs, icon: HeartPulse, tone: "from-rose-500 to-orange-400" },
+        { label: "BPJS", href: path.bpjs, iconSrc: iconPath.bpjs },
       ],
     },
     {
@@ -135,10 +146,10 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Rumah Tangga",
       eyebrow: "Kebutuhan rumah",
       items: [
-        { label: "Token PLN", href: path.tokenPln, icon: Zap, tone: "from-lime-400 to-emerald-500" },
-        { label: "PDAM", href: path.pdam, icon: Waves, tone: "from-cyan-500 to-teal-400" },
-        { label: "Gas PGN", href: path.pgn, icon: Home, tone: "from-orange-500 to-amber-400" },
-        { label: "Internet & WiFi", href: path.internet, icon: Wifi, tone: "from-sky-500 to-blue-400" },
+        { label: "Token PLN", href: path.tokenPln, iconSrc: iconPath.tokenPln },
+        { label: "PDAM", href: path.pdam, iconSrc: iconPath.pdam },
+        { label: "Gas PGN", href: path.pgn, iconSrc: iconPath.gasPgn },
+        { label: "Internet & WiFi", href: path.internet, iconSrc: iconPath.internetWifi },
       ],
     },
     {
@@ -146,10 +157,10 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Hiburan",
       eyebrow: "Digital fun",
       items: [
-        { label: "TV Kabel", href: path.tv, icon: Tv, tone: "from-purple-500 to-violet-400" },
-        { label: "Voucher Game", href: path.game, icon: Gamepad2, tone: "from-[#052e26] via-[#047857] to-[#a3e635]" },
-        { label: "Voucher Digital", href: fallbackPath(mode, "voucher-digital"), icon: BadgePercent, tone: "from-red-500 to-orange-400" },
-        { label: "Streaming & Musik", href: fallbackPath(mode, "streaming-musik"), icon: MonitorPlay, tone: "from-fuchsia-500 to-pink-400" },
+        { label: "TV Kabel", href: path.tv, iconSrc: iconPath.tvKabel },
+        { label: "Voucher Game", href: path.game, iconSrc: iconPath.voucherGame },
+        { label: "Voucher Digital", href: fallbackPath(mode, "voucher-digital"), iconSrc: iconPath.voucherDigital },
+        { label: "Streaming & Musik", href: fallbackPath(mode, "streaming-musik"), iconSrc: iconPath.streamingMusik },
       ],
     },
     {
@@ -157,7 +168,7 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Kesehatan",
       eyebrow: "Layanan sehat",
       items: [
-        { label: "Klinik & Kesehatan", href: fallbackPath(mode, "klinik-kesehatan"), icon: HeartPulse, tone: "from-rose-500 to-pink-400" },
+        { label: "Klinik & Kesehatan", href: fallbackPath(mode, "klinik-kesehatan"), iconSrc: iconPath.klinikKesehatan },
       ],
     },
     {
@@ -165,7 +176,7 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Pendidikan",
       eyebrow: "Biaya sekolah",
       items: [
-        { label: "Uang Sekolah", href: fallbackPath(mode, "uang-sekolah"), icon: GraduationCap, tone: "from-blue-500 to-indigo-400" },
+        { label: "Uang Sekolah", href: fallbackPath(mode, "uang-sekolah"), iconSrc: iconPath.uangSekolah },
       ],
     },
     {
@@ -173,8 +184,8 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Cicilan",
       eyebrow: "Bayar angsuran",
       items: [
-        { label: "Cicilan Kendaraan", href: fallbackPath(mode, "cicilan-kendaraan"), icon: Car, tone: "from-sky-500 to-cyan-400" },
-        { label: "Cicilan Multifinance", href: fallbackPath(mode, "cicilan-multifinance"), icon: CircleDollarSign, tone: "from-amber-500 to-yellow-400" },
+        { label: "Cicilan Kendaraan", href: fallbackPath(mode, "cicilan-kendaraan"), iconSrc: iconPath.cicilanKendaraan },
+        { label: "Cicilan Multifinance", href: fallbackPath(mode, "cicilan-multifinance"), iconSrc: iconPath.cicilanMultifinance },
       ],
     },
     {
@@ -182,8 +193,8 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Pajak",
       eyebrow: "Kewajiban resmi",
       items: [
-        { label: "PBB", href: fallbackPath(mode, "pbb"), icon: Home, tone: "from-violet-500 to-purple-400" },
-        { label: "Pajak & Negara", href: fallbackPath(mode, "pajak-negara"), icon: Landmark, tone: "from-emerald-500 to-teal-400" },
+        { label: "PBB", href: fallbackPath(mode, "pbb"), iconSrc: iconPath.pbb },
+        { label: "Pajak & Negara", href: fallbackPath(mode, "pajak-negara"), iconSrc: iconPath.pajakNegara },
       ],
     },
     {
@@ -191,10 +202,10 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Perjalanan",
       eyebrow: "Mobilitas",
       items: [
-        { label: "Tiket Perjalanan", href: fallbackPath(mode, "tiket-perjalanan"), icon: Plane, tone: "from-sky-500 to-blue-400" },
-        { label: "Saldo Kartu Tol", href: fallbackPath(mode, "saldo-kartu-tol"), icon: CreditCard, tone: "from-emerald-500 to-lime-400" },
-        { label: "Parkir Digital", href: fallbackPath(mode, "parkir-digital"), icon: Car, tone: "from-blue-500 to-cyan-400" },
-        { label: "Kurir & Pengiriman", href: fallbackPath(mode, "kurir-pengiriman"), icon: BriefcaseBusiness, tone: "from-orange-500 to-amber-400" },
+        { label: "Tiket Perjalanan", href: fallbackPath(mode, "tiket-perjalanan"), iconSrc: iconPath.tiketPerjalanan },
+        { label: "Saldo Kartu Tol", href: fallbackPath(mode, "saldo-kartu-tol"), iconSrc: iconPath.saldoKartuTol },
+        { label: "Parkir Digital", href: fallbackPath(mode, "parkir-digital"), iconSrc: iconPath.parkirDigital },
+        { label: "Kurir & Pengiriman", href: fallbackPath(mode, "kurir-pengiriman"), iconSrc: iconPath.kurirPengiriman },
       ],
     },
     {
@@ -202,7 +213,7 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       title: "Sosial",
       eyebrow: "Berbagi",
       items: [
-        { label: "Zakat & Donasi", href: fallbackPath(mode, "zakat-donasi"), icon: HandHeart, tone: "from-rose-500 to-orange-400" },
+        { label: "Zakat & Donasi", href: fallbackPath(mode, "zakat-donasi"), iconSrc: iconPath.zakatDonasi },
       ],
     },
   ];
@@ -295,7 +306,6 @@ export function ServiceDirectory({ mode = "guest", role }: ServiceDirectoryProps
 
             <div className="grid grid-cols-4 gap-x-2 gap-y-5">
               {group.items.map((item) => {
-                const Icon = item.icon;
                 return (
                   <Link
                     key={`${group.id}-${item.label}`}
@@ -303,10 +313,14 @@ export function ServiceDirectory({ mode = "guest", role }: ServiceDirectoryProps
                     prefetch={false}
                     className="group flex min-h-[82px] flex-col items-center justify-start gap-2 text-center"
                   >
-                    <span className="relative grid h-13 w-13 place-items-center overflow-hidden rounded-[20px] bg-linear-to-br from-[#052e26] via-[#047857] to-[#a3e635] text-white shadow-[0_12px_24px_rgba(6,78,59,0.18)] ring-1 ring-white/70 transition duration-300 group-hover:-translate-y-0.5 group-hover:shadow-[0_16px_30px_rgba(6,78,59,0.24)]">
-                      <span className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.34),transparent_34%)]" />
-                      <span className="absolute -bottom-5 -right-4 h-10 w-10 rounded-full bg-lime-200/28 blur-md" />
-                      <Icon className="relative h-6 w-6 drop-shadow" strokeWidth={2.35} />
+                    <span className="relative grid h-14 w-14 place-items-center overflow-hidden rounded-[20px] bg-white shadow-[0_12px_24px_rgba(6,78,59,0.12)] ring-1 ring-slate-200/80 transition duration-300 group-hover:-translate-y-0.5 group-hover:shadow-[0_16px_30px_rgba(6,78,59,0.18)]">
+                      <Image
+                        src={item.iconSrc}
+                        alt=""
+                        fill
+                        sizes="56px"
+                        className="object-contain p-0.5"
+                      />
                     </span>
                     <span className="line-clamp-2 max-w-[76px] text-[10px] font-black leading-tight text-slate-950">
                       {item.label}

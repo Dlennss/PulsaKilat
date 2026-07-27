@@ -9,7 +9,11 @@ type Props = {
   requestedAmount: number;
   approvedAmount?: number;
   marketingNote?: string;
+  analystNote?: string;
+  analystRecommendation?: string;
+  analystRecommendedAmount?: number;
   status: string;
+  mode?: "marketing" | "master" | "analyst";
 };
 
 type ApiBody = {
@@ -17,29 +21,73 @@ type ApiBody = {
   error?: string;
 };
 
-export function MasterAgentCreditDecisionControls({ applicationId, requestedAmount, approvedAmount = 0, marketingNote = "", status }: Props) {
+type DecisionAction = "approved" | "rejected";
+
+export function MasterAgentCreditDecisionControls({
+  applicationId,
+  requestedAmount,
+  approvedAmount = 0,
+  marketingNote = "",
+  analystNote = "",
+  analystRecommendation = "",
+  analystRecommendedAmount = 0,
+  status,
+  mode = "master",
+}: Props) {
   const router = useRouter();
-  const [busy, setBusy] = useState<"approved" | "rejected" | "">("");
+  const [busy, setBusy] = useState<DecisionAction | "">("");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
-  const [amount, setAmount] = useState(String(approvedAmount || requestedAmount));
-  const [note, setNote] = useState(marketingNote);
+  const [amount, setAmount] = useState(String(approvedAmount || analystRecommendedAmount || requestedAmount));
+  const [note, setNote] = useState(analystNote || marketingNote);
   const isFinal = status === "approved" || status === "rejected";
+  const isAnalystMode = mode === "analyst";
+  const masterForwardMode = mode === "master" && (status === "submitted" || status === "marketing_review");
+  const waitingForAnalyst = mode === "master" && status === "analysis_review";
+  const analystRejected = mode === "master" && status === "master_review" && analystRecommendation === "rejected";
+  const canAct = isAnalystMode ? status === "submitted" || status === "marketing_review" || status === "analysis_review" : status === "submitted" || status === "marketing_review" || status === "master_review" || isFinal;
+  const actionTitle = isAnalystMode ? "Analisa Risiko" : waitingForAnalyst ? "Menunggu analis" : masterForwardMode ? "Cek master" : "Keputusan master";
+  const actionDesc = isAnalystMode
+    ? "Beri rekomendasi layak atau tidak layak untuk master."
+    : waitingForAnalyst
+      ? "Pengajuan sedang dianalisa. ACC master aktif setelah analis memberi rekomendasi."
+      : masterForwardMode
+      ? "Validasi dokumen, lalu teruskan ke analis."
+      : "Pilih keputusan final setelah analis memberi rekomendasi.";
+  const approveLabel = isAnalystMode ? "Rekom Setuju" : masterForwardMode ? "Teruskan" : "Setujui";
+  const rejectLabel = isAnalystMode ? "Rekom Tolak" : "Tolak";
 
-  async function decide(decision: "approved" | "rejected") {
+  async function decide(decision: DecisionAction) {
     if (busy) return;
     const parsedAmount = Number(amount.replace(/[^\d]/g, ""));
+    const apiDecision = isAnalystMode
+      ? decision === "approved"
+        ? "recommend_approve"
+        : "recommend_reject"
+      : decision === "approved" && masterForwardMode
+        ? "forward"
+        : decision;
+    const defaultNote = masterForwardMode
+      ? "Dokumen lengkap, diteruskan ke analis."
+      : decision === "approved"
+        ? "Data agent sesuai dan disetujui."
+        : "Data agent belum sesuai.";
     setBusy(decision);
     setError("");
     try {
+      const token = window.localStorage.getItem("auth_token") || "";
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      if (isAnalystMode) headers["X-Reviewer-Mode"] = "analyst";
       const response = await fetch("/api/agent-credit/applications/decision", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           id: applicationId,
-          decision,
+          decision: apiDecision,
           approved_amount: decision === "approved" ? parsedAmount : 0,
-          note: note.trim() || (decision === "approved" ? "Data agent sesuai dan disetujui." : "Data agent belum sesuai."),
+          note: note.trim() || defaultNote,
+          reviewer_mode: isAnalystMode ? "analyst" : "master",
         }),
       });
       const body = (await response.json().catch(() => ({}))) as ApiBody;
@@ -68,16 +116,39 @@ export function MasterAgentCreditDecisionControls({ applicationId, requestedAmou
               {status === "approved" ? "Limit agent sudah bisa diproses." : "Agent akan melihat pemberitahuan penolakan."}
             </span>
           </span>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-xs font-black shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5"
-          >
-            <PencilLine className="h-4 w-4" />
-            Edit Keputusan
-          </button>
+          {mode === "master" ? (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-xs font-black shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5"
+            >
+              <PencilLine className="h-4 w-4" />
+              Edit Keputusan
+            </button>
+          ) : null}
         </div>
         {marketingNote ? <p className="mt-2 rounded-2xl bg-white/70 px-3 py-2 text-[10px] font-bold leading-4 opacity-80">{marketingNote}</p> : null}
+      </div>
+    );
+  }
+
+  if (!canAct && !editing) {
+    return (
+      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-3 text-slate-600">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-slate-400">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-black">{waitingForAnalyst ? "Menunggu analis" : "Menunggu master"}</p>
+            <p className="mt-0.5 text-[11px] font-bold text-slate-400">{actionDesc}</p>
+          </div>
+        </div>
+        {analystRecommendation ? (
+          <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-[10px] font-bold text-slate-500">
+            Rekomendasi analis: {analystRecommendation === "approved" ? "Layak" : "Tidak layak"} {analystRecommendedAmount ? `- Rp ${new Intl.NumberFormat("id-ID").format(analystRecommendedAmount)}` : ""}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -92,16 +163,16 @@ export function MasterAgentCreditDecisionControls({ applicationId, requestedAmou
               <ShieldCheck className="h-6 w-6" strokeWidth={2.4} />
             </span>
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-100">Pusat Keputusan</p>
-              <p className="mt-1 text-lg font-black">Review data agent</p>
-              <p className="mt-1 text-[11px] font-semibold leading-5 text-white/72">Pilih hasil pengecekan setelah dokumen dan tanda tangan sudah sesuai.</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-100">{isAnalystMode ? "Meja Analis" : "Pusat Keputusan"}</p>
+              <p className="mt-1 text-lg font-black">{actionTitle}</p>
+              <p className="mt-1 text-[11px] font-semibold leading-5 text-white/72">{actionDesc}</p>
             </div>
           </div>
         </div>
         <div className="grid gap-2">
           <div className="grid grid-cols-2 gap-2">
             <label className="col-span-2 block rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2 sm:col-span-1 lg:col-span-2 xl:col-span-1">
-              <span className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-600">Nominal ACC</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-600">{isAnalystMode ? "Rekomendasi Nominal" : "Nominal ACC"}</span>
               <input
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
@@ -110,7 +181,7 @@ export function MasterAgentCreditDecisionControls({ applicationId, requestedAmou
               />
             </label>
             <label className="col-span-2 block rounded-[20px] border border-slate-200 bg-slate-50 px-3 py-2 sm:col-span-1 lg:col-span-2 xl:col-span-1">
-              <span className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-600">Catatan</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-600">{isAnalystMode ? "Catatan Risiko" : "Catatan"}</span>
               <input
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
@@ -123,12 +194,12 @@ export function MasterAgentCreditDecisionControls({ applicationId, requestedAmou
             <button
               type="button"
               onClick={() => decide("approved")}
-              disabled={Boolean(busy)}
+              disabled={Boolean(busy) || analystRejected}
               className="group relative isolate inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-[18px] bg-[linear-gradient(135deg,#064e3b,#059669,#65a30d)] px-3 text-xs font-black text-white shadow-[0_14px_24px_rgba(5,150,105,0.25)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_30px_rgba(5,150,105,0.28)] disabled:translate-y-0 disabled:opacity-60"
             >
               <span className="absolute inset-y-0 right-0 w-10 bg-white/15 opacity-0 transition group-hover:opacity-100" />
               {busy === "approved" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {busy === "approved" ? "Proses" : "Setujui"}
+              {busy === "approved" ? "Proses" : approveLabel}
             </button>
             <button
               type="button"
@@ -137,7 +208,7 @@ export function MasterAgentCreditDecisionControls({ applicationId, requestedAmou
               className="inline-flex h-12 items-center justify-center gap-2 rounded-[18px] border border-rose-200 bg-rose-50 px-3 text-xs font-black text-rose-600 shadow-[0_10px_20px_rgba(225,29,72,0.08)] transition hover:-translate-y-0.5 hover:border-rose-300 hover:bg-white hover:shadow-[0_14px_24px_rgba(225,29,72,0.12)] disabled:translate-y-0 disabled:opacity-60"
             >
               {busy === "rejected" ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-              {busy === "rejected" ? "Proses" : "Tolak"}
+              {busy === "rejected" ? "Proses" : rejectLabel}
             </button>
           </div>
         </div>
@@ -154,6 +225,7 @@ export function MasterAgentCreditDecisionControls({ applicationId, requestedAmou
           Batal edit
         </button>
       ) : null}
+      {analystRejected ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-center text-[10px] font-black text-amber-700">Analis merekomendasikan tolak, master hanya bisa menolak pengajuan ini.</p> : null}
       {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
     </div>
   );

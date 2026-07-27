@@ -1,0 +1,30 @@
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/nextauth";
+import { getMyAgentCreditApplications, getUserProfile } from "@/lib/api.auth";
+import { UserAgentLevelPageContent } from "@/components/user/UserAgentLevelPageContent";
+import { UserBottomNav } from "@/components/user/UserBottomNav";
+import type { UserSession } from "@/components/user/types";
+
+type SessionShape = {
+  user?: UserSession;
+  backendToken?: string;
+};
+
+export default async function UserAgentLevelPage() {
+  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  if (!session?.backendToken) redirect("/login");
+
+  const profile = await getUserProfile(session.backendToken);
+  const role = String(profile?.role || session.user?.role || "").trim().toLowerCase();
+  if (role !== "agent") redirect("/user/saldo");
+  const applications = await getMyAgentCreditApplications(session.backendToken);
+  const initialLevelCode = String(applications[0]?.credit_level_code || "start").trim().toLowerCase();
+
+  return (
+    <main className="min-h-screen bg-[#eef8f3]">
+      <UserAgentLevelPageContent initialLevelCode={initialLevelCode} />
+      <UserBottomNav />
+    </main>
+  );
+}

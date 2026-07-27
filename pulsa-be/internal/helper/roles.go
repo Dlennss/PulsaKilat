@@ -11,6 +11,7 @@ const (
 	RoleRetailAgent     = "agent"
 	RoleRetailMaster    = "master"
 	RoleRetailMarketing = "marketing"
+	RoleRetailAnalyst   = "analis"
 	RoleH2HAgent        = "agent_member"
 	RoleH2HMaster       = "master_member"
 	RoleOperatorTrx     = "operator_trx"
@@ -26,6 +27,8 @@ func NormalizeRole(role string) string {
 		return RoleH2HAgent
 	case "master-member", "mester-member":
 		return RoleH2HMaster
+	case "analyst", "analis kredit", "credit_analyst", "credit-analyst":
+		return RoleRetailAnalyst
 	default:
 		return role
 	}
@@ -42,7 +45,7 @@ func IsAdminLikeRole(role string) bool {
 
 func IsRetailRole(role string) bool {
 	switch NormalizeRole(role) {
-	case RoleUser, RoleRetailAgent, RoleRetailMaster, RoleRetailMarketing:
+	case RoleUser, RoleRetailAgent, RoleRetailMaster, RoleRetailMarketing, RoleRetailAnalyst:
 		return true
 	default:
 		return false

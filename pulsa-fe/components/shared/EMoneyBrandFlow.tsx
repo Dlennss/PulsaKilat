@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Wallet } from "lucide-react";
+import { Sparkles, Wallet, Zap } from "lucide-react";
 import { UserProductGrid } from "@/components/user/UserProductGrid";
 import type { UserProductItem } from "@/components/user/types";
 import { getBrandLogo } from "@/lib/brand-logos";
@@ -159,25 +159,37 @@ export function EMoneyBrandFlow({ items, isLoggedIn, authToken, buyerRole, initi
   }
 
   return (
-    <div className="space-y-3 mt-2">
+    <div className="mt-2 space-y-4">
       {brandName ? (
-        <section className="rounded-md bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.10)]">
-          {brandLogo?.src ? (
-            <Image
-              src={brandLogo.src}
-              alt={brandLogo.alt || brandName}
-              width={160}
-              height={56}
-              className="mx-auto h-10 w-auto object-contain"
-            />
-          ) : (
-            <div className="text-center text-lg font-bold text-slate-900">{brandName}</div>
-          )}
+        <section className="overflow-hidden rounded-[26px] border border-emerald-950/10 bg-linear-to-br from-[#052e26] via-[#047857] to-[#b8f138] p-4 text-white shadow-[0_18px_42px_rgba(5,46,38,0.22)]">
+          <div className="flex items-center gap-4">
+            <div className="grid h-18 w-18 shrink-0 place-items-center rounded-[24px] bg-white p-3 shadow-[0_14px_30px_rgba(5,46,38,0.18)]">
+              {brandLogo?.src ? (
+                <Image
+                  src={brandLogo.src}
+                  alt={brandLogo.alt || brandName}
+                  width={96}
+                  height={96}
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <Wallet className="h-8 w-8 text-[#047857]" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-200">PulsaKilat E-Wallet</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight">{brandName}</h1>
+              <p className="mt-1 text-xs font-semibold text-white/78">Pilih nominal top up, lalu masukkan nomor e-wallet saat checkout.</p>
+            </div>
+            <div className="hidden h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/18 text-lime-100 ring-1 ring-white/20 min-[380px]:grid">
+              <Sparkles className="h-5 w-5" />
+            </div>
+          </div>
         </section>
       ) : null}
 
       {buckets.length > 1 ? (
-        <div className="mb-3 flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {buckets.map((bucket) => {
             const active = bucket.key === selectedBucket.key;
             return (
@@ -185,10 +197,10 @@ export function EMoneyBrandFlow({ items, isLoggedIn, authToken, buyerRole, initi
                 key={bucket.key}
                 type="button"
                 onClick={() => setSelectedKey(bucket.key)}
-                className={`shrink-0 snap-start whitespace-nowrap rounded-full px-2.5 py-2 text-[10px] font-semibold leading-tight transition ${
+                className={`h-9 shrink-0 snap-start whitespace-nowrap rounded-full px-3 text-[10px] font-black leading-tight transition ${
                   active
-                    ? "bg-sky-600 text-white shadow-[0_8px_18px_rgba(15,111,203,0.22)]"
-                    : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                    ? "bg-[#052e26] text-white shadow-[0_10px_20px_rgba(5,46,38,0.22)]"
+                    : "bg-white text-slate-700 ring-1 ring-emerald-950/10 hover:bg-emerald-50"
                 }`}
               >
                 {bucket.label}
@@ -204,8 +216,9 @@ export function EMoneyBrandFlow({ items, isLoggedIn, authToken, buyerRole, initi
         authToken={authToken}
         buyerRole={buyerRole}
         initialDest={initialDest}
+        buyLabel="Top Up"
         enableGuestHint={false}
-        icon={Wallet}
+        icon={Zap}
       />
     </div>
   );

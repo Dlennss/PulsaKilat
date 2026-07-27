@@ -1,7 +1,9 @@
 "use client";
 
 import { Download, Eye, FileText, X } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type CreditDocumentImage = {
   label: string;
@@ -18,14 +20,31 @@ export function MasterAgentCreditDocumentButton({
   const readyDocuments = documents.filter((doc) => doc.src);
   const canPreview = readyDocuments.length > 0;
   const [open, setOpen] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState("");
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.removeEventListener("keydown", onKeyDown);
     };
-  }, [pdfUrl]);
+  }, [open]);
 
   function imageTypeFromDataUrl(src: string) {
     return src.startsWith("data:image/png") ? "PNG" : "JPEG";
@@ -60,18 +79,7 @@ export function MasterAgentCreditDocumentButton({
 
   async function openPreview() {
     if (!canPreview || loading) return;
-    setLoading(true);
-    try {
-      const pdf = await buildPDF();
-      const blob = pdf.output("blob");
-      setPdfUrl((oldUrl) => {
-        if (oldUrl) URL.revokeObjectURL(oldUrl);
-        return URL.createObjectURL(blob);
-      });
-      setOpen(true);
-    } finally {
-      setLoading(false);
-    }
+    setOpen(true);
   }
 
   async function downloadPDF() {
@@ -85,6 +93,62 @@ export function MasterAgentCreditDocumentButton({
       setLoading(false);
     }
   }
+
+  const previewModal = open ? (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-sm">
+      <section className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_28px_80px_rgba(15,23,42,0.35)]">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+            <FileText className="h-5 w-5" strokeWidth={2.4} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-black text-slate-950">Preview Dokumen</h3>
+            <p className="truncate text-[11px] font-bold text-slate-500">{agentName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={downloadPDF}
+            className="inline-flex h-10 items-center gap-2 rounded-2xl bg-emerald-600 px-3 text-xs font-black text-white transition hover:bg-emerald-700"
+          >
+            <Download className="h-4 w-4" strokeWidth={2.5} />
+            Download
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+            aria-label="Tutup preview"
+          >
+            <X className="h-4 w-4" strokeWidth={2.6} />
+          </button>
+        </div>
+        <div className="max-h-[78vh] overflow-y-auto bg-slate-100 p-3 sm:p-5">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+            {readyDocuments.map((doc, index) => (
+              <figure
+                key={`${doc.label}-${index}`}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.12)]"
+              >
+                <figcaption className="border-b border-slate-100 px-4 py-3 text-xs font-black text-slate-700">
+                  {doc.label}
+                </figcaption>
+                <div className="relative min-h-[320px] bg-slate-50 sm:min-h-[460px]">
+                  <Image
+                    src={doc.src}
+                    alt={`${doc.label} ${agentName}`}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 768px) 92vw, 768px"
+                    className="object-contain p-2"
+                  />
+                </div>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -109,44 +173,7 @@ export function MasterAgentCreditDocumentButton({
         </span>
       </button>
 
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-sm">
-          <section className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_28px_80px_rgba(15,23,42,0.35)]">
-            <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
-                <FileText className="h-5 w-5" strokeWidth={2.4} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-black text-slate-950">Preview Dokumen</h3>
-                <p className="truncate text-[11px] font-bold text-slate-500">{agentName}</p>
-              </div>
-              <button
-                type="button"
-                onClick={downloadPDF}
-                className="inline-flex h-10 items-center gap-2 rounded-2xl bg-emerald-600 px-3 text-xs font-black text-white transition hover:bg-emerald-700"
-              >
-                <Download className="h-4 w-4" strokeWidth={2.5} />
-                Download
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
-                aria-label="Tutup preview"
-              >
-                <X className="h-4 w-4" strokeWidth={2.6} />
-              </button>
-            </div>
-            <div className="h-[78vh] bg-slate-100">
-              {pdfUrl ? (
-                <iframe src={pdfUrl} title={`Preview dokumen ${agentName}`} className="h-full w-full border-0" />
-              ) : (
-                <div className="grid h-full place-items-center text-sm font-black text-slate-500">Menyiapkan PDF...</div>
-              )}
-            </div>
-          </section>
-        </div>
-      ) : null}
+      {mounted && previewModal ? createPortal(previewModal, document.body) : null}
     </>
   );
 }

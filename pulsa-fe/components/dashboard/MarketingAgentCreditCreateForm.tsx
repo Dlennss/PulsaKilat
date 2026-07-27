@@ -9,9 +9,13 @@ type ApiBody = {
   error?: string;
 };
 
-export function MarketingAgentCreditCreateForm() {
+type MarketingAgentCreditCreateFormProps = {
+  defaultOpen?: boolean;
+};
+
+export function MarketingAgentCreditCreateForm({ defaultOpen = false }: MarketingAgentCreditCreateFormProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -21,7 +25,7 @@ export function MarketingAgentCreditCreateForm() {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/agent-credit/applications", {
+      const response = await fetch("/api/agent-credit/manual-applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -33,7 +37,6 @@ export function MarketingAgentCreditCreateForm() {
             nik: String(form.get("nik") || ""),
             whatsapp: String(form.get("whatsapp") || ""),
             email: String(form.get("email") || ""),
-            monthly_transactions: String(form.get("monthly_transactions") || ""),
             tenor_months: Number(form.get("tenor_months") || 3),
             home_address: String(form.get("home_address") || ""),
             store_address: String(form.get("store_address") || ""),
@@ -82,7 +85,6 @@ export function MarketingAgentCreditCreateForm() {
             ["nik", "NIK", "16 digit NIK"],
             ["whatsapp", "Nomor WA", "08xxxxxxxxxx"],
             ["email", "Email", "email@domain.com"],
-            ["monthly_transactions", "Transaksi/Bulan", "Contoh: 150"],
             ["requested_amount", "Nominal", "Maksimal 500000"],
           ].map(([name, label, placeholder]) => (
             <label key={name} className="block">

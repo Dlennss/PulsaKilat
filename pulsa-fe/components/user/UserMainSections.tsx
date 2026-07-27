@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, BookOpen, CalendarClock, Code2, Gamepad2, PlugZap, ReceiptText, Smartphone, Wifi, Zap } from "lucide-react";
+import type { AgentCreditApplication } from "@/lib/api.auth";
 
 export function UserPulsaDataShortcut() {
   return (
@@ -182,14 +183,34 @@ export function UserFavoriteTransactions({ href = "/kategori" }: UserFavoriteTra
 
 type UserMonthlyBillsProps = {
   href?: string;
+  variant?: "user" | "agent";
+  agentBills?: AgentCreditApplication[];
 };
 
-export function UserMonthlyBills({ href = "/kategori" }: UserMonthlyBillsProps) {
+function formatIDR(value: number) {
+  return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
+}
+
+export function UserMonthlyBills({ href = "/kategori", variant = "user", agentBills = [] }: UserMonthlyBillsProps) {
+  const activeAgentBills = agentBills.filter((item) => Number(item.outstanding_amount || 0) > 0);
+  const primaryAgentBill = activeAgentBills[0];
+
+  if (variant === "agent" && !primaryAgentBill) {
+    return null;
+  }
+
+  const isAgentBill = variant === "agent" && Boolean(primaryAgentBill);
+  const billHref = isAgentBill ? "/user/saldo/tagihan" : href;
+  const outstanding = Number(primaryAgentBill?.outstanding_amount || 0);
+  const approved = Number(primaryAgentBill?.approved_amount || primaryAgentBill?.requested_amount || 0);
+
   return (
     <section className="space-y-3">
       <div className="px-0.5">
         <h2 className="text-lg font-black tracking-tight text-slate-950">Tagihan Bulan Ini</h2>
-        <p className="mt-0.5 text-[11px] font-semibold text-slate-500">Tagihan aktif milik akunmu</p>
+        <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+          {isAgentBill ? "Tagihan pinjaman agent yang masih aktif" : "Tagihan aktif milik akunmu"}
+        </p>
       </div>
 
       <div className="rounded-[22px] border border-emerald-950/10 bg-white p-4 shadow-[0_12px_30px_rgba(6,78,59,0.08)]">
@@ -202,18 +223,22 @@ export function UserMonthlyBills({ href = "/kategori" }: UserMonthlyBillsProps) 
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-black text-slate-950">Belum ada tagihan</p>
+            <p className="text-sm font-black text-slate-950">
+              {isAgentBill ? "Tagihan Pinjaman Agent" : "Belum ada tagihan"}
+            </p>
             <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
-              Tagihan yang kamu cek atau simpan nanti akan tampil di sini.
+              {isAgentBill
+                ? `Sisa ${formatIDR(outstanding)} dari limit ${formatIDR(approved)}.`
+                : "Tagihan yang kamu cek atau simpan nanti akan tampil di sini."}
             </p>
           </div>
 
           <Link
-            href={href}
+            href={billHref}
             prefetch={false}
             className="inline-flex h-9 shrink-0 items-center justify-center rounded-2xl bg-linear-to-r from-[#052e26] via-[#047857] to-[#a3e635] px-3 text-[11px] font-black text-white shadow-[0_10px_20px_rgba(6,78,59,0.20)] transition hover:brightness-105"
           >
-            Cek Tagihan
+            {isAgentBill ? "Bayar" : "Cek Tagihan"}
           </Link>
         </div>
       </div>

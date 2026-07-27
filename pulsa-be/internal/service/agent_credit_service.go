@@ -32,6 +32,7 @@ type AgentCreditDecisionInput struct {
 	Decision       string `json:"decision"`
 	ApprovedAmount int64  `json:"approved_amount"`
 	Note           string `json:"note"`
+	ReviewerMode   string `json:"reviewer_mode"`
 }
 
 type AgentCreditPaymentInput struct {
@@ -43,7 +44,7 @@ type AgentCreditPaymentInput struct {
 
 func isCreditReviewer(role string) bool {
 	normalized := helper.NormalizeRole(role)
-	return normalized == helper.RoleRetailMaster || normalized == helper.RoleRetailMarketing
+	return normalized == helper.RoleRetailMaster || normalized == helper.RoleRetailMarketing || normalized == helper.RoleRetailAnalyst
 }
 
 func normalizeCreditTenor(value any) int64 {
@@ -98,13 +99,21 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	in.ApplicantData["tenor_months"] = tenorMonths
 	in.ApplicantData["tenor_label"] = fmt.Sprintf("%d bulan", tenorMonths)
 	if role == helper.RoleRetailAgent {
-		in.RequestedAmount = 500000
+		profile, err := s.repo.GetMemberCreditProfile(ctx, auth.MemberID)
+		if err != nil {
+			return nil, err
+		}
+		in.RequestedAmount = profile.LimitAmount
 	}
 	if in.RequestedAmount <= 0 {
 		return nil, errors.New("nominal kredit wajib diisi")
 	}
-	if in.RequestedAmount > 500000 {
-		return nil, errors.New("nominal kredit maksimal Rp500.000")
+	limitAmount := int64(500000)
+	if profile, err := s.repo.GetMemberCreditProfile(ctx, targetMemberID); err == nil && profile != nil {
+		limitAmount = profile.LimitAmount
+	}
+	if in.RequestedAmount > limitAmount {
+		return nil, fmt.Errorf("nominal kredit maksimal Rp%d", limitAmount)
 	}
 	if role == helper.RoleRetailAgent && strings.TrimSpace(in.AgentSignature) == "" {
 		return nil, errors.New("tanda tangan wajib diisi")
@@ -145,33 +154,144 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 	}
 
 	decision := strings.TrimSpace(strings.ToLower(in.Decision))
-	status := ""
-	switch decision {
-	case "approve", "approved", "setujui":
-		status = "approved"
-	case "reject", "rejected", "tolak":
-		status = "rejected"
-	default:
-		return nil, errors.New("keputusan wajib setujui atau tolak")
-	}
-
+	role := helper.NormalizeRole(auth.Role)
+	note := strings.TrimSpace(in.Note)
+	reviewerMode := strings.TrimSpace(strings.ToLower(in.ReviewerMode))
 	approvedAmount := in.ApprovedAmount
-	if status == "approved" {
-		if approvedAmount <= 0 {
-			return nil, errors.New("nominal disetujui wajib diisi")
-		}
-		if approvedAmount > 500000 {
-			return nil, errors.New("nominal disetujui maksimal Rp500.000")
-		}
+	limitAmount, err := s.repo.GetApplicationCreditLimit(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	reviewState, err := s.repo.GetApplicationReviewState(ctx, in.ID)
+	if err != nil {
+		return nil, err
 	}
 
-	return s.repo.DecideApplication(ctx, repository.AgentCreditDecisionInput{
-		ID:             in.ID,
-		MarketingID:    auth.MemberID,
-		Status:         status,
-		ApprovedAmount: approvedAmount,
-		MarketingNote:  strings.TrimSpace(in.Note),
-	})
+	if reviewerMode == "analyst" || strings.HasPrefix(decision, "recommend_") || reviewState.Status == "submitted" || reviewState.Status == "marketing_review" || reviewState.Status == "analysis_review" {
+		return s.reviewAsAnalyst(ctx, auth, in.ID, reviewState, decision, note, approvedAmount, limitAmount)
+	}
+
+	switch role {
+	case helper.RoleRetailMarketing:
+		switch decision {
+		case "approve", "approved", "setujui", "forward", "teruskan":
+			return s.repo.MarketingReviewApplication(ctx, repository.AgentCreditDecisionInput{
+				ID:            in.ID,
+				MarketingID:   auth.MemberID,
+				Status:        "analysis_review",
+				MarketingNote: fallbackNote(note, "Dokumen lengkap, diteruskan ke analis."),
+			})
+		case "reject", "rejected", "tolak":
+			return s.repo.MarketingReviewApplication(ctx, repository.AgentCreditDecisionInput{
+				ID:            in.ID,
+				MarketingID:   auth.MemberID,
+				Status:        "rejected",
+				MarketingNote: fallbackNote(note, "Dokumen belum sesuai."),
+			})
+		default:
+			return nil, errors.New("marketing hanya bisa teruskan atau tolak")
+		}
+	case helper.RoleRetailMaster:
+		switch reviewState.Status {
+		case "submitted", "marketing_review":
+			switch decision {
+			case "approve", "approved", "setujui", "forward", "teruskan":
+				return s.repo.MarketingReviewApplication(ctx, repository.AgentCreditDecisionInput{
+					ID:            in.ID,
+					MarketingID:   auth.MemberID,
+					Status:        "analysis_review",
+					MarketingNote: fallbackNote(note, "Dokumen lengkap, diteruskan ke analis."),
+				})
+			case "reject", "rejected", "tolak":
+				return s.repo.MarketingReviewApplication(ctx, repository.AgentCreditDecisionInput{
+					ID:            in.ID,
+					MarketingID:   auth.MemberID,
+					Status:        "rejected",
+					MarketingNote: fallbackNote(note, "Dokumen belum sesuai."),
+				})
+			default:
+				return nil, errors.New("master hanya bisa teruskan ke analis atau tolak")
+			}
+		case "analysis_review":
+			return nil, errors.New("pengajuan masih menunggu persetujuan analis")
+		case "master_review", "approved", "rejected":
+		default:
+			return nil, errors.New("status pengajuan belum bisa diputuskan master")
+		}
+		status := ""
+		switch decision {
+		case "approve", "approved", "setujui":
+			status = "approved"
+		case "reject", "rejected", "tolak":
+			status = "rejected"
+		default:
+			return nil, errors.New("keputusan wajib setujui atau tolak")
+		}
+		if status == "approved" {
+			if reviewState.AnalystRecommendation != "approved" {
+				return nil, errors.New("pengajuan harus disetujui analis sebelum ACC master")
+			}
+			if approvedAmount <= 0 {
+				approvedAmount = reviewState.AnalystRecommendedAmount
+			}
+			if approvedAmount <= 0 {
+				return nil, errors.New("nominal disetujui wajib diisi")
+			}
+			if approvedAmount > limitAmount {
+				return nil, fmt.Errorf("nominal disetujui maksimal Rp%d", limitAmount)
+			}
+		}
+		return s.repo.DecideApplication(ctx, repository.AgentCreditDecisionInput{
+			ID:             in.ID,
+			MasterID:       auth.MemberID,
+			Status:         status,
+			ApprovedAmount: approvedAmount,
+			MarketingNote:  fallbackNote(note, "Keputusan final master."),
+		})
+	case helper.RoleRetailAnalyst:
+		return s.reviewAsAnalyst(ctx, auth, in.ID, reviewState, decision, note, approvedAmount, limitAmount)
+	default:
+		return nil, errors.New("role reviewer tidak valid")
+	}
+}
+
+func (s *AgentCreditService) reviewAsAnalyst(ctx context.Context, auth helper.AuthInfo, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note string, approvedAmount, limitAmount int64) (*repository.AgentCreditApplication, error) {
+	if reviewState.Status != "submitted" && reviewState.Status != "marketing_review" && reviewState.Status != "analysis_review" {
+		return nil, errors.New("pengajuan belum masuk atau sudah selesai dianalisa")
+	}
+	switch decision {
+	case "approve", "approved", "setujui", "recommend_approve":
+		if approvedAmount <= 0 {
+			approvedAmount = limitAmount
+		}
+		if approvedAmount > limitAmount {
+			return nil, fmt.Errorf("nominal rekomendasi maksimal Rp%d", limitAmount)
+		}
+		return s.repo.AnalystReviewApplication(ctx, repository.AgentCreditDecisionInput{
+			ID:             applicationID,
+			AnalystID:      auth.MemberID,
+			ApprovedAmount: approvedAmount,
+			AnalystNote:    fallbackNote(note, "Agent layak dengan risiko terkendali."),
+			Recommendation: "approved",
+		})
+	case "reject", "rejected", "tolak", "recommend_reject":
+		return s.repo.AnalystReviewApplication(ctx, repository.AgentCreditDecisionInput{
+			ID:             applicationID,
+			AnalystID:      auth.MemberID,
+			ApprovedAmount: 0,
+			AnalystNote:    fallbackNote(note, "Risiko belum memenuhi kriteria."),
+			Recommendation: "rejected",
+		})
+	default:
+		return nil, errors.New("analis hanya bisa rekomendasikan setuju atau tolak")
+	}
+}
+
+func fallbackNote(note, fallback string) string {
+	if strings.TrimSpace(note) != "" {
+		return strings.TrimSpace(note)
+	}
+	return fallback
 }
 
 func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.AuthInfo, in AgentCreditPaymentInput) error {

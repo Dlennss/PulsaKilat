@@ -12,6 +12,10 @@ function pickCategory(categories: UserCategoryItem[], keyword: string) {
   return categories.find((item) => item.aktif && normalizeName(item.nama).includes(keyword));
 }
 
+function pickEwalletCategory(categories: UserCategoryItem[]) {
+  return pickCategory(categories, "e-wallet") ?? pickCategory(categories, "e-money");
+}
+
 function pickBrand(brands: UserBrandItem[], patterns: string[]) {
   return brands.find((brand) => {
     const normalized = normalizeName(brand.nama);
@@ -31,6 +35,10 @@ function getEwalletImageSrc(key: string) {
       return "/images/ewallet/logo_linkaja.png";
     case "ovo":
       return "/images/ewallet/logo_ovo.png";
+    case "astrapay":
+      return "/images/ewallet/logo_astrapay.svg";
+    case "isaku":
+      return "/images/ewallet/logo_isaku.svg";
     default:
       return "";
   }
@@ -38,7 +46,7 @@ function getEwalletImageSrc(key: string) {
 
 export default async function UserEwalletPage() {
   const categories = (await getCategories()) as UserCategoryItem[];
-  const ewalletCategory = pickCategory(categories, "e-money");
+  const ewalletCategory = pickEwalletCategory(categories);
   const brands = ewalletCategory ? await getBrandsByKategori(String(ewalletCategory.id)) : [];
 
   const cards = [
@@ -47,6 +55,8 @@ export default async function UserEwalletPage() {
     { key: "shopeepay", title: "ShopeePay", brand: pickBrand(brands, ["shopeepay", "shopee pay"]) },
     { key: "linkaja", title: "LinkAja", brand: pickBrand(brands, ["linkaja", "link aja"]) },
     { key: "ovo", title: "OVO", brand: pickBrand(brands, ["ovo"]) },
+    { key: "astrapay", title: "AstraPay", brand: pickBrand(brands, ["astrapay", "astra pay"]) },
+    { key: "isaku", title: "i.saku", brand: pickBrand(brands, ["i.saku", "isaku"]) },
   ].filter((item) => item.brand) as Array<{ key: string; title: string; brand: UserBrandItem }>;
 
   return (

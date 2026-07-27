@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
+import { getMyAgentCreditApplications } from "@/lib/api.auth";
 import { getCategories } from "@/lib/api.products";
 import type { UserCategoryItem, UserSession } from "@/components/user/types";
 import { UserCategoryGrid } from "@/components/user/UserCategoryGrid";
@@ -18,6 +19,9 @@ type SessionShape = {
 export default async function UserAppHomePage() {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
   const categories = (await getCategories()) as UserCategoryItem[];
+  const role = String(session?.user?.role || "").trim().toLowerCase();
+  const isAgent = role === "agent";
+  const agentBills = isAgent && session?.backendToken ? await getMyAgentCreditApplications(session.backendToken) : [];
 
   return (
     <main className="bg-sky-50">
@@ -29,7 +33,11 @@ export default async function UserAppHomePage() {
         </Suspense>
         <UserRecentActivity href="/user/kategori" />
         <UserFavoriteTransactions href="/user/kategori" />
-        <UserMonthlyBills href="/user/listrik/tagihan" />
+        <UserMonthlyBills
+          href="/user/listrik/tagihan"
+          variant={isAgent ? "agent" : "user"}
+          agentBills={agentBills}
+        />
       </div>
 
       <UserBottomNav />

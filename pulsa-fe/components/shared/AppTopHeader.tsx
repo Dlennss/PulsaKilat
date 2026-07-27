@@ -45,7 +45,7 @@ export function AppTopHeader({ isLoggedIn = false, userName, saldo, role }: AppT
 
         <div className="flex items-center gap-2">
           <a
-            href="https://wa.me/6282219107558"
+            href="#"
             target="_blank"
             rel="noreferrer"
             className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10 text-lime-100 shadow-sm transition hover:bg-white/18"
@@ -53,15 +53,6 @@ export function AppTopHeader({ isLoggedIn = false, userName, saldo, role }: AppT
           >
             <Headset className="h-4 w-4" />
           </a>
-          <Link
-            href={isLoggedIn ? "/user/account" : "/login"}
-            prefetch={false}
-            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl bg-linear-to-r from-[#a3e635] to-[#22c55e] px-3.5 text-xs font-black text-[#052e26] shadow-[0_10px_22px_rgba(163,230,53,0.24)] transition hover:brightness-105"
-            style={{ color: "#ffffff" }}
-          >
-            <Zap className="h-3.5 w-3.5 fill-[#052e26] text-[#052e26]" />
-            <span className="text-[#052e26]">{isRetailLoggedIn ? "Akun" : isLoggedIn ? "Panel" : "Masuk"}</span>
-          </Link>
         </div>
       </div>
     </header>

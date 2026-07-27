@@ -219,7 +219,6 @@ export function UserCheckoutModal({
   const [checkingStatus, setCheckingStatus] = React.useState(false);
   const [order, setOrder] = React.useState<UserAppOrder | null>(null);
   const [payment, setPayment] = React.useState<UserAppOrderPayment | null>(null);
-  const [copiedInvoice, setCopiedInvoice] = React.useState(false);
   const [retailSaldo, setRetailSaldo] = React.useState<number | null>(null);
   const [guestTurnstileToken, setGuestTurnstileToken] = React.useState("");
   const [waitingTurnstile, setWaitingTurnstile] = React.useState(false);
@@ -247,7 +246,6 @@ export function UserCheckoutModal({
     setLoading(false);
     setOrder(null);
     setPayment(null);
-    setCopiedInvoice(false);
     setRetailSaldo(null);
     setGuestTurnstileToken("");
     setWaitingTurnstile(false);
@@ -350,7 +348,6 @@ export function UserCheckoutModal({
   const walletSaldo = Math.max(0, retailSaldo || 0);
   const estimatedWalletDebit = effectiveAuthToken ? Math.min(hargaSebelumFeeAdmin, walletSaldo) : 0;
   const estimatedQrisBaseAmount = Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0);
-  const canPayFullyWithWalletPreview = hargaSebelumFeeAdmin > 0 && estimatedQrisBaseAmount === 0;
   const feeAdminQris = estimatedQrisBaseAmount > 0 ? calcQrisAdminFee(estimatedQrisBaseAmount) : 0;
   const estimatedQrisAmount = estimatedQrisBaseAmount > 0 ? estimatedQrisBaseAmount + feeAdminQris : 0;
   const totalBayar = estimatedWalletDebit + estimatedQrisAmount;
@@ -797,8 +794,8 @@ export function UserCheckoutModal({
 
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/40">
-      <div className="absolute inset-x-0 bottom-0 left-1/2 max-h-[92vh] w-full max-w-md -translate-x-1/2 overflow-y-auto rounded-t-[28px] bg-white p-5 shadow-[0_18px_46px_rgba(15,23,42,0.24)] md:w-97.5 md:max-w-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/40 px-4 py-6">
+      <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-[28px] bg-white p-5 shadow-[0_18px_46px_rgba(15,23,42,0.24)] md:w-97.5 md:max-w-none">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Checkout</p>
@@ -1158,7 +1155,7 @@ export function UserCheckoutModal({
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-[#0f6fcb] to-[#2f92df] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(15,111,203,0.24)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-[#052e26] px-11 text-xs font-black text-white shadow-[0_10px_20px_rgba(5,46,38,0.18)] transition group-hover:bg-[#047857]"
             >
               {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
               {loading ? "Memproses..." : "Bayar"}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
@@ -17,7 +18,6 @@ import {
   Upload,
   UserRound,
   UsersRound,
-  WalletCards,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -59,6 +59,28 @@ function Field({ name, label, placeholder, defaultValue = "", className = "", te
           className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#047857] focus:ring-4 focus:ring-emerald-100"
         />
       )}
+    </label>
+  );
+}
+
+function SelectField({ name, label, defaultValue = "", className = "", options }: { name: string; label: string; defaultValue?: string; className?: string; options: string[] }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="text-[10px] font-black text-slate-950">{label}</span>
+      <select
+        name={name}
+        defaultValue={defaultValue}
+        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-[#047857] focus:ring-4 focus:ring-emerald-100"
+      >
+        <option value="" disabled>
+          Pilih hubungan
+        </option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
@@ -280,14 +302,28 @@ function getApplicationNotice(application?: AgentCreditApplication) {
     case "marketing_review":
       return {
         title: "Sedang dicek",
-        desc: "Marketing sedang mengecek data dan tanda tangan agent.",
+        desc: "Master sedang mengecek data dan tanda tangan agent.",
         className: "border-amber-200 bg-amber-50 text-amber-700",
+        icon: SearchCheck,
+      };
+    case "analysis_review":
+      return {
+        title: "Sedang dianalisa",
+        desc: "Analis sedang menilai kelayakan pengajuan sebelum masuk ke master.",
+        className: "border-sky-200 bg-sky-50 text-sky-700",
+        icon: SearchCheck,
+      };
+    case "master_review":
+      return {
+        title: "Menunggu keputusan master",
+        desc: "Analis sudah memberi rekomendasi. Master akan menentukan keputusan akhir.",
+        className: "border-sky-200 bg-sky-50 text-sky-700",
         icon: SearchCheck,
       };
     case "submitted":
       return {
         title: "Pengajuan dikirim",
-        desc: "Menunggu Marketing mengecek tanda tangan dan data agent.",
+        desc: "Menunggu analis mengecek kelayakan pengajuan agent.",
         className: "border-amber-200 bg-amber-50 text-amber-700",
         icon: SearchCheck,
       };
@@ -300,12 +336,20 @@ function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
-const fixedCreditAmount = 500000;
+const defaultCreditAmount = 500000;
 const tenorOptions = [
   { months: 3, label: "3 Bulan" },
   { months: 6, label: "6 Bulan" },
   { months: 12, label: "12 Bulan" },
 ];
+
+const levelBadgeByCode: Record<string, string> = {
+  start: "/agent-levels/kilat-start-badge.png",
+  plus: "/agent-levels/kilat-plus-badge.png",
+  pro: "/agent-levels/kilat-pro-badge.png",
+  max: "/agent-levels/kilat-max-badge.png",
+  elite: "/agent-levels/kilat-elite-badge.png",
+};
 
 export function UserAgentCreditPageContent({ name, email, phone, initialApplications = [] }: UserAgentCreditPageContentProps) {
   const [agreed, setAgreed] = useState(false);
@@ -317,15 +361,20 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
   const [error, setError] = useState("");
   const notice = getApplicationNotice(latestApplication);
   const NoticeIcon = notice?.icon;
-  const hasOpenApplication = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review";
+  const hasOpenApplication = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review" || latestApplication?.status === "analysis_review" || latestApplication?.status === "master_review";
   const isApproved = latestApplication?.status === "approved";
+  const creditLevelCode = String(latestApplication?.credit_level_code || "start").trim().toLowerCase();
+  const creditLevelName = latestApplication?.credit_level_name || "Kilat Start";
+  const creditLevelImage = levelBadgeByCode[creditLevelCode] || levelBadgeByCode.start;
+  const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
+  const creditLimitAmount = Number(latestApplication?.credit_limit_amount || defaultCreditAmount);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!agreed || !signatureReady || !signatureData || submitting) return;
 
     const form = new FormData(event.currentTarget);
-    const requestedAmount = fixedCreditAmount;
+    const requestedAmount = creditLimitAmount;
     setSubmitting(true);
     setError("");
     try {
@@ -349,7 +398,6 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             nik: String(form.get("nik") || ""),
             whatsapp: String(form.get("whatsapp") || ""),
             email: String(form.get("email") || ""),
-            monthly_transactions: String(form.get("monthly_transactions") || ""),
             home_address: String(form.get("home_address") || ""),
             store_address: String(form.get("store_address") || ""),
             family_name: String(form.get("family_name") || ""),
@@ -390,9 +438,19 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             <h1 className="truncate text-lg font-black tracking-tight">Kredit Saldo Agent</h1>
             <p className="mt-0.5 truncate text-[11px] font-semibold text-white/75">Ajukan limit saldo untuk operasional</p>
           </div>
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#047857]">
-            <WalletCards className="h-5 w-5" strokeWidth={2.4} />
-          </span>
+          <Link
+            href="/user/saldo/kredit-agent/level"
+            className="flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-white px-2.5 text-[#047857] shadow-[0_10px_22px_rgba(0,0,0,0.08)]"
+            aria-label={`Lihat level ${creditLevelName}`}
+          >
+            <span className="relative h-9 w-9 shrink-0">
+              <Image src={creditLevelImage} alt={creditLevelName} fill sizes="36px" className="object-contain" />
+            </span>
+            <span className="hidden min-w-0 text-left min-[380px]:block">
+              <span className="block text-[9px] font-black leading-3 text-slate-400">Level</span>
+              <span className="block max-w-[72px] truncate text-[10px] font-black leading-3 text-[#047857]">{levelSubtitle}</span>
+            </span>
+          </Link>
         </div>
       </section>
 
@@ -414,14 +472,15 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             <Field name="nik" label="NIK" placeholder="16 digit NIK" />
             <Field name="whatsapp" label="Nomor WA" placeholder="08xxxxxxxxxx" defaultValue={phone !== "-" ? phone : ""} />
             <Field name="email" label="Email" placeholder="email@domain.com" defaultValue={email !== "-" ? email : ""} />
-            <Field name="monthly_transactions" label="Transaksi/Bulan" placeholder="Contoh: 150 transaksi" />
             <Field name="home_address" label="Alamat Rumah" placeholder="Alamat lengkap rumah" textarea className="sm:col-span-2" />
             <Field name="store_address" label="Alamat Toko" placeholder="Alamat lengkap toko" textarea className="sm:col-span-2" />
             <div className="rounded-[22px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)] p-4 sm:col-span-2">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Nominal Kredit Saldo</p>
-              <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(fixedCreditAmount)}</p>
-              <p className="mt-1 text-[10px] font-semibold text-slate-400">Nominal pinjaman agent dikunci dan tidak bisa diubah.</p>
-              <input type="hidden" name="requested_amount" value={fixedCreditAmount} />
+              <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(creditLimitAmount)}</p>
+              <p className="mt-1 text-[10px] font-semibold text-slate-400">
+                Limit mengikuti level agent dan naik setelah tagihan lunas tepat waktu.
+              </p>
+              <input type="hidden" name="requested_amount" value={creditLimitAmount} />
             </div>
             <div className="sm:col-span-2">
               <p className="text-[10px] font-black text-slate-950">Pilih Tenor Cicilan</p>
@@ -442,7 +501,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
                         className="sr-only"
                       />
                       <span className="block text-sm font-black text-slate-950">{item.label}</span>
-                      <span className="mt-1 block text-[10px] font-bold text-slate-500">{formatIDR(Math.ceil(fixedCreditAmount / item.months))}/bln</span>
+                      <span className="mt-1 block text-[10px] font-bold text-slate-500">{formatIDR(Math.ceil(creditLimitAmount / item.months))}/bln</span>
                     </label>
                   );
                 })}
@@ -465,7 +524,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field name="family_name" label="Nama" placeholder="Nama keluarga" />
             <Field name="family_whatsapp" label="Nomor WA" placeholder="08xxxxxxxxxx" />
-            <Field name="family_relation" label="Hubungan" placeholder="Orang tua / saudara" />
+            <SelectField name="family_relation" label="Hubungan" options={["Orang tua", "Saudara", "Pasangan", "Anak", "Kerabat"]} />
             <Field name="family_address" label="Alamat" placeholder="Alamat keluarga yang dapat dihubungi" textarea className="sm:col-span-2" />
           </div>
         </section>
@@ -522,7 +581,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             </span>
             <div>
               <h2 className="text-lg font-black text-slate-950">Tanda Tangan & Persetujuan</h2>
-              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Agent tanda tangan, lalu Marketing mengecek dan memberi persetujuan.</p>
+              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Agent tanda tangan, lalu analis mengecek sebelum master memberi persetujuan final.</p>
             </div>
           </div>
 

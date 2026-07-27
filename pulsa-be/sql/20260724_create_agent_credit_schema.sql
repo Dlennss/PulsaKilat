@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.agent_credit_application (
   approved_amount BIGINT NOT NULL DEFAULT 0 CHECK (approved_amount >= 0),
   rank_id BIGINT REFERENCES public.agent_credit_rank(id) ON DELETE SET NULL,
   status TEXT NOT NULL DEFAULT 'submitted' CHECK (
-    status IN ('draft', 'submitted', 'marketing_review', 'approved', 'rejected', 'cancelled')
+    status IN ('draft', 'submitted', 'analysis_review', 'master_review', 'marketing_review', 'approved', 'rejected', 'cancelled')
   ),
   applicant_data JSONB NOT NULL DEFAULT '{}'::jsonb,
   document_data JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -48,6 +48,11 @@ CREATE TABLE IF NOT EXISTS public.agent_credit_application (
   marketing_user_id BIGINT REFERENCES public.member(id) ON DELETE SET NULL,
   marketing_reviewed_at TIMESTAMPTZ,
   marketing_note TEXT NOT NULL DEFAULT '',
+  analyst_user_id BIGINT REFERENCES public.member(id) ON DELETE SET NULL,
+  analyst_reviewed_at TIMESTAMPTZ,
+  analyst_note TEXT NOT NULL DEFAULT '',
+  analyst_recommendation TEXT NOT NULL DEFAULT '',
+  analyst_recommended_amount BIGINT NOT NULL DEFAULT 0 CHECK (analyst_recommended_amount >= 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

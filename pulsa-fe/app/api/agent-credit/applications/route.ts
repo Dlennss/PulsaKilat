@@ -10,7 +10,8 @@ const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE |
 
 async function proxy(path: string, method: "GET" | "POST", req?: Request) {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
-  const token = String(session?.backendToken || "").trim();
+  const incomingAuthorization = String(req?.headers.get("authorization") || "").trim();
+  const token = incomingAuthorization || (session?.backendToken ? `Bearer ${session.backendToken}` : "");
   if (!token) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
@@ -19,7 +20,7 @@ async function proxy(path: string, method: "GET" | "POST", req?: Request) {
   const res = await fetch(`${apiBase()}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: token,
       "Content-Type": "application/json",
     },
     body,
@@ -32,8 +33,8 @@ async function proxy(path: string, method: "GET" | "POST", req?: Request) {
   });
 }
 
-export async function GET() {
-  return proxy("/v1/master/agent-credit/applications", "GET");
+export async function GET(req: Request) {
+  return proxy("/v1/master/agent-credit/applications", "GET", req);
 }
 
 export async function POST(req: Request) {

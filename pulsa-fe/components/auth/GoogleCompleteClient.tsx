@@ -48,7 +48,9 @@ function toDashboardByRole(role?: string | null, fallbackNext?: string) {
   if (next.startsWith("/")) return next;
   const r = (role || "").toLowerCase();
   if (r === "admin" || r === "staff") return "/dashboard/admin";
-  if (r === "user" || r === "agent" || r === "master") return "/user";
+  if (r === "analis" || r === "analyst") return "/dashboard/master/analis";
+  if (r === "master" || r === "marketing") return "/dashboard/master";
+  if (r === "user" || r === "agent") return "/user";
   if (r === "operator_trx") return "/dashboard/operator";
   if (r === "operator_wallet") return "/dashboard/wallet";
   return "/dashboard/member";

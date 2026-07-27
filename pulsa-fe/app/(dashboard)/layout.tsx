@@ -10,7 +10,7 @@ import { SidebarDesktop } from "@/components/dashboard/SidebarDesktop";
 import { SidebarMobile } from "@/components/dashboard/SidebarMobile";
 import { adminNavSections, auditorNavSections, getMemberNavSections, masterNavSections, operatorNavSections, staffNavSections, walletNavSections, type H2HRole } from "@/components/dashboard/nav";
 
-type AppRole = "admin" | "staff" | "auditor" | "member" | "agent_member" | "master_member" | "operator_trx" | "operator_wallet" | "user" | "agent" | "master" | "marketing";
+type AppRole = "admin" | "staff" | "auditor" | "member" | "agent_member" | "master_member" | "operator_trx" | "operator_wallet" | "user" | "agent" | "master" | "marketing" | "analis";
 
 const staffBlockedAdminPrefixes = [
   "/dashboard/admin/master/members",
@@ -23,6 +23,7 @@ function targetPathByRole(role: AppRole): string {
   if (role === "admin" || role === "staff") return "/dashboard/admin";
   if (role === "auditor") return "/dashboard/auditor";
   if (role === "member" || role === "agent_member" || role === "master_member") return "/dashboard/member";
+  if (role === "analis") return "/dashboard/master/analis";
   if (role === "master" || role === "marketing") return "/dashboard/master";
   if (role === "operator_trx") return "/dashboard/operator";
   if (role === "operator_wallet") return "/dashboard/wallet";
@@ -51,7 +52,9 @@ function normalizeAppRole(role?: string): AppRole {
                   ? "master"
                   : rawRole === "marketing"
                     ? "marketing"
-                    : rawRole === "operator_trx"
+                    : rawRole === "analis" || rawRole === "analyst"
+                      ? "analis"
+                      : rawRole === "operator_trx"
                       ? "operator_trx"
                       : rawRole === "operator_wallet"
                         ? "operator_wallet"
@@ -107,6 +110,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     void (async () => {
+      setReady(false);
       const token = localStorage.getItem("auth_token") || "";
       if (!token) {
         forceLogoutToLogin();
@@ -178,8 +182,8 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
         return;
       }
 
-      if ((normalizedRole === "master" || normalizedRole === "marketing") && !inMasterArea) {
-        router.replace("/dashboard/master");
+      if ((normalizedRole === "master" || normalizedRole === "marketing" || normalizedRole === "analis") && !inMasterArea) {
+        router.replace(normalizedRole === "analis" ? "/dashboard/master/analis" : "/dashboard/master");
         return;
       }
 

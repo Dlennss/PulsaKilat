@@ -11,6 +11,7 @@ type Props = {
 
 export function NavItem({ href, label, onClick }: Props) {
   const pathname = usePathname();
+  const hrefPath = href.split("?")[0] || href;
   const exactOnlyHrefs = new Set([
     "/dashboard/admin",
     "/dashboard/member",
@@ -18,7 +19,7 @@ export function NavItem({ href, label, onClick }: Props) {
     "/dashboard/wallet",
     "/dashboard/master",
   ]);
-  const active = exactOnlyHrefs.has(href) ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+  const active = exactOnlyHrefs.has(hrefPath) ? pathname === hrefPath : pathname === hrefPath || pathname.startsWith(hrefPath + "/");
 
   return (
     <Link
