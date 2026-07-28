@@ -222,7 +222,7 @@ export default function TrxMemberStatusLogsPage({ mode, manualOnly = false }: Pr
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const title = manualOnly

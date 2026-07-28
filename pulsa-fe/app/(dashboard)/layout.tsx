@@ -19,11 +19,26 @@ const staffBlockedAdminPrefixes = [
   "/dashboard/admin/komisi/pengaturan",
 ];
 
+const masterOnlyPrefixes = [
+  "/dashboard/master/akun-agent",
+  "/dashboard/master/tambah-agent",
+];
+
+function filterMasterNavForRole(role: AppRole | null) {
+  if (role === "master") return masterNavSections;
+  return masterNavSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !masterOnlyPrefixes.some((prefix) => item.href === prefix || item.href.startsWith(`${prefix}/`))),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
 function targetPathByRole(role: AppRole): string {
   if (role === "admin" || role === "staff") return "/dashboard/admin";
   if (role === "auditor") return "/dashboard/auditor";
   if (role === "member" || role === "agent_member" || role === "master_member") return "/dashboard/member";
-  if (role === "analis") return "/dashboard/master/analis";
+  if (role === "analis") return "/dashboard/master";
   if (role === "master" || role === "marketing") return "/dashboard/master";
   if (role === "operator_trx") return "/dashboard/operator";
   if (role === "operator_wallet") return "/dashboard/wallet";
@@ -183,7 +198,15 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
       }
 
       if ((normalizedRole === "master" || normalizedRole === "marketing" || normalizedRole === "analis") && !inMasterArea) {
-        router.replace(normalizedRole === "analis" ? "/dashboard/master/analis" : "/dashboard/master");
+        router.replace("/dashboard/master");
+        return;
+      }
+
+      if (
+        normalizedRole !== "master" &&
+        masterOnlyPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+      ) {
+        router.replace(targetPathByRole(normalizedRole));
         return;
       }
 
@@ -207,7 +230,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
     if (pathname.startsWith("/dashboard/auditor")) return auditorNavSections;
     if (pathname.startsWith("/dashboard/operator")) return operatorNavSections;
     if (pathname.startsWith("/dashboard/wallet")) return walletNavSections;
-    if (pathname.startsWith("/dashboard/master")) return masterNavSections;
+    if (pathname.startsWith("/dashboard/master")) return filterMasterNavForRole(currentRole);
     const h2hRole: H2HRole =
       currentRole === "agent_member" || currentRole === "master_member" ? currentRole : "member";
     return getMemberNavSections(h2hRole);

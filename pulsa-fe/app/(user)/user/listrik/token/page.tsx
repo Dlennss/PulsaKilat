@@ -3,6 +3,8 @@ import type { UserBrandItem, UserCategoryItem, UserProductItem } from "@/compone
 import { GuestElectricityEntryFlow } from "@/components/guest/GuestElectricityEntryFlow";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 
+export const dynamic = "force-dynamic";
+
 function normalizeName(value: string) {
   return value.trim().toLowerCase();
 }

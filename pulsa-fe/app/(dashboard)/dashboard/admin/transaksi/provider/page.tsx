@@ -260,7 +260,7 @@ export default function ProviderTrxPage() {
 
   useEffect(() => {
     load(offset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [offset]);
 
   async function loadProviders() {

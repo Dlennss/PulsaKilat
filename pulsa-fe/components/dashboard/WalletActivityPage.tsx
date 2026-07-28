@@ -157,13 +157,13 @@ export default function WalletActivityPage({
 
   useEffect(() => {
     void loadActors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {
     if (!actorID) return;
     void load(actorID);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [actorID]);
 
   const actorName = actors.find((x) => String(x.id) === actorID);

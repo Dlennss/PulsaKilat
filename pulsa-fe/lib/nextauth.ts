@@ -34,11 +34,19 @@ function isGoogleLoginEnabled() {
   return String(process.env.GOOGLE_LOGIN_ENABLED ?? "true").toLowerCase() === "true";
 }
 
-function isGoogleProviderConfigured() {
-  return Boolean((process.env.GOOGLE_CLIENT_ID || "").trim() && (process.env.GOOGLE_CLIENT_SECRET || "").trim());
+function googleClientID() {
+  return (process.env.GOOGLE_CLIENT_ID || process.env.AUTH_GOOGLE_ID || "").trim();
 }
 
-const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8081";
+function googleClientSecret() {
+  return (process.env.GOOGLE_CLIENT_SECRET || process.env.AUTH_GOOGLE_SECRET || "").trim();
+}
+
+function isGoogleProviderConfigured() {
+  return Boolean(googleClientID() && googleClientSecret());
+}
+
+const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8080";
 
 async function syncGoogleToBackend(email: string, nama: string, googleID: string, idToken: string): Promise<BackendGoogleLoginResp> {
   const r = await fetch(`${apiBase()}/v1/auth/google`, {
@@ -117,8 +125,8 @@ const providers: NextAuthOptions["providers"] = [
 if (isGoogleLoginEnabled() && isGoogleProviderConfigured()) {
   providers.push(
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      clientId: googleClientID(),
+      clientSecret: googleClientSecret(),
       httpOptions: {
         timeout: 15000,
       },

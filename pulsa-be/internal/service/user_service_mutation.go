@@ -75,6 +75,7 @@ func (s *UserService) Create(ctx context.Context, email, nama, password, pin, ro
 func (s *UserService) Update(ctx context.Context, in repository.UserUpdateInput, newPassword, newPin string) error {
 	in.Email = strings.TrimSpace(strings.ToLower(in.Email))
 	in.Nama = strings.TrimSpace(in.Nama)
+	in.Phone = normalizeMemberPhone(in.Phone)
 	in.Role = helper.NormalizeRole(in.Role)
 	newPassword = strings.TrimSpace(newPassword)
 	newPin = strings.TrimSpace(newPin)

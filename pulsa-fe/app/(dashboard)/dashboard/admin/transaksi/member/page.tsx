@@ -533,13 +533,13 @@ export default function AdminAllTransaksiMemberPage() {
     loadProduk();
     load(0);
     didInitLoadRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {
     if (!didInitLoadRef.current) return;
     void load(offset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [offset, pageSize]);
 
   const visibleSelectableRows = useMemo(() => rows.filter((row) => {

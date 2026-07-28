@@ -23,16 +23,21 @@ function formatIDR(value: number) {
 export default async function MasterDashboardPage() {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
   const applications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
-  const masterItems = applications.filter((item) => item.status === "master_review" || item.status === "approved" || item.status === "rejected");
+  const masterItems = applications.filter((item) => {
+    if (item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review") return true;
+    if (item.status !== "approved") return false;
+    const loanStatus = String(item.loan_status || "").toLowerCase();
+    return loanStatus === "active" || loanStatus === "overdue" || Number(item.outstanding_amount || 0) > 0;
+  });
   const role = String(session?.user?.role || "").trim().toLowerCase();
   const reviewMode = role === "marketing" ? "marketing" : "master";
-  const waiting = masterItems.filter((item) => item.status === "master_review").length;
+  const waiting = masterItems.filter((item) => item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review").length;
   const approved = masterItems.filter((item) => item.status === "approved").length;
   const activeLimit = masterItems.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
   const stats = [
-    { label: "Total Pengajuan", value: String(masterItems.length), hint: masterItems.length ? "Sudah dari analis" : "Belum ada data", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
-    { label: "Perlu Dicek", value: String(waiting), hint: "Menunggu ACC master", icon: Clock3, tone: "from-amber-400 to-orange-500" },
-    { label: "Disetujui", value: String(approved), hint: approved ? "Sudah ACC" : "Belum ada ACC", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
+    { label: "Total Data", value: String(masterItems.length), hint: masterItems.length ? "Masuk panel master" : "Belum ada data", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
+    { label: "Perlu ACC", value: String(waiting), hint: "Menunggu keputusan master", icon: Clock3, tone: "from-amber-400 to-orange-500" },
+    { label: "Disetujui", value: String(approved), hint: approved ? "ACC master final" : "Belum ada ACC", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
     { label: "Limit Aktif", value: formatIDR(activeLimit), hint: activeLimit ? "Berjalan" : "Belum berjalan", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
   ];
 
@@ -49,9 +54,9 @@ export default async function MasterDashboardPage() {
                   <Sparkles className="h-3.5 w-3.5" />
                   Panel Master
                 </p>
-                <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Review Kredit Saldo Agent</h1>
+                <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Data Kredit Saldo Agent</h1>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-emerald-50/90 sm:text-base">
-                  Pantau rekomendasi analis dan berikan ACC final master sebelum pinjaman agent dicairkan.
+                  Review pengajuan kredit saldo agent, lalu setujui atau tolak langsung dari panel master.
                 </p>
               </div>
               <div className="rounded-3xl border border-white/20 bg-white/12 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur">

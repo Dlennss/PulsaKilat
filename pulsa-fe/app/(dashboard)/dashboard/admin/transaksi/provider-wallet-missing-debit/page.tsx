@@ -406,7 +406,7 @@ export default function AdminProviderWalletMissingDebitPage() {
   useEffect(() => {
     void loadProviders();
     void load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   async function resolveMissingDebit(row: AuditRow) {

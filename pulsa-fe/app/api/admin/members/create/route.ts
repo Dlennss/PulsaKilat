@@ -4,6 +4,7 @@ import { requireApiBase, forwardAuth } from "@/lib/adminApi";
 type RegisterReq = {
   email: string;
   nama: string;
+  phone?: string;
   password: string;
   pin?: string;
   role?: string;
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
   const beBody = JSON.stringify({
     email: payload.email,
     nama: payload.nama,
+    phone: payload.phone,
     password: payload.password,
     pin: payload.pin,
     role: payload.role || "member",

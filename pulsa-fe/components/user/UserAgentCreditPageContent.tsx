@@ -293,6 +293,20 @@ function getApplicationNotice(application?: AgentCreditApplication) {
         icon: BadgeCheck,
       };
     case "rejected":
+    case "analysis_rejected":
+    case "master_rejected":
+      {
+        const rejectedByAnalyst = application.status === "analysis_rejected";
+        const rejectedByMaster = application.status === "master_rejected" || application.status === "rejected";
+        const note = rejectedByAnalyst ? application.analyst_note : application.marketing_note;
+        return {
+          title: rejectedByAnalyst ? "Pengajuan ditolak" : rejectedByMaster ? "Ditolak master" : "Pengajuan ditolak",
+          desc: note || "Data belum sesuai. Perbaiki data dan ajukan ulang.",
+          className: "border-rose-200 bg-rose-50 text-rose-600",
+          icon: XCircle,
+        };
+      }
+    case "legacy_rejected":
       return {
         title: "Pengajuan ditolak",
         desc: application.marketing_note || "Data belum sesuai. Silakan perbaiki data dan ajukan kembali.",
@@ -308,22 +322,22 @@ function getApplicationNotice(application?: AgentCreditApplication) {
       };
     case "analysis_review":
       return {
-        title: "Sedang dianalisa",
-        desc: "Analis sedang menilai kelayakan pengajuan sebelum masuk ke master.",
+        title: "Sedang dicek",
+        desc: "Master sedang mengecek data pengajuan.",
         className: "border-sky-200 bg-sky-50 text-sky-700",
         icon: SearchCheck,
       };
     case "master_review":
       return {
-        title: "Menunggu keputusan master",
-        desc: "Analis sudah memberi rekomendasi. Master akan menentukan keputusan akhir.",
+        title: "Sedang diproses",
+        desc: "Master sedang menentukan keputusan akhir.",
         className: "border-sky-200 bg-sky-50 text-sky-700",
         icon: SearchCheck,
       };
     case "submitted":
       return {
         title: "Pengajuan dikirim",
-        desc: "Menunggu analis mengecek kelayakan pengajuan agent.",
+        desc: "Menunggu master mengecek pengajuan agent.",
         className: "border-amber-200 bg-amber-50 text-amber-700",
         icon: SearchCheck,
       };
@@ -363,11 +377,17 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
   const NoticeIcon = notice?.icon;
   const hasOpenApplication = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review" || latestApplication?.status === "analysis_review" || latestApplication?.status === "master_review";
   const isApproved = latestApplication?.status === "approved";
+  const canReapply = latestApplication?.status === "rejected" || latestApplication?.status === "analysis_rejected" || latestApplication?.status === "master_rejected";
   const creditLevelCode = String(latestApplication?.credit_level_code || "start").trim().toLowerCase();
   const creditLevelName = latestApplication?.credit_level_name || "Kilat Start";
   const creditLevelImage = levelBadgeByCode[creditLevelCode] || levelBadgeByCode.start;
   const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
   const creditLimitAmount = Number(latestApplication?.credit_limit_amount || defaultCreditAmount);
+  const applicantDefaults = latestApplication?.applicant_data || {};
+  const applicantText = (key: string, fallback = "") => {
+    const value = applicantDefaults[key];
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  };
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -467,13 +487,13 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field name="agent_name" label="Nama Agent" placeholder="Nama agent" defaultValue={name} />
-            <Field name="store_name" label="Nama Toko" placeholder="Nama toko/usaha" />
-            <Field name="nik" label="NIK" placeholder="16 digit NIK" />
-            <Field name="whatsapp" label="Nomor WA" placeholder="08xxxxxxxxxx" defaultValue={phone !== "-" ? phone : ""} />
-            <Field name="email" label="Email" placeholder="email@domain.com" defaultValue={email !== "-" ? email : ""} />
-            <Field name="home_address" label="Alamat Rumah" placeholder="Alamat lengkap rumah" textarea className="sm:col-span-2" />
-            <Field name="store_address" label="Alamat Toko" placeholder="Alamat lengkap toko" textarea className="sm:col-span-2" />
+            <Field name="agent_name" label="Nama Agent" placeholder="Nama agent" defaultValue={applicantText("agent_name", name)} />
+            <Field name="store_name" label="Nama Toko" placeholder="Nama toko/usaha" defaultValue={applicantText("store_name")} />
+            <Field name="nik" label="NIK" placeholder="16 digit NIK" defaultValue={applicantText("nik")} />
+            <Field name="whatsapp" label="Nomor WA" placeholder="08xxxxxxxxxx" defaultValue={applicantText("whatsapp", phone !== "-" ? phone : "")} />
+            <Field name="email" label="Email" placeholder="email@domain.com" defaultValue={applicantText("email", email !== "-" ? email : "")} />
+            <Field name="home_address" label="Alamat Rumah" placeholder="Alamat lengkap rumah" defaultValue={applicantText("home_address")} textarea className="sm:col-span-2" />
+            <Field name="store_address" label="Alamat Toko" placeholder="Alamat lengkap toko" defaultValue={applicantText("store_address")} textarea className="sm:col-span-2" />
             <div className="rounded-[22px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)] p-4 sm:col-span-2">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Nominal Kredit Saldo</p>
               <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(creditLimitAmount)}</p>
@@ -522,10 +542,10 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field name="family_name" label="Nama" placeholder="Nama keluarga" />
-            <Field name="family_whatsapp" label="Nomor WA" placeholder="08xxxxxxxxxx" />
-            <SelectField name="family_relation" label="Hubungan" options={["Orang tua", "Saudara", "Pasangan", "Anak", "Kerabat"]} />
-            <Field name="family_address" label="Alamat" placeholder="Alamat keluarga yang dapat dihubungi" textarea className="sm:col-span-2" />
+            <Field name="family_name" label="Nama" placeholder="Nama keluarga" defaultValue={applicantText("family_name")} />
+            <Field name="family_whatsapp" label="Nomor WA" placeholder="08xxxxxxxxxx" defaultValue={applicantText("family_whatsapp")} />
+            <SelectField name="family_relation" label="Hubungan" defaultValue={applicantText("family_relation")} options={["Orang tua", "Saudara", "Pasangan", "Anak", "Kerabat"]} />
+            <Field name="family_address" label="Alamat" placeholder="Alamat keluarga yang dapat dihubungi" defaultValue={applicantText("family_address")} textarea className="sm:col-span-2" />
           </div>
         </section>
 
@@ -581,20 +601,48 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             </span>
             <div>
               <h2 className="text-lg font-black text-slate-950">Tanda Tangan & Persetujuan</h2>
-              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Agent tanda tangan, lalu analis mengecek sebelum master memberi persetujuan final.</p>
+              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Agent tanda tangan, lalu master mengecek dan memberi keputusan final.</p>
             </div>
           </div>
 
           {notice ? (
-            <div className={`mb-4 flex items-center gap-3 rounded-[22px] border px-4 py-3 ${notice.className}`}>
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white">
-                {NoticeIcon ? <NoticeIcon className="h-5 w-5" strokeWidth={2.4} /> : null}
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-black">{notice.title}</p>
-                <p className="mt-0.5 text-[10px] font-semibold opacity-75">{notice.desc}</p>
+            isApproved ? (
+              <div className="mb-4 overflow-hidden rounded-[24px] border border-emerald-200 bg-white shadow-[0_16px_34px_rgba(4,120,87,0.12)]">
+                <div className="relative bg-[linear-gradient(135deg,#047857_0%,#16a34a_62%,#84cc16_130%)] px-4 py-4 text-white">
+                  <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/14" />
+                  <div className="relative flex items-center gap-3">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-emerald-700 shadow-[0_10px_22px_rgba(0,0,0,0.10)]">
+                      {NoticeIcon ? <NoticeIcon className="h-6 w-6" strokeWidth={2.6} /> : null}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/75">Notifikasi Kredit</p>
+                      <h3 className="mt-1 text-base font-black leading-5">Pengajuan disetujui</h3>
+                      <p className="mt-1 text-[11px] font-semibold leading-4 text-white/80">Limit saldo agent sudah aktif dan siap digunakan.</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 p-3 min-[380px]:grid-cols-2">
+                  <div className="rounded-2xl bg-emerald-50 px-3 py-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">Limit Aktif</p>
+                    <p className="mt-1 text-lg font-black text-slate-950">{formatIDR(latestApplication?.approved_amount || latestApplication?.requested_amount || 0)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 px-3 py-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Status</p>
+                    <p className="mt-1 text-sm font-black text-emerald-700">Disetujui master</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className={`mb-4 flex items-start gap-3 rounded-[22px] border px-4 py-3 shadow-[0_10px_22px_rgba(15,23,42,0.04)] ${notice.className}`}>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white">
+                  {NoticeIcon ? <NoticeIcon className="h-5 w-5" strokeWidth={2.4} /> : null}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-black">{notice.title}</p>
+                  <p className="mt-0.5 text-[10px] font-semibold leading-4 opacity-75">{notice.desc}</p>
+                </div>
+              </div>
+            )
           ) : null}
 
           <div className="grid grid-cols-1 gap-3">
@@ -620,7 +668,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           disabled={!agreed || !signatureReady || !signatureData || hasOpenApplication || isApproved || submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
-          {isApproved ? "Sudah Disetujui" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : "Ajukan Kredit Saldo"}
+          {isApproved ? "Sudah Disetujui" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : canReapply ? "Ajukan Ulang" : "Ajukan Kredit Saldo"}
           <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
         </button>
 

@@ -237,7 +237,7 @@ export default function AdminProviderSuccessSuspiciousMessagePage() {
   useEffect(() => {
     void loadProviders();
     void load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   async function retryRefundNoSuccess(row: AuditRow) {

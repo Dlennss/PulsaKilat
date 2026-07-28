@@ -55,17 +55,18 @@ func (r *UserRepository) Update(ctx context.Context, in UserUpdateInput) error {
 UPDATE public.member
 SET email = $2,
 	nama = $3,
-	role = $4,
-	aktif = $5,
-	fee_member_rp = $6,
-	retail_agent_commission_rp = $7,
-	retail_master_commission_rp = $8,
-	h2h_agent_commission_rp = $9,
-	h2h_master_commission_rp = $10,
-	password_hash = COALESCE($11, password_hash),
-	pin_hash = COALESCE($12, pin_hash)
+	phone = $4,
+	role = $5,
+	aktif = $6,
+	fee_member_rp = $7,
+	retail_agent_commission_rp = $8,
+	retail_master_commission_rp = $9,
+	h2h_agent_commission_rp = $10,
+	h2h_master_commission_rp = $11,
+	password_hash = COALESCE($12, password_hash),
+	pin_hash = COALESCE($13, pin_hash)
 WHERE id = $1
-`, in.ID, in.Email, nullIfEmptyStr(in.Nama), in.Role, in.Aktif, in.FeeMemberRp, in.RetailAgentCommissionRp, in.RetailMasterCommissionRp, in.H2HAgentCommissionRp, in.H2HMasterCommissionRp, in.PasswordHash, in.PinHash)
+`, in.ID, in.Email, nullIfEmptyStr(in.Nama), nullIfEmptyStr(in.Phone), in.Role, in.Aktif, in.FeeMemberRp, in.RetailAgentCommissionRp, in.RetailMasterCommissionRp, in.H2HAgentCommissionRp, in.H2HMasterCommissionRp, in.PasswordHash, in.PinHash)
 	if err != nil {
 		return err
 	}

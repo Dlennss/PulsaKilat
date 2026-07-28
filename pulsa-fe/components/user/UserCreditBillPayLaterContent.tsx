@@ -88,6 +88,44 @@ const paymentMethods = [
   { id: "transfer", title: "Transfer Bank", desc: "Konfirmasi manual oleh marketing", icon: Banknote },
 ];
 
+function getVirtualAccountNumber(applicationId: number) {
+  return `8808${String(applicationId || 0).padStart(10, "0")}`;
+}
+
+function getPaymentHelper(methodId: string, applicationId: number) {
+  if (methodId === "va") {
+    return {
+      title: "Nomor Virtual Account",
+      value: getVirtualAccountNumber(applicationId),
+      desc: "Gunakan VA ini dari m-banking/ATM. Setelah transfer, tekan konfirmasi pembayaran.",
+      rows: [
+        ["Bank", "BCA, BRI, BNI, Mandiri"],
+        ["Nama", "PulsaKilat Agent Credit"],
+      ],
+    };
+  }
+  if (methodId === "transfer") {
+    return {
+      title: "Rekening Tujuan",
+      value: "1234567890",
+      desc: "Transfer sesuai total bayar, lalu konfirmasi agar tim PulsaKilat dapat mencatat pelunasan.",
+      rows: [
+        ["Bank", "BCA"],
+        ["Atas Nama", "PulsaKilat"],
+      ],
+    };
+  }
+  return {
+    title: "Sumber Dana",
+    value: "Saldo akun PulsaKilat",
+    desc: "Saldo akan langsung dipotong setelah kamu menekan tombol bayar.",
+    rows: [
+      ["Proses", "Instan"],
+      ["Biaya layanan", "Gratis"],
+    ],
+  };
+}
+
 export function UserCreditBillPayLaterContent({ bills }: Props) {
   const router = useRouter();
   const activeBills = bills.filter((item) => Number(item.outstanding_amount || 0) > 0);
@@ -119,6 +157,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   const paymentAmount = selectedBill ? Math.min(selectedOutstanding, monthlyBill * activeInstallments.length) : 0;
   const method = paymentMethods.find((item) => item.id === selectedMethod) || paymentMethods[0];
   const MethodIcon = method.icon;
+  const paymentHelper = getPaymentHelper(selectedMethod, selectedBill?.id || 0);
 
   useEffect(() => {
     setSelectedInstallments(selectedInstallmentNo > 0 ? [selectedInstallmentNo] : []);
@@ -138,6 +177,11 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
     });
   }
 
+  async function copyPaymentValue() {
+    if (!paymentHelper.value || paymentHelper.value === "Saldo akun PulsaKilat") return;
+    await navigator.clipboard?.writeText(paymentHelper.value).catch(() => undefined);
+  }
+
   async function paySelectedBill() {
     if (!selectedBill || paymentAmount <= 0 || busy) return;
     setBusy(true);
@@ -149,7 +193,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
         body: JSON.stringify({
           application_id: selectedBill.id,
           amount: paymentAmount,
-          note: `Cicilan ${activeInstallments.join(", ")} via ${method.title}`,
+          note: `Cicilan ${activeInstallments.join(", ")} via ${method.title}${selectedMethod === "va" ? ` - VA ${paymentHelper.value}` : ""}`,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
@@ -387,6 +431,32 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
               <MethodIcon className="h-5 w-5 text-[#047857]" />
             </div>
             <div className="mt-4 space-y-2 rounded-[22px] bg-slate-50 p-3 text-sm">
+              <div className="mb-3 rounded-[20px] border border-emerald-100 bg-white p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-600">{paymentHelper.title}</p>
+                    <p className="mt-1 break-all text-base font-black text-slate-950">{paymentHelper.value}</p>
+                    <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">{paymentHelper.desc}</p>
+                  </div>
+                  {selectedMethod !== "wallet" ? (
+                    <button
+                      type="button"
+                      onClick={copyPaymentValue}
+                      className="h-9 shrink-0 rounded-full bg-emerald-50 px-3 text-[10px] font-black text-[#047857] ring-1 ring-emerald-100"
+                    >
+                      Salin
+                    </button>
+                  ) : null}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {paymentHelper.rows.map(([label, value]) => (
+                    <div key={label} className="rounded-2xl bg-emerald-50/70 px-3 py-2">
+                      <p className="text-[9px] font-black uppercase text-emerald-700/70">{label}</p>
+                      <p className="mt-1 truncate text-xs font-black text-slate-950">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="flex justify-between gap-3">
                 <span className="font-semibold text-slate-500">Cicilan dipilih</span>
                 <span className="font-black text-slate-950">{formatIDR(paymentAmount)}</span>
@@ -407,7 +477,13 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
               className="mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_34px_rgba(5,150,105,0.22)] disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <BadgeCheck className="h-5 w-5" />}
-              {busy ? "Memproses..." : activeInstallments.length >= remainingInstallmentCount ? "Bayar & Lunasi" : "Bayar Cicilan"}
+              {busy
+                ? "Memproses..."
+                : selectedMethod === "wallet"
+                  ? activeInstallments.length >= remainingInstallmentCount
+                    ? "Bayar & Lunasi"
+                    : "Bayar Cicilan"
+                  : "Konfirmasi Pembayaran"}
             </button>
             {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-xs font-black text-rose-600">{error}</p> : null}
           </section>

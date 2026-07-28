@@ -155,13 +155,13 @@ export default function WalletMembersPage() {
 
   useEffect(() => {
     void loadMembers(offset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [offset]);
 
   useEffect(() => {
     if (!selectedMember) return;
     void loadHistory(selectedMember.id, historyTab, historyOffset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [selectedMember?.id, historyTab, historyOffset]);
 
   async function submitAdjust() {

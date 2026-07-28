@@ -138,12 +138,12 @@ export default function AdminAppOrdersPage() {
 
   useEffect(() => {
     void load(offset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [offset]);
 
   useEffect(() => {
     void load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [q, status, buyerType, dateFrom, dateTo]);
 
   useEffect(() => {

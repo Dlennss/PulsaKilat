@@ -349,7 +349,7 @@ export function RetailTopupClient({ authToken }: Props) {
             <div className="mt-5 space-y-4">
               <div className="rounded-md border border-sky-100 bg-[linear-gradient(180deg,#f8fbff_0%,#eef6ff_100%)] p-4 text-center">
                 {activeQris.qr_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                   
                   <img src={activeQris.qr_url} alt={`QRIS ${activeQris.ref_id}`} className="mx-auto h-56 w-56 rounded-md bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.08)]" />
                 ) : (
                   <div className="mx-auto grid h-56 w-56 place-items-center rounded-md bg-white shadow-[0_8px_20px_rgba(15,23,42,0.08)]">

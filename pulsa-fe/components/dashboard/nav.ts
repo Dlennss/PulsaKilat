@@ -228,9 +228,11 @@ export const masterNavSections: NavSection[] = [
   {
     title: "Master",
     items: [
+      { href: "/dashboard/master/tambah-agent", label: "Tambah Agent" },
+      { href: "/dashboard/master/akun-agent", label: "Akun Agent" },
       { href: "/dashboard/master/pinjaman", label: "Data Pinjaman" },
-      { href: "/dashboard/master/analis", label: "Analis" },
       { href: "/dashboard/master/input-pinjaman-manual", label: "Input Manual" },
+      { href: "/dashboard/master/riwayat-pinjaman", label: "Riwayat Pinjaman" },
     ],
   },
 ];

@@ -76,12 +76,12 @@ export default function GuestRefundPendingClient({ title }: { title: string }) {
 
   useEffect(() => {
     void load(offset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [offset]);
 
   useEffect(() => {
     void load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [invoiceFilter]);
 
   async function handleClaim(row: GuestRefundPendingRow) {

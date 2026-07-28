@@ -1,6 +1,6 @@
 "use client";
 
-import { FileSignature, Search } from "lucide-react";
+import { ChevronDown, FileSignature, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 import { MasterAgentCreditDecisionControls } from "@/components/dashboard/MasterAgentCreditDecisionControls";
@@ -22,11 +22,15 @@ function getStatusLabel(status: string) {
     case "marketing_review":
       return "Dicek master";
     case "analysis_review":
-      return "Perlu analisa";
+      return "Menunggu master";
     case "master_review":
-      return "Perlu keputusan master";
+      return "Menunggu master";
     case "approved":
       return "Disetujui";
+    case "analysis_rejected":
+      return "Ditolak";
+    case "master_rejected":
+      return "Ditolak master";
     case "rejected":
       return "Ditolak";
     default:
@@ -39,6 +43,8 @@ function getStatusClass(status: string) {
     case "approved":
       return "bg-emerald-100 text-emerald-700";
     case "rejected":
+    case "analysis_rejected":
+    case "master_rejected":
       return "bg-rose-100 text-rose-600";
     case "marketing_review":
     case "analysis_review":
@@ -91,8 +97,17 @@ function searchableText(item: AgentCreditApplication) {
   return fields.join(" ").toLowerCase();
 }
 
-export function MasterAgentCreditApplicationList({ applications, mode = "master" }: { applications: AgentCreditApplication[]; mode?: "marketing" | "master" | "analyst" }) {
+export function MasterAgentCreditApplicationList({
+  applications,
+  mode = "master",
+  showActions = true,
+}: {
+  applications: AgentCreditApplication[];
+  mode?: "marketing" | "master";
+  showActions?: boolean;
+}) {
   const [query, setQuery] = useState("");
+  const [openId, setOpenId] = useState<number | null>(null);
   const trimmedQuery = query.trim().toLowerCase();
   const filteredApplications = useMemo(() => {
     if (!trimmedQuery) return applications;
@@ -103,8 +118,8 @@ export function MasterAgentCreditApplicationList({ applications, mode = "master"
     <section className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">{mode === "analyst" ? "Meja Analis" : "Meja Review"}</p>
-          <h2 className="mt-1 text-xl font-black">{mode === "analyst" ? "Analisa Pengajuan Kredit" : "Pengajuan Kredit Terbaru"}</h2>
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">Meja Review</p>
+          <h2 className="mt-1 text-xl font-black">Pengajuan Kredit Terbaru</h2>
         </div>
         <label className="flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-500 focus-within:border-emerald-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-100">
           <Search className="h-4 w-4" />
@@ -117,7 +132,7 @@ export function MasterAgentCreditApplicationList({ applications, mode = "master"
         </label>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 space-y-2">
         {filteredApplications.length ? (
           filteredApplications.map((item) => {
             const agentName = getApplicantText(item, "agent_name", item.member_name || "Agent");
@@ -131,99 +146,97 @@ export function MasterAgentCreditApplicationList({ applications, mode = "master"
             ];
             const signatureSrc = getSignatureSrc(item);
             return (
-              <article key={item.id} className="rounded-[28px] border border-emerald-100 bg-linear-to-br from-white via-white to-emerald-50/80 p-4 shadow-[0_14px_34px_rgba(6,78,59,0.06)] transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_38px_rgba(5,122,69,0.12)] sm:p-5">
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-emerald-950 text-sm font-black text-lime-300 shadow-[0_12px_24px_rgba(6,78,59,0.18)]">
+              <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)]">
+                <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-950 text-xs font-black text-lime-300">
                       {agentName.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="max-w-full truncate text-lg font-black text-slate-950">{agentName}</h3>
+                        <h3 className="max-w-full truncate text-sm font-black text-slate-950">{agentName}</h3>
                         <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getStatusClass(item.status)}`}>{getStatusLabel(item.status)}</span>
                       </div>
-                      <p className="mt-0.5 text-xs font-semibold text-slate-500">{storeName}</p>
-                      <div className="mt-4 grid gap-2 text-[11px] font-bold text-slate-500 sm:grid-cols-2">
-                        <span className="min-w-0 rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100">
-                          <span className="block text-slate-400">WA:</span>
-                          <span className="block break-all leading-4">{wa}</span>
-                        </span>
-                        <span className="min-w-0 rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100">
-                          <span className="block text-slate-400">NIK:</span>
-                          <span className="block break-all leading-4">{nik}</span>
-                        </span>
-                        <span className="min-w-0 rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-emerald-100 sm:col-span-2">
-                          <span className="block text-slate-400">Email:</span>
-                          <span className="block break-all leading-4">{getApplicantText(item, "email", item.member_email || "-")}</span>
-                        </span>
+                      <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{storeName}</p>
+                      <p className="mt-1 truncate text-[11px] font-bold text-slate-400">WA {wa} · NIK {nik}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-emerald-50 px-3 py-2 text-left lg:text-center">
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">Nominal</p>
+                    <p className="mt-0.5 text-sm font-black text-slate-950">{formatIDR(item.requested_amount)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOpenId((current) => (current === item.id ? null : item.id))}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                  >
+                    Detail
+                    <ChevronDown className={`h-4 w-4 transition ${openId === item.id ? "rotate-180" : ""}`} />
+                  </button>
+                </div>
+                {showActions ? (
+                  <div className="mt-3">
+                    <MasterAgentCreditDecisionControls
+                      applicationId={item.id}
+                      requestedAmount={item.requested_amount}
+                      approvedAmount={item.approved_amount}
+                      marketingNote={item.marketing_note}
+                      analystNote={item.analyst_note}
+                      analystRecommendation={item.analyst_recommendation}
+                      analystRecommendedAmount={item.analyst_recommended_amount}
+                      status={item.status}
+                      mode={mode}
+                    />
+                  </div>
+                ) : null}
+
+                {openId === item.id ? (
+                  <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3">
+                    {item.analyst_recommendation || item.analyst_note ? (
+                      <div className="mb-3 rounded-2xl border border-sky-100 bg-sky-50 p-3 text-[11px] font-semibold text-sky-700">
+                        <p className="font-black text-slate-950">Catatan Review</p>
+                        <p className="mt-1">
+                          {item.analyst_recommendation === "approved" ? "Layak" : item.analyst_recommendation === "rejected" ? "Tidak layak" : "Belum ada rekomendasi"}
+                          {item.analyst_recommended_amount ? ` - ${formatIDR(item.analyst_recommended_amount)}` : ""}
+                        </p>
+                        {item.analyst_note ? <p className="mt-1 leading-5 text-slate-500">{item.analyst_note}</p> : null}
+                      </div>
+                    ) : null}
+                    <div className="grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
+                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                        <p className="font-black text-slate-950">Email</p>
+                        <p className="mt-1 break-all leading-5">{getApplicantText(item, "email", item.member_email || "-")}</p>
+                      </div>
+                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                        <p className="font-black text-slate-950">Alamat Rumah</p>
+                        <p className="mt-1 break-words leading-5">{getApplicantText(item, "home_address")}</p>
+                      </div>
+                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                        <p className="font-black text-slate-950">Alamat Toko</p>
+                        <p className="mt-1 break-words leading-5">{getApplicantText(item, "store_address")}</p>
+                      </div>
+                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                        <p className="font-black text-slate-950">Tanda Tangan</p>
+                        <div className="mt-2 grid h-20 place-items-center rounded-xl bg-slate-50 bg-contain bg-center bg-no-repeat" style={signatureSrc ? { backgroundImage: `url(${signatureSrc})` } : undefined}>
+                          {!signatureSrc ? <span className="text-[10px] font-black text-slate-400">Belum ada tanda tangan</span> : null}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                      <MasterAgentCreditDocumentButton agentName={agentName} documents={docs} />
+                      <div className="flex flex-wrap gap-2">
+                        {docs.map((doc) => (
+                          <span
+                            key={doc.label}
+                            className={hasStoredImage(item, doc.label === "Foto KTP" ? "ktp" : doc.label === "Foto Toko" ? "store" : "selfie") ? "rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-400"}
+                          >
+                            {doc.label} {doc.src ? "ada" : "kosong"}
+                          </span>
+                        ))}
                       </div>
                     </div>
                   </div>
-                  <div className="grid gap-3">
-                    <div className="rounded-3xl bg-emerald-950 p-4 text-white shadow-[0_14px_28px_rgba(6,78,59,0.18)]">
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-lime-200">Nominal</p>
-                      <p className="mt-1 text-2xl font-black">{formatIDR(item.requested_amount)}</p>
-                      <p className="mt-1 text-[10px] font-bold text-white/60">Status: {getStatusLabel(item.status)}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <MasterAgentCreditDecisionControls
-                    applicationId={item.id}
-                    requestedAmount={item.requested_amount}
-                    approvedAmount={item.approved_amount}
-                    marketingNote={item.marketing_note}
-                    analystNote={item.analyst_note}
-                    analystRecommendation={item.analyst_recommendation}
-                    analystRecommendedAmount={item.analyst_recommended_amount}
-                    status={item.status}
-                    mode={mode}
-                  />
-                </div>
-                {item.analyst_recommendation || item.analyst_note ? (
-                  <div className="mt-4 rounded-3xl border border-sky-100 bg-sky-50 p-4 text-[11px] font-semibold text-sky-700">
-                    <p className="font-black text-slate-950">Rekomendasi Analis</p>
-                    <p className="mt-1">
-                      {item.analyst_recommendation === "approved" ? "Layak" : item.analyst_recommendation === "rejected" ? "Tidak layak" : "Belum ada rekomendasi"}
-                      {item.analyst_recommended_amount ? ` - ${formatIDR(item.analyst_recommended_amount)}` : ""}
-                    </p>
-                    {item.analyst_note ? <p className="mt-1 leading-5 text-slate-500">{item.analyst_note}</p> : null}
-                  </div>
                 ) : null}
-                <div className="mt-4 grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
-                  <div className="min-w-0 rounded-3xl bg-white/85 p-4 ring-1 ring-emerald-100">
-                    <p className="font-black text-slate-950">Alamat Rumah</p>
-                    <p className="mt-1 break-words leading-5">{getApplicantText(item, "home_address")}</p>
-                  </div>
-                  <div className="min-w-0 rounded-3xl bg-white/85 p-4 ring-1 ring-emerald-100">
-                    <p className="font-black text-slate-950">Alamat Toko</p>
-                    <p className="mt-1 break-words leading-5">{getApplicantText(item, "store_address")}</p>
-                  </div>
-                </div>
-                <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
-                  <MasterAgentCreditDocumentButton agentName={agentName} documents={docs} />
-                  <div className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-[0_12px_26px_rgba(5,122,69,0.08)]">
-                    <div className="grid h-28 place-items-center bg-slate-50 bg-contain bg-center bg-no-repeat" style={signatureSrc ? { backgroundImage: `url(${signatureSrc})` } : undefined}>
-                      {!signatureSrc ? <span className="text-[10px] font-black text-slate-400">Belum ada tanda tangan</span> : null}
-                    </div>
-                    <div className="px-3 py-2">
-                      <p className="truncate text-[10px] font-black text-slate-950">Tanda tangan PNG</p>
-                      <p className={signatureSrc ? "text-[9px] font-black text-emerald-700" : "text-[9px] font-black text-slate-400"}>
-                        {signatureSrc ? "Tersimpan" : "Kosong"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {docs.map((doc) => (
-                    <span
-                      key={doc.label}
-                      className={hasStoredImage(item, doc.label === "Foto KTP" ? "ktp" : doc.label === "Foto Toko" ? "store" : "selfie") ? "rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-400"}
-                    >
-                      {doc.label} {doc.src ? "siap PDF" : "kosong"}
-                    </span>
-                  ))}
-                </div>
               </article>
             );
           })

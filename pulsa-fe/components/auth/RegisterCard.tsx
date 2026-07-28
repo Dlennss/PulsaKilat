@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getSession, signIn } from "next-auth/react";
+import { getProviders, getSession, signIn } from "next-auth/react";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck, UserPlus, UserRound, Zap } from "lucide-react";
 
 const GOOGLE_LOGIN_ENABLED = String(process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED ?? "false").toLowerCase() === "true";
@@ -70,6 +70,7 @@ export function RegisterCard() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [shake, setShake] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
   const refundContext = useMemo(() => ({
     invoiceId: (searchParams.get("refund_invoice_id") || "").trim(),
     guestEmail: (searchParams.get("guest_email") || "").trim(),
@@ -88,6 +89,15 @@ export function RegisterCard() {
     }
     return `/auth/google/complete?${params.toString()}`;
   }, [hasRefundContext, loginCallbackUrl, refundContext.guestEmail, refundContext.guestPhone, refundContext.invoiceId]);
+  const canUseGoogleLogin = GOOGLE_LOGIN_ENABLED && googleAvailable && !loading;
+
+  useEffect(() => {
+    if (!GOOGLE_LOGIN_ENABLED) return;
+    void (async () => {
+      const providers = await getProviders().catch(() => null);
+      setGoogleAvailable(Boolean(providers?.google));
+    })();
+  }, []);
 
   async function claimRefundWithSession() {
     const sess = (await getSession().catch(() => null)) as { backendToken?: string } | null;
@@ -282,11 +292,17 @@ export function RegisterCard() {
               <button
                 type="button"
                 className="flex h-[54px] w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.05)] transition-all hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={loading}
-                onClick={() => void signIn("google", { callbackUrl: googleCallbackUrl })}
+                disabled={!canUseGoogleLogin}
+                onClick={() => {
+                  if (!canUseGoogleLogin) {
+                    setErr("Login Google belum dikonfigurasi. Isi GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET.");
+                    return;
+                  }
+                  void signIn("google", { callbackUrl: googleCallbackUrl });
+                }}
               >
                 <Image src="/google.svg" alt="" width={18} height={18} aria-hidden="true" />
-                Daftar dengan Google
+                {googleAvailable ? "Daftar dengan Google" : "Google belum dikonfigurasi"}
               </button>
             </>
           )}

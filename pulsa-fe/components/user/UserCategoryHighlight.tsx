@@ -12,22 +12,21 @@ export function UserCategoryHighlight() {
   const [lastVisited, setLastVisited] = useState<LastVisitedCategory | null>(null);
 
   useEffect(() => {
-    // Get last visited category from localStorage
-    const stored = localStorage.getItem('lastVisitedCategory');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as LastVisitedCategory;
-        // Only show if visited within last 30 minutes
-        if (Date.now() - parsed.timestamp < 30 * 60 * 1000) {
-          setLastVisited(parsed);
-        } else {
-          // Clear old data
+    queueMicrotask(() => {
+      const stored = localStorage.getItem('lastVisitedCategory');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as LastVisitedCategory;
+          if (Date.now() - parsed.timestamp < 30 * 60 * 1000) {
+            setLastVisited(parsed);
+          } else {
+            localStorage.removeItem('lastVisitedCategory');
+          }
+        } catch {
           localStorage.removeItem('lastVisitedCategory');
         }
-      } catch {
-        localStorage.removeItem('lastVisitedCategory');
       }
-    }
+    });
   }, []);
 
   if (!lastVisited) return null;

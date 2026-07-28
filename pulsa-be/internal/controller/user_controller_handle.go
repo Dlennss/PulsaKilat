@@ -13,6 +13,7 @@ import (
 func (h *UserController) Handle(w http.ResponseWriter, r *http.Request) {
 	a, _ := helper.GetAuth(r.Context())
 	isAdmin := a.Role == "admin"
+	isRetailMaster := helper.NormalizeRole(a.Role) == helper.RoleRetailMaster
 	base := h.base + "/users"
 	if r.URL.Path == base {
 		switch r.Method {
@@ -95,13 +96,14 @@ func (h *UserController) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "item": row})
 	case http.MethodPut:
-		if !isAdmin {
+		if !isAdmin && !isRetailMaster {
 			helper.WriteJSON(w, http.StatusForbidden, commondto.MapError("admin only"))
 			return
 		}
 		var req struct {
 			Email                    string `json:"email"`
 			Nama                     string `json:"nama"`
+			Phone                    string `json:"phone"`
 			Role                     string `json:"role"`
 			Aktif                    *bool  `json:"aktif"`
 			FeeMemberRp              int64  `json:"fee_member_rp"`
@@ -116,6 +118,21 @@ func (h *UserController) Handle(w http.ResponseWriter, r *http.Request) {
 			helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError("invalid json"))
 			return
 		}
+		if isRetailMaster {
+			row, err := h.svc.Get(r.Context(), id)
+			if err != nil {
+				helper.WriteJSON(w, http.StatusInternalServerError, commondto.MapError(err.Error()))
+				return
+			}
+			if row == nil {
+				helper.WriteJSON(w, http.StatusNotFound, commondto.MapError("user not found"))
+				return
+			}
+			if helper.NormalizeRole(row.Role) != helper.RoleRetailAgent || helper.NormalizeRole(req.Role) != helper.RoleRetailAgent {
+				helper.WriteJSON(w, http.StatusForbidden, commondto.MapError("master hanya bisa mengelola akun agent"))
+				return
+			}
+		}
 		aktif := true
 		if req.Aktif != nil {
 			aktif = *req.Aktif
@@ -124,6 +141,7 @@ func (h *UserController) Handle(w http.ResponseWriter, r *http.Request) {
 			ID:                       id,
 			Email:                    req.Email,
 			Nama:                     req.Nama,
+			Phone:                    req.Phone,
 			Role:                     req.Role,
 			Aktif:                    aktif,
 			FeeMemberRp:              req.FeeMemberRp,
@@ -142,9 +160,24 @@ func (h *UserController) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 		helper.WriteJSON(w, http.StatusOK, commondto.MapOK())
 	case http.MethodDelete:
-		if !isAdmin {
+		if !isAdmin && !isRetailMaster {
 			helper.WriteJSON(w, http.StatusForbidden, commondto.MapError("admin only"))
 			return
+		}
+		if isRetailMaster {
+			row, err := h.svc.Get(r.Context(), id)
+			if err != nil {
+				helper.WriteJSON(w, http.StatusInternalServerError, commondto.MapError(err.Error()))
+				return
+			}
+			if row == nil {
+				helper.WriteJSON(w, http.StatusNotFound, commondto.MapError("user not found"))
+				return
+			}
+			if helper.NormalizeRole(row.Role) != helper.RoleRetailAgent {
+				helper.WriteJSON(w, http.StatusForbidden, commondto.MapError("master hanya bisa mengelola akun agent"))
+				return
+			}
 		}
 		err := h.svc.Delete(r.Context(), id)
 		if err != nil {

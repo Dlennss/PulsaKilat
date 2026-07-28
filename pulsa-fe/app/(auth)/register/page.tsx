@@ -14,7 +14,7 @@ export default async function RegisterPage() {
     const role = (session.user?.role || "").toLowerCase();
     if (role === "admin" || role === "staff") redirect("/dashboard/admin");
     if (role === "member" || role === "agent_member" || role === "master_member") redirect("/dashboard/member");
-    if (role === "analis" || role === "analyst") redirect("/dashboard/master/analis");
+    if (role === "analis" || role === "analyst") redirect("/dashboard/master");
     if (role === "master" || role === "marketing") redirect("/dashboard/master");
     if (role === "operator_trx") redirect("/dashboard/operator");
     if (role === "operator_wallet") redirect("/dashboard/wallet");

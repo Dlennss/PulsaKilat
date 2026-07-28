@@ -4,6 +4,8 @@ import { getCategories } from "@/lib/api.products";
 import type { UserCategoryItem } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 
+export const dynamic = "force-dynamic";
+
 function normalizeName(value: string) {
   return value.trim().toLowerCase();
 }

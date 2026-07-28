@@ -3,6 +3,8 @@ import { getBrandsByKategori } from "@/lib/api.products";
 import { PdamBrandSearch } from "@/components/guest/PdamBrandSearch";
 import { buildBreadcrumbJsonLd, buildCollectionJsonLd, buildPageMetadata } from "@/lib/site-search";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = buildPageMetadata({
   title: "Tagihan PDAM | PulsaKilat",
   description: "Cek dan bayar tagihan PDAM berbagai daerah di PulsaKilat dengan langkah yang ringkas dan pilihan wilayah yang jelas.",

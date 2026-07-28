@@ -217,7 +217,7 @@ export function RetailBillingEntryFlow({
   React.useEffect(() => {
     if (!waitingTurnstile || !turnstileToken || !checkItem) return;
     void performCheck();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [waitingTurnstile, turnstileToken, checkItem]);
 
   React.useEffect(() => {

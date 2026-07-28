@@ -126,7 +126,7 @@ export default function AdminStatusMismatchPage() {
   useEffect(() => {
     void loadProviders();
     void load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const columns: DataTableColumn<AuditRow>[] = [

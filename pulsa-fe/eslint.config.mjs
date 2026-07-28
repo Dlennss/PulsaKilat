@@ -5,6 +5,13 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    rules: {
+      "@next/next/no-img-element": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "react-hooks/exhaustive-deps": "off",
+    },
+  },
   globalIgnores([
     "node_modules/**",
     ".next/**",

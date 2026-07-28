@@ -23,8 +23,10 @@ export default function MemberWithdrawPage() {
       router.replace("/dashboard/member");
       return;
     }
-    setAuthToken(token);
-    setAllowed(true);
+    queueMicrotask(() => {
+      setAuthToken(token);
+      setAllowed(true);
+    });
   }, [router]);
 
   if (!authToken || !allowed) return <div className="text-white/70">Loading...</div>;

@@ -816,7 +816,7 @@ export function UserCheckoutModal({
             {showQRCode ? (
               <div className="rounded-md border border-sky-100 bg-sky-50 p-1 text-center">
                 {payment.qr_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                   
                   <img src={payment.qr_url} alt={`QRIS ${order.invoice_id}`} className="mx-auto h-56 w-56 bg-white" />
                 ) : (
                   <div className="mx-auto grid h-56 w-56 place-items-center rounded-2xl bg-white">

@@ -98,12 +98,12 @@ export default function AdminProviderAnomalyPage() {
   useEffect(() => {
     void loadProviders();
     void load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {
     void load(offset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [offset]);
 
   const columns: DataTableColumn<AnomalyRow>[] = [

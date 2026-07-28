@@ -36,6 +36,7 @@ type UserRow struct {
 	ID                       int64      `json:"id"`
 	Email                    string     `json:"email"`
 	Nama                     string     `json:"nama"`
+	Phone                    string     `json:"phone"`
 	Role                     string     `json:"role"`
 	Aktif                    bool       `json:"aktif"`
 	FeeMemberRp              int64      `json:"fee_member_rp"`
@@ -76,6 +77,7 @@ type UserUpdateInput struct {
 	ID                       int64
 	Email                    string
 	Nama                     string
+	Phone                    string
 	Role                     string
 	Aktif                    bool
 	FeeMemberRp              int64

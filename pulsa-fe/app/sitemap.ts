@@ -3,6 +3,8 @@ import { CANONICAL_SITE_URL, seoArticles } from "@/lib/seo-articles";
 import { getBrandsByKategori } from "@/lib/api.products";
 import { getDedicatedGuestBrandPath } from "@/lib/dedicated-category-brand-routes";
 
+export const dynamic = "force-dynamic";
+
 const staticRoutes = [
   "",
   "/tentang",

@@ -149,7 +149,7 @@ export default function DailySuccessfulProductsPage() {
 
   useEffect(() => {
     load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const page = Math.floor(offset / PAGE_SIZE) + 1;

@@ -9,15 +9,15 @@ type GuestInvoiceCheckerProps = {
 };
 
 export function GuestInvoiceChecker({ isLoggedIn = false }: GuestInvoiceCheckerProps) {
-  if (isLoggedIn) {
-    return null;
-  }
-
   const [invoiceId, setInvoiceId] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  if (isLoggedIn) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

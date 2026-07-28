@@ -38,13 +38,15 @@ export function UserLocalTransactionDetailClient({ invoiceId }: { invoiceId: str
   const [order, setOrder] = useState<UserAppOrder | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(LOCAL_SERVICE_ORDER_KEY);
-      const items = JSON.parse(raw || "[]") as UserAppOrder[];
-      setOrder(items.find((item) => item.invoice_id === invoiceId) || null);
-    } catch {
-      setOrder(null);
-    }
+    queueMicrotask(() => {
+      try {
+        const raw = window.localStorage.getItem(LOCAL_SERVICE_ORDER_KEY);
+        const items = JSON.parse(raw || "[]") as UserAppOrder[];
+        setOrder(items.find((item) => item.invoice_id === invoiceId) || null);
+      } catch {
+        setOrder(null);
+      }
+    });
   }, [invoiceId]);
 
   if (!order) return null;

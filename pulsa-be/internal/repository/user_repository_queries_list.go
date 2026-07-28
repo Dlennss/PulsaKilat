@@ -28,7 +28,7 @@ func (r *UserRepository) List(ctx context.Context, q, role, scope string, limit,
 	var sqlQ strings.Builder
 	sqlQ.WriteString(`
 SELECT
-	m.id, m.email, COALESCE(m.nama,''), m.role, m.aktif, COALESCE(m.fee_member_rp,0),
+	m.id, m.email, COALESCE(m.nama,''), COALESCE(m.phone,''), m.role, m.aktif, COALESCE(m.fee_member_rp,0),
 	COALESCE(m.retail_agent_commission_rp,0),
 	COALESCE(m.retail_master_commission_rp,0),
 	COALESCE(m.h2h_agent_commission_rp,0),
@@ -70,7 +70,7 @@ WHERE ($1 = '%%' OR lower(m.email) LIKE $1 OR lower(COALESCE(m.nama,'')) LIKE $1
 			h2hMasterID    sql.NullInt64
 		)
 		if err := rows.Scan(
-			&row.ID, &row.Email, &row.Nama, &row.Role, &row.Aktif, &row.FeeMemberRp,
+			&row.ID, &row.Email, &row.Nama, &row.Phone, &row.Role, &row.Aktif, &row.FeeMemberRp,
 			&row.RetailAgentCommissionRp, &row.RetailMasterCommissionRp,
 			&row.H2HAgentCommissionRp, &row.H2HMasterCommissionRp,
 			&retailAgentID, &retailMasterID, &h2hAgentID, &h2hMasterID,
@@ -102,7 +102,7 @@ WHERE ($1 = '%%' OR lower(m.email) LIKE $1 OR lower(COALESCE(m.nama,'')) LIKE $1
 func (r *UserRepository) Get(ctx context.Context, id int64) (*UserRow, error) {
 	const q = `
 SELECT
-	m.id, m.email, COALESCE(m.nama,''), m.role, m.aktif, COALESCE(m.fee_member_rp,0),
+	m.id, m.email, COALESCE(m.nama,''), COALESCE(m.phone,''), m.role, m.aktif, COALESCE(m.fee_member_rp,0),
 	COALESCE(m.retail_agent_commission_rp,0),
 	COALESCE(m.retail_master_commission_rp,0),
 	COALESCE(m.h2h_agent_commission_rp,0),
@@ -124,7 +124,7 @@ LIMIT 1`
 		h2hMasterID    sql.NullInt64
 	)
 	err := r.db.QueryRowContext(ctx, q, id).Scan(
-		&row.ID, &row.Email, &row.Nama, &row.Role, &row.Aktif, &row.FeeMemberRp,
+		&row.ID, &row.Email, &row.Nama, &row.Phone, &row.Role, &row.Aktif, &row.FeeMemberRp,
 		&row.RetailAgentCommissionRp, &row.RetailMasterCommissionRp,
 		&row.H2HAgentCommissionRp, &row.H2HMasterCommissionRp,
 		&retailAgentID, &retailMasterID, &h2hAgentID, &h2hMasterID,

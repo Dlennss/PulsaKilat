@@ -122,6 +122,8 @@ func collectAllowedGoogleClientIDs() []string {
 	out := make([]string, 0, 3)
 	for _, raw := range []string{
 		os.Getenv("GOOGLE_CLIENT_ID"),
+		os.Getenv("GOOGLE_WEB_CLIENT_ID"),
+		os.Getenv("AUTH_GOOGLE_ID"),
 		os.Getenv("GOOGLE_CLIENT_ID_LEGACY"),
 		os.Getenv("GOOGLE_CLIENT_IDS"),
 	} {

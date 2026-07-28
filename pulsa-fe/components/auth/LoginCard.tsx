@@ -46,7 +46,7 @@ function toDashboardByRole(role?: string | null) {
   const r = (role || "").toLowerCase();
   if (r === "admin" || r === "staff") return "/dashboard/admin";
   if (r === "auditor") return "/dashboard/auditor";
-  if (r === "analis" || r === "analyst") return "/dashboard/master/analis";
+  if (r === "analis" || r === "analyst") return "/dashboard/master";
   if (r === "master") return "/dashboard/master";
   if (r === "user" || r === "agent") return "/user";
   if (r === "operator_trx") return "/dashboard/operator";
@@ -112,6 +112,18 @@ export function LoginCard() {
     const t = setTimeout(() => setShake(false), 520);
     return () => clearTimeout(t);
   }, [err]);
+
+  useEffect(() => {
+    const googleStatus = (searchParams.get("google") || "").trim();
+    const authError = (searchParams.get("error") || "").trim();
+    if (googleStatus === "not_configured") {
+      setErr("Login Google belum tersambung. Isi Client ID dan Client Secret Google terlebih dulu.");
+      return;
+    }
+    if (authError) {
+      setErr("Login Google gagal atau dibatalkan. Coba masuk ulang.");
+    }
+  }, [searchParams]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -355,7 +355,7 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     load(offset, roleFilter, accountScope);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [offset, accountScope]);
 
   useEffect(() => {

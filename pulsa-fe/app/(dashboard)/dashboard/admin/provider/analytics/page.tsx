@@ -154,7 +154,7 @@ export default function ProviderAnalyticsPage() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const providers = Array.from(

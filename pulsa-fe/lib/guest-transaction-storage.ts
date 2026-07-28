@@ -27,9 +27,11 @@ function readEntries(): GuestTransactionEntry[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (e: any) => e && typeof e.invoice_id === 'string' && e.invoice_id.trim()
-    );
+    return parsed.filter((e: unknown): e is GuestTransactionEntry => {
+      if (!e || typeof e !== 'object') return false;
+      const entry = e as Partial<GuestTransactionEntry>;
+      return typeof entry.invoice_id === 'string' && Boolean(entry.invoice_id.trim());
+    });
   } catch {
     return [];
   }

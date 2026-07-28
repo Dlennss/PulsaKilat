@@ -623,7 +623,7 @@ export default function AdminMemberHistoryPage() {
     loadStats();
     loadMutasi();
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [memberId]);
 
   useEffect(() => {
@@ -632,7 +632,7 @@ export default function AdminMemberHistoryPage() {
       return;
     }
     loadTransaksi();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [tab, mutasiOffset, trxOffset]);
 
   const headerSubtitle = useMemo(() => {
