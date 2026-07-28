@@ -39,22 +39,28 @@ func (s *MemberSelfService) Profile(ctx context.Context, memberID int64) (map[st
 	return map[string]any{"ok": true, "profile": p, "api_keys": keys, "ip_whitelist": ips}, nil
 }
 
-func (s *MemberSelfService) UpdateProfile(ctx context.Context, memberID int64, nama, phone string) (map[string]any, error) {
+func (s *MemberSelfService) UpdateProfile(ctx context.Context, memberID int64, nama, phone, profilePhotoURL string) (map[string]any, error) {
 	nama = strings.TrimSpace(nama)
 	phone = normalizeProfilePhone(phone)
+	profilePhotoURL = strings.TrimSpace(profilePhotoURL)
 	if memberID <= 0 {
 		return nil, errors.New("invalid member_id")
 	}
 	if nama == "" {
 		return nil, errors.New("nama wajib diisi")
 	}
-	if phone == "" {
-		return nil, errors.New("nomor handphone wajib diisi")
-	}
-	if len(phone) < 10 || len(phone) > 14 || !strings.HasPrefix(phone, "08") {
+	if phone != "" && (len(phone) < 10 || len(phone) > 14 || !strings.HasPrefix(phone, "08")) {
 		return nil, errors.New("nomor handphone tidak valid")
 	}
-	p, err := s.repo.UpdateMemberProfile(ctx, memberID, nama, phone)
+	if profilePhotoURL != "" {
+		if !strings.HasPrefix(profilePhotoURL, "data:image/") {
+			return nil, errors.New("format foto profil tidak valid")
+		}
+		if len(profilePhotoURL) > 800000 {
+			return nil, errors.New("ukuran foto profil maksimal 600KB")
+		}
+	}
+	p, err := s.repo.UpdateMemberProfile(ctx, memberID, nama, phone, profilePhotoURL)
 	if err != nil {
 		return nil, err
 	}

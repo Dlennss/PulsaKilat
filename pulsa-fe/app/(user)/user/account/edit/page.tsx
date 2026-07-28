@@ -20,6 +20,7 @@ export default async function UserAccountEditPage() {
   const nama = profile?.nama || session.user?.name || "";
   const email = profile?.email || session.user?.email || "";
   const phone = profile?.phone || "";
+  const profilePhotoURL = profile?.profile_photo_url || session.user?.image || "";
 
-  return <UserAccountEditForm nama={nama} email={email} phone={phone} />;
+  return <UserAccountEditForm nama={nama} email={email} phone={phone} profilePhotoURL={profilePhotoURL} />;
 }

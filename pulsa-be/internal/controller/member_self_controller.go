@@ -38,14 +38,15 @@ func (h *MemberSelfController) Profile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var in struct {
-		Nama  string `json:"nama"`
-		Phone string `json:"phone"`
+		Nama            string `json:"nama"`
+		Phone           string `json:"phone"`
+		ProfilePhotoURL string `json:"profile_photo_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		helper.WriteJSON(w, 400, map[string]any{"ok": false, "error": "invalid json"})
 		return
 	}
-	out, err := h.svc.UpdateProfile(r.Context(), a.MemberID, in.Nama, in.Phone)
+	out, err := h.svc.UpdateProfile(r.Context(), a.MemberID, in.Nama, in.Phone, in.ProfilePhotoURL)
 	if err != nil {
 		helper.WriteJSON(w, 400, map[string]any{"ok": false, "error": err.Error()})
 		return

@@ -3,12 +3,14 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Mail, Phone, Save, UserRound } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, ImagePlus, Mail, Phone, Save, UserRound } from "lucide-react";
+import { getInitials } from "@/components/user/helpers";
 
 type UserAccountEditFormProps = {
   nama: string;
   email: string;
   phone: string;
+  profilePhotoURL?: string;
 };
 
 type ProfileResponse = {
@@ -27,13 +29,68 @@ function normalizePhone(value: string) {
   return cleaned;
 }
 
-export function UserAccountEditForm({ nama, email, phone }: UserAccountEditFormProps) {
+function resizeProfilePhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("File harus berupa gambar."));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Gagal membaca foto profil."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Foto profil tidak valid."));
+      img.onload = () => {
+        const maxSize = 512;
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Browser tidak bisa memproses foto."));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.84));
+      };
+      img.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+export function UserAccountEditForm({ nama, email, phone, profilePhotoURL = "" }: UserAccountEditFormProps) {
   const router = useRouter();
   const [nameValue, setNameValue] = useState(nama);
   const [phoneValue, setPhoneValue] = useState(phone);
+  const [photoValue, setPhotoValue] = useState(profilePhotoURL);
   const [loading, setLoading] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const initials = getInitials(nameValue, email);
+
+  async function onPhotoChange(file?: File) {
+    if (!file) return;
+    setError("");
+    setPhotoLoading(true);
+    try {
+      const dataUrl = await resizeProfilePhoto(file);
+      if (dataUrl.length > 800000) {
+        setError("Foto masih terlalu besar. Coba pakai foto lain.");
+        return;
+      }
+      setPhotoValue(dataUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memproses foto.");
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,7 +113,7 @@ export function UserAccountEditForm({ nama, email, phone }: UserAccountEditFormP
       const res = await fetch("/api/me/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nama: nextNama, phone: nextPhone }),
+        body: JSON.stringify({ nama: nextNama, phone: nextPhone, profile_photo_url: photoValue }),
       });
       const body = (await res.json().catch(() => ({}))) as ProfileResponse;
       if (!res.ok || !body.ok) {
@@ -88,9 +145,26 @@ export function UserAccountEditForm({ nama, email, phone }: UserAccountEditFormP
         <section className="overflow-hidden rounded-[28px] border border-emerald-950/5 bg-white shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
           <div className="bg-[linear-gradient(135deg,#052e26_0%,#047857_60%,#84cc16_150%)] px-5 py-5 text-white">
             <div className="flex items-center gap-3">
-              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">
-                <UserRound className="h-7 w-7" />
-              </span>
+              <label className="relative grid h-16 w-16 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl bg-white/15 ring-1 ring-white/20">
+                {photoValue ? (
+                  <span
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${photoValue})` }}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span className="text-xl font-black">{initials}</span>
+                )}
+                <span className="absolute inset-x-0 bottom-0 grid h-6 place-items-center bg-black/30">
+                  {photoLoading ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : <Camera className="h-3.5 w-3.5" />}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => void onPhotoChange(event.target.files?.[0])}
+                />
+              </label>
               <div className="min-w-0">
                 <p className="text-sm font-black">Informasi Pribadi</p>
                 <p className="mt-1 truncate text-xs font-medium text-white/75">{email}</p>
@@ -102,6 +176,24 @@ export function UserAccountEditForm({ nama, email, phone }: UserAccountEditFormP
             {error ? (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700">{error}</div>
             ) : null}
+
+            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-3 transition hover:border-emerald-400 hover:bg-emerald-50">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#047857] shadow-[0_8px_18px_rgba(6,78,59,0.08)]">
+                <ImagePlus className="h-5 w-5" strokeWidth={2.3} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-black text-slate-950">Foto Profil</span>
+                <span className="mt-0.5 block truncate text-[10px] font-semibold text-slate-500">
+                  {photoValue ? "Foto siap disimpan" : "Pilih foto wajah atau logo toko"}
+                </span>
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => void onPhotoChange(event.target.files?.[0])}
+              />
+            </label>
             {success ? (
               <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
                 <CheckCircle2 className="h-4 w-4" />

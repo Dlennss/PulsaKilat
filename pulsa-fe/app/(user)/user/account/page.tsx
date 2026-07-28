@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import {
   Bell,
-  Camera,
   ChevronRight,
   FileText,
   HelpCircle,
@@ -19,6 +18,7 @@ import { getInitials } from "@/components/user/helpers";
 import type { UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 import { UserLogoutButton } from "@/components/user/UserLogoutButton";
+import { UserProfilePhotoUploader } from "@/components/user/UserProfilePhotoUploader";
 
 type SessionShape = {
   user?: UserSession;
@@ -40,6 +40,7 @@ export default async function UserAccountPage() {
   const phone = profileWithPhone?.phone || profileWithPhone?.no_hp || profileWithPhone?.nomor_hp || profileWithPhone?.telepon || "-";
   const username = displayEmail !== "-" ? `@${displayEmail.split("@")[0]}` : "@pulsakilat";
   const initials = getInitials(displayName, displayEmail);
+  const profilePhotoURL = profile?.profile_photo_url || user?.image || "";
 
   const personalItems = [
     {
@@ -92,14 +93,13 @@ export default async function UserAccountPage() {
         <div className="pointer-events-none absolute -left-14 -top-16 h-40 w-40 rounded-full border border-white/10 bg-white/8" />
         <div className="pointer-events-none absolute -right-10 top-7 h-32 w-32 rounded-full bg-white/10" />
         <div className="mx-auto flex w-full max-w-md flex-col items-center text-center">
-          <div className="relative">
-            <div className="grid h-20 w-20 place-items-center rounded-[26px] bg-white text-2xl font-black text-[#047857] shadow-[0_16px_34px_rgba(6,78,59,0.18)]">
-              {initials}
-            </div>
-            <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-3 border-[#047857] bg-white text-[#047857] shadow-[0_8px_18px_rgba(6,78,59,0.18)]">
-              <Camera className="h-4 w-4" strokeWidth={2.4} />
-            </span>
-          </div>
+          <UserProfilePhotoUploader
+            name={displayName}
+            email={displayEmail}
+            phone={phone}
+            initials={initials}
+            profilePhotoURL={profilePhotoURL}
+          />
           <h1 className="mt-4 max-w-full truncate text-lg font-black tracking-tight">{displayName}</h1>
           <p className="mt-0.5 max-w-full truncate text-[11px] font-bold text-white/75">{username}</p>
           <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1.5 text-[10px] font-black text-white ring-1 ring-white/15">

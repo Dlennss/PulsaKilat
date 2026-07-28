@@ -17,6 +17,7 @@ SELECT
   m.email,
   COALESCE(m.nama,''),
   COALESCE(m.phone,''),
+  COALESCE(m.profile_photo_url,''),
   COALESCE(m.role,''),
   m.aktif,
   COALESCE(m.charge_receiver, false),
@@ -33,6 +34,7 @@ LIMIT 1`
 		&p.Email,
 		&p.Nama,
 		&p.Phone,
+		&p.ProfilePhoto,
 		&p.Role,
 		&p.Aktif,
 		&p.ChargeReceiver,
@@ -49,7 +51,7 @@ LIMIT 1`
 	return p, nil
 }
 
-func (r *MemberSelfRepository) UpdateMemberProfile(ctx context.Context, memberID int64, nama, phone string) (MemberProfile, error) {
+func (r *MemberSelfRepository) UpdateMemberProfile(ctx context.Context, memberID int64, nama, phone, profilePhotoURL string) (MemberProfile, error) {
 	if memberID <= 0 {
 		return MemberProfile{}, errors.New("invalid member_id")
 	}
@@ -57,10 +59,11 @@ func (r *MemberSelfRepository) UpdateMemberProfile(ctx context.Context, memberID
 UPDATE public.member
 SET
   nama = NULLIF($2, ''),
-  phone = NULLIF($3, ''),
+  phone = CASE WHEN $3 <> '' THEN $3 ELSE phone END,
+  profile_photo_url = CASE WHEN $4 <> '' THEN $4 ELSE profile_photo_url END,
   diubah_pada = now()
 WHERE id = $1
-`, memberID, nama, phone)
+`, memberID, nama, phone, profilePhotoURL)
 	if err != nil {
 		return MemberProfile{}, err
 	}
