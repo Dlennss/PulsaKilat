@@ -12,15 +12,22 @@ type OverviewStatCardProps = {
 
 function toneClass(tone: OverviewStatCardProps["tone"]): string {
   if (tone === "emerald") {
-    return "from-emerald-500/20 via-emerald-500/10 to-cyan-500/15 border-emerald-300/25";
+    return "border-emerald-200 border-l-[#047857] bg-[linear-gradient(135deg,#ffffff_0%,#f1fff8_100%)]";
   }
   if (tone === "amber") {
-    return "from-amber-500/20 via-amber-500/10 to-orange-500/15 border-amber-300/25";
+    return "border-lime-200 border-l-[#65a30d] bg-[linear-gradient(135deg,#ffffff_0%,#f5ffe7_100%)]";
   }
   if (tone === "violet") {
-    return "from-violet-500/20 via-violet-500/10 to-indigo-500/15 border-violet-300/25";
+    return "border-teal-200 border-l-[#0f766e] bg-[linear-gradient(135deg,#ffffff_0%,#ecfffb_100%)]";
   }
-  return "from-sky-500/20 via-sky-500/10 to-cyan-500/15 border-sky-300/25";
+  return "border-cyan-200 border-l-[#0891b2] bg-[linear-gradient(135deg,#ffffff_0%,#effcff_100%)]";
+}
+
+function iconClass(tone: OverviewStatCardProps["tone"]): string {
+  if (tone === "emerald") return "bg-[#e8fff4] text-[#064e3b] ring-emerald-300";
+  if (tone === "amber") return "bg-[#f5ffe7] text-[#3f6212] ring-lime-300";
+  if (tone === "violet") return "bg-[#ecfffb] text-[#115e59] ring-teal-300";
+  return "bg-[#effcff] text-[#155e75] ring-cyan-300";
 }
 
 export default function OverviewStatCard(props: OverviewStatCardProps) {
@@ -28,14 +35,14 @@ export default function OverviewStatCard(props: OverviewStatCardProps) {
 
   return (
     <div
-      className={`rounded-2xl border bg-linear-to-br p-4 shadow-[0_18px_42px_-28px_rgba(56,189,248,0.55)] ${toneClass(tone)}`}
+      className={`rounded-[22px] border border-l-4 p-4 shadow-[0_14px_30px_rgba(6,78,59,0.08)] ${toneClass(tone)}`}
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="text-xs uppercase tracking-wide text-slate-300">{title}</div>
-        {icon ? <div className="text-slate-200">{icon}</div> : null}
+        <div className="text-xs font-black uppercase tracking-[0.12em] text-[#064e3b]">{title}</div>
+        {icon ? <div className={`grid h-10 w-10 place-items-center rounded-2xl ring-2 ${iconClass(tone)}`}>{icon}</div> : null}
       </div>
-      <div className="mt-2 text-2xl font-bold tracking-tight text-white">{value}</div>
-      {subtitle ? <div className="mt-1 text-xs text-slate-300">{subtitle}</div> : null}
+      <div className="mt-2 text-2xl font-black tracking-tight text-[#071b14]">{value}</div>
+      {subtitle ? <div className="mt-1 text-xs font-semibold text-[#315847]">{subtitle}</div> : null}
     </div>
   );
 }

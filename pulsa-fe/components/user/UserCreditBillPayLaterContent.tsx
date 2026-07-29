@@ -495,7 +495,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
               <ReceiptText className="h-8 w-8" />
             </div>
             <h2 className="mt-4 text-base font-black text-slate-950">Belum ada tagihan</h2>
-            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Tagihan akan muncul setelah pengajuan kredit disetujui oleh marketing.</p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Tagihan akan muncul setelah pengajuan kredit disetujui oleh master.</p>
           </div>
         </section>
       )}

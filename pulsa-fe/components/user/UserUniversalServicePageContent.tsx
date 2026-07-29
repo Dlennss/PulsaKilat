@@ -456,17 +456,19 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
               <button
                 type="button"
                 onClick={() => navigator.clipboard?.writeText(completedOrder.invoiceId)}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-[18px] border border-emerald-200 bg-white text-sm font-black text-[#047857]"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-[18px] border-2 border-[#047857] bg-white text-sm font-black !text-[#047857] shadow-[0_10px_20px_rgba(6,78,59,0.08)]"
+                style={{ color: "#047857" }}
               >
                 <Copy className="h-4 w-4" />
                 Salin Invoice
               </button>
               <Link
                 href="/user/transaksi"
-                className="flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-[#052e26] text-sm font-black text-white"
+                className="flex h-13 w-full items-center justify-center gap-2 rounded-[20px] border-2 border-[#052e26] bg-[linear-gradient(135deg,#064e3b_0%,#047857_72%,#55c72f_145%)] text-sm font-black !text-white shadow-[0_14px_28px_rgba(6,78,59,0.20)]"
+                style={{ color: "#ffffff" }}
               >
-                Lihat Riwayat
-                <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
+                <span className="!text-white" style={{ color: "#ffffff" }}>Lihat Riwayat</span>
+                <ChevronRight className="h-4 w-4 !text-white" strokeWidth={2.6} />
               </Link>
             </div>
           </section>

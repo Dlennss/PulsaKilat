@@ -296,11 +296,9 @@ function getApplicationNotice(application?: AgentCreditApplication) {
     case "analysis_rejected":
     case "master_rejected":
       {
-        const rejectedByAnalyst = application.status === "analysis_rejected";
-        const rejectedByMaster = application.status === "master_rejected" || application.status === "rejected";
-        const note = rejectedByAnalyst ? application.analyst_note : application.marketing_note;
+        const note = application.marketing_note || application.analyst_note;
         return {
-          title: rejectedByAnalyst ? "Pengajuan ditolak" : rejectedByMaster ? "Ditolak master" : "Pengajuan ditolak",
+          title: "Pengajuan ditolak",
           desc: note || "Data belum sesuai. Perbaiki data dan ajukan ulang.",
           className: "border-rose-200 bg-rose-50 text-rose-600",
           icon: XCircle,

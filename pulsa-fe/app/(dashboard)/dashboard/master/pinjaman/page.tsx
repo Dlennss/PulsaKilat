@@ -33,12 +33,12 @@ export default async function MasterDashboardPage() {
   const reviewMode = role === "marketing" ? "marketing" : "master";
   const waiting = masterItems.filter((item) => item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review").length;
   const approved = masterItems.filter((item) => item.status === "approved").length;
-  const activeLimit = masterItems.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
+  const activeOutstanding = masterItems.reduce((total, item) => total + Number(item.outstanding_amount || 0), 0);
   const stats = [
     { label: "Total Data", value: String(masterItems.length), hint: masterItems.length ? "Masuk panel master" : "Belum ada data", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
     { label: "Perlu ACC", value: String(waiting), hint: "Menunggu keputusan master", icon: Clock3, tone: "from-amber-400 to-orange-500" },
     { label: "Disetujui", value: String(approved), hint: approved ? "ACC master final" : "Belum ada ACC", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
-    { label: "Limit Aktif", value: formatIDR(activeLimit), hint: activeLimit ? "Berjalan" : "Belum berjalan", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
+    { label: "Sisa Tagihan", value: formatIDR(activeOutstanding), hint: activeOutstanding ? "Pinjaman berjalan" : "Belum ada tagihan", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
   ];
 
   return (

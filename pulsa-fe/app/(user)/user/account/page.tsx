@@ -11,6 +11,7 @@ import {
   Phone,
   ShieldCheck,
   UserRound,
+  UsersRound,
 } from "lucide-react";
 import { authOptions } from "@/lib/nextauth";
 import { getUserProfile } from "@/lib/api.auth";
@@ -41,6 +42,8 @@ export default async function UserAccountPage() {
   const username = displayEmail !== "-" ? `@${displayEmail.split("@")[0]}` : "@pulsakilat";
   const initials = getInitials(displayName, displayEmail);
   const profilePhotoURL = profile?.profile_photo_url || user?.image || "";
+  const role = String(profile?.role || user?.role || "").trim().toLowerCase();
+  const canManageRetailNetwork = role === "master" || role === "agent";
 
   const personalItems = [
     {
@@ -61,6 +64,16 @@ export default async function UserAccountPage() {
   ];
 
   const settingItems = [
+    ...(canManageRetailNetwork
+      ? [
+          {
+            href: "/user/account/downline",
+            label: "Jaringan Retail",
+            desc: role === "master" ? "Kelola agent dan user bawahan" : "Kelola user bawahan",
+            icon: UsersRound,
+          },
+        ]
+      : []),
     {
       href: "/user/account",
       label: "Keamanan Akun",

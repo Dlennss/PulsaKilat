@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Building2, Coins, Landmark, ReceiptText, Users, Wallet } from "lucide-react";
-import OverviewStatCard from "@/components/dashboard/OverviewStatCard";
-import DashboardProfileCard from "@/components/dashboard/DashboardProfileCard";
+import { ArrowUpRight, BadgeCheck, Building2, Coins, Landmark, ReceiptText, Shield, Users, Wallet, Zap } from "lucide-react";
 
 type MembersResp = {
   ok?: boolean;
@@ -52,6 +50,32 @@ function fmtNumber(n: number): string {
 
 function fmtCurrency(n: number): string {
   return `Rp ${fmtNumber(n)}`;
+}
+
+type StatTone = "green" | "mint" | "lime" | "blue" | "gold";
+
+function statToneClass(tone: StatTone) {
+  if (tone === "mint") {
+    return "border-slate-300 bg-white text-slate-950";
+  }
+  if (tone === "lime") {
+    return "border-slate-300 bg-white text-slate-950";
+  }
+  if (tone === "blue") {
+    return "border-slate-300 bg-white text-slate-950";
+  }
+  if (tone === "gold") {
+    return "border-slate-300 bg-white text-slate-950";
+  }
+  return "border-slate-300 bg-white text-slate-950";
+}
+
+function iconToneClass(tone: StatTone) {
+  if (tone === "mint") return "bg-white text-[#052e26] ring-2 ring-teal-700";
+  if (tone === "lime") return "bg-white text-[#052e26] ring-2 ring-lime-700";
+  if (tone === "blue") return "bg-white text-[#052e26] ring-2 ring-sky-700";
+  if (tone === "gold") return "bg-white text-[#052e26] ring-2 ring-amber-700";
+  return "bg-white text-[#052e26] ring-2 ring-emerald-700";
 }
 
 export default function AdminHome() {
@@ -140,115 +164,126 @@ export default function AdminHome() {
     void loadOverview();
   }, []);
 
+  const stats = [
+    { title: "Akun H2H", value: fmtNumber(data.h2hCount), icon: Users, tone: "blue" as StatTone, desc: "Member H2H terdaftar" },
+    { title: "Akun Retail", value: fmtNumber(data.retailCount), icon: Users, tone: "green" as StatTone, desc: "Agent dan user aplikasi" },
+    { title: "Provider Aktif", value: fmtNumber(data.totalProvider), icon: Building2, tone: "mint" as StatTone, desc: "Koneksi provider berjalan" },
+    { title: "Saldo H2H", value: fmtCurrency(data.h2hSaldo), icon: Wallet, tone: "blue" as StatTone, desc: "Total saldo member H2H" },
+    { title: "Saldo Retail", value: fmtCurrency(data.retailSaldo), icon: Wallet, tone: "green" as StatTone, desc: "Total saldo akun retail" },
+    { title: "Saldo Member", value: fmtCurrency(data.totalMemberSaldo), icon: Wallet, tone: "lime" as StatTone, desc: "Gabungan H2H dan retail" },
+    { title: "Saldo Bank", value: fmtCurrency(data.totalBankSaldo), icon: Landmark, tone: "blue" as StatTone, desc: "Dana di rekening aktif" },
+    { title: "Saldo Provider", value: fmtCurrency(data.totalProviderSaldo), icon: Building2, tone: "mint" as StatTone, desc: "Saldo di supplier" },
+    { title: "Profit Estimasi", value: fmtCurrency(data.profit), icon: Coins, tone: data.profit >= 0 ? "green" as StatTone : "gold" as StatTone, desc: "Bank + provider - member" },
+  ];
+
   return (
-    <div className="space-y-4 p-2">
-      <DashboardProfileCard
-        role="admin"
-        description="Akun admin aktif dengan akses penuh ke operasional, audit, wallet, dan master data."
-      />
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <OverviewStatCard
-          title="Jumlah Akun H2H"
-          value={loading ? "..." : fmtNumber(data.h2hCount)}
-          icon={<Users className="h-4 w-4" />}
-          tone="sky"
-        />
-        <OverviewStatCard
-          title="Jumlah Akun Retail"
-          value={loading ? "..." : fmtNumber(data.retailCount)}
-          icon={<Users className="h-4 w-4" />}
-          tone="emerald"
-        />
-        <OverviewStatCard
-          title="Provider Aktif"
-          value={loading ? "..." : fmtNumber(data.totalProvider)}
-          icon={<Building2 className="h-4 w-4" />}
-          tone="violet"
-        />
-        <OverviewStatCard
-          title="Jumlah Saldo H2H"
-          value={loading ? "..." : fmtCurrency(data.h2hSaldo)}
-          icon={<Wallet className="h-4 w-4" />}
-          tone="sky"
-        />
-        <OverviewStatCard
-          title="Jumlah Saldo Retail"
-          value={loading ? "..." : fmtCurrency(data.retailSaldo)}
-          icon={<Wallet className="h-4 w-4" />}
-          tone="emerald"
-        />
-        <OverviewStatCard
-          title="Total Saldo Member"
-          value={loading ? "..." : fmtCurrency(data.totalMemberSaldo)}
-          icon={<Wallet className="h-4 w-4" />}
-          tone="amber"
-        />
-        <OverviewStatCard
-          title="Total Saldo Bank"
-          value={loading ? "..." : fmtCurrency(data.totalBankSaldo)}
-          icon={<Landmark className="h-4 w-4" />}
-          tone="sky"
-        />
-        <OverviewStatCard
-          title="Total Saldo Provider"
-          value={loading ? "..." : fmtCurrency(data.totalProviderSaldo)}
-          icon={<Building2 className="h-4 w-4" />}
-          tone="violet"
-        />
-        <OverviewStatCard
-          title="Profit"
-          value={loading ? "..." : fmtCurrency(data.profit)}
-          icon={<Coins className="h-4 w-4" />}
-          tone={data.profit >= 0 ? "emerald" : "amber"}
-        />
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <Link
-          href="/dashboard/admin/komisi"
-          className="rounded-2xl border border-white/12 bg-linear-to-br from-slate-900/85 via-slate-900/65 to-violet-950/25 p-5 shadow-[0_22px_48px_-34px_rgba(168,85,247,0.55)] transition hover:border-violet-400/35"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-base font-semibold text-white">Komisi & Laporan</div>
-              <div className="mt-1 text-sm text-white/65">Pantau komisi agent/master dan ringkasan transaksi harian 3 bulan terakhir.</div>
+    <div className="-m-2 min-h-screen bg-[#eef8f3] p-3 text-slate-950 sm:p-5 lg:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <section className="overflow-hidden rounded-[30px] border border-emerald-100 bg-white shadow-[0_24px_60px_rgba(6,78,59,0.10)]">
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_330px]">
+            <div className="relative overflow-hidden bg-[linear-gradient(135deg,#064e3b_0%,#047857_56%,#72d833_130%)] p-5 text-white sm:p-7">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/12" />
+              <div className="pointer-events-none absolute bottom-0 right-20 h-24 w-24 rounded-full border border-white/15" />
+              <p className="relative inline-flex items-center gap-2 rounded-full border border-white bg-[#052e26] px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-white">
+                <Zap className="h-3.5 w-3.5 fill-white text-white" />
+                Admin PulsaKilat
+              </p>
+              <h1 className="relative mt-4 text-3xl font-black tracking-normal sm:text-4xl">
+                Ringkasan Operasional
+              </h1>
+              <p className="relative mt-3 max-w-2xl text-sm font-semibold leading-6 text-emerald-50">
+                Pantau akun, saldo, provider, dan aktivitas penting dari satu dashboard yang fokus ke operasional PulsaKilat.
+              </p>
+              <div className="relative mt-5 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#052e26] bg-white px-3 py-1.5 text-xs font-black text-[#052e26]">
+                  <BadgeCheck className="h-4 w-4" />
+                  Admin aktif
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-white bg-[#052e26] px-3 py-1.5 text-xs font-black text-white">
+                  <Shield className="h-4 w-4" />
+                  Akses penuh
+                </span>
+              </div>
             </div>
-            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-violet-400/20 bg-violet-400/10 text-violet-300">
-              <Coins className="h-5 w-5" />
+
+            <div className="flex flex-col justify-center gap-3 bg-[#f8fffb] p-5 sm:p-7">
+              <div className="rounded-[24px] border border-emerald-100 bg-white p-4 shadow-[0_14px_30px_rgba(6,78,59,0.06)]">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#052e26]">Kesehatan Sistem</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{loading ? "Memuat..." : "Tersinkron"}</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Data dashboard diambil langsung dari API internal PulsaKilat.</p>
+              </div>
+              <Link
+                href="/dashboard/admin/integrasi/pulsa24jam"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-[#052e26] bg-white px-4 py-3 text-sm font-black text-[#052e26] shadow-[0_12px_24px_rgba(6,78,59,0.10)] outline-none transition hover:bg-[#f8fffb] focus-visible:ring-4 focus-visible:ring-emerald-200"
+              >
+                Integrasi Provider
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
-        </Link>
+        </section>
 
-        <Link
-          href="/dashboard/admin/wallet-activity"
-          className="rounded-2xl border border-white/12 bg-linear-to-br from-slate-900/85 via-slate-900/65 to-emerald-950/25 p-5 shadow-[0_22px_48px_-34px_rgba(16,185,129,0.55)] transition hover:border-emerald-400/35"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-base font-semibold text-white">Aktivitas Wallet</div>
-              <div className="mt-1 text-sm text-white/65">Pantau koreksi saldo member dan provider oleh admin atau operator wallet.</div>
-            </div>
-            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
-              <Wallet className="h-5 w-5" />
-            </div>
-          </div>
-        </Link>
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {stats.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className={`rounded-[24px] border-l-4 p-4 shadow-[0_16px_34px_rgba(6,78,59,0.07)] ${statToneClass(item.tone)}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">{item.title}</p>
+                    <p className="mt-2 truncate text-2xl font-black text-slate-950">{loading ? "..." : item.value}</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">{item.desc}</p>
+                  </div>
+                  <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${iconToneClass(item.tone)}`}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </section>
 
-        <Link
-          href="/dashboard/admin/transaksi/member-status-logs"
-          className="rounded-2xl border border-white/12 bg-linear-to-br from-slate-900/85 via-slate-900/65 to-cyan-950/25 p-5 shadow-[0_22px_48px_-34px_rgba(56,189,248,0.75)] transition hover:border-cyan-400/35"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-base font-semibold text-white">Log Status Member</div>
-              <div className="mt-1 text-sm text-white/65">Lihat histori perubahan status transaksi member untuk monitoring operasional.</div>
-            </div>
-            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
-              <ReceiptText className="h-5 w-5" />
-            </div>
-          </div>
-        </Link>
+        <section className="grid gap-3 lg:grid-cols-3">
+          {[
+            {
+              href: "/dashboard/admin/komisi",
+              title: "Komisi & Laporan",
+              desc: "Pantau komisi agent, master, dan performa bisnis.",
+              icon: Coins,
+            },
+            {
+              href: "/dashboard/admin/wallet-activity",
+              title: "Aktivitas Wallet",
+              desc: "Lacak koreksi saldo member dan provider.",
+              icon: Wallet,
+            },
+            {
+              href: "/dashboard/admin/transaksi/member-status-logs",
+              title: "Log Status Member",
+              desc: "Audit perubahan status transaksi member.",
+              icon: ReceiptText,
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group rounded-[24px] border border-slate-300 bg-white p-5 shadow-[0_16px_34px_rgba(6,78,59,0.07)] outline-none transition hover:-translate-y-0.5 hover:border-slate-500 hover:shadow-[0_20px_40px_rgba(6,78,59,0.10)] focus-visible:ring-4 focus-visible:ring-emerald-200"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-base font-black text-slate-950">{item.title}</p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{item.desc}</p>
+                  </div>
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#052e26] ring-2 ring-[#052e26] transition group-hover:bg-[#052e26] group-hover:text-white">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </section>
       </div>
     </div>
   );

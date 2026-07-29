@@ -10,6 +10,13 @@ function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+}
+
 function getApplicantText(item: AgentCreditApplication, key: string, fallback = "-") {
   const value = item.applicant_data?.[key];
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
@@ -38,6 +45,15 @@ function getStatusLabel(status: string) {
   }
 }
 
+function getDisplayStatus(item: AgentCreditApplication) {
+  if (item.status !== "approved") return getStatusLabel(item.status);
+  const loanStatus = String(item.loan_status || "").toLowerCase();
+  if (loanStatus === "paid" || Number(item.outstanding_amount || 0) <= 0) return "Lunas";
+  if (loanStatus === "overdue") return "Telat bayar";
+  if (loanStatus === "active") return "Pinjaman aktif";
+  return "Disetujui";
+}
+
 function getStatusClass(status: string) {
   switch (status) {
     case "approved":
@@ -53,6 +69,17 @@ function getStatusClass(status: string) {
     default:
       return "bg-lime-100 text-emerald-700";
   }
+}
+
+function getDisplayStatusClass(item: AgentCreditApplication) {
+  const loanStatus = String(item.loan_status || "").toLowerCase();
+  if (item.status === "approved" && (loanStatus === "paid" || Number(item.outstanding_amount || 0) <= 0)) {
+    return "bg-sky-100 text-sky-700";
+  }
+  if (item.status === "approved" && loanStatus === "overdue") {
+    return "bg-rose-100 text-rose-600";
+  }
+  return getStatusClass(item.status);
 }
 
 function hasStoredImage(item: AgentCreditApplication, key: string) {
@@ -118,8 +145,8 @@ export function MasterAgentCreditApplicationList({
     <section className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">Meja Review</p>
-          <h2 className="mt-1 text-xl font-black">Pengajuan Kredit Terbaru</h2>
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">{showActions ? "Meja Review" : "Arsip Kredit"}</p>
+          <h2 className="mt-1 text-xl font-black">{showActions ? "Pengajuan Kredit Terbaru" : "Riwayat Pinjaman Agent"}</h2>
         </div>
         <label className="flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-500 focus-within:border-emerald-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-100">
           <Search className="h-4 w-4" />
@@ -145,6 +172,9 @@ export function MasterAgentCreditApplicationList({
               { label: "Selfie KTP", src: getStoredImageSrc(item, "selfie") },
             ];
             const signatureSrc = getSignatureSrc(item);
+            const outstanding = Number(item.outstanding_amount || 0);
+            const approvedAmount = Number(item.approved_amount || 0);
+            const isPending = item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review";
             return (
               <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)]">
                 <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center">
@@ -155,15 +185,16 @@ export function MasterAgentCreditApplicationList({
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="max-w-full truncate text-sm font-black text-slate-950">{agentName}</h3>
-                        <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getStatusClass(item.status)}`}>{getStatusLabel(item.status)}</span>
+                        <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getDisplayStatusClass(item)}`}>{getDisplayStatus(item)}</span>
                       </div>
                       <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{storeName}</p>
                       <p className="mt-1 truncate text-[11px] font-bold text-slate-400">WA {wa} · NIK {nik}</p>
                     </div>
                   </div>
                   <div className="rounded-xl bg-emerald-50 px-3 py-2 text-left lg:text-center">
-                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">Nominal</p>
-                    <p className="mt-0.5 text-sm font-black text-slate-950">{formatIDR(item.requested_amount)}</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">{isPending ? "Diajukan" : "Sisa"}</p>
+                    <p className="mt-0.5 text-sm font-black text-slate-950">{formatIDR(isPending ? item.requested_amount : outstanding)}</p>
+                    {!isPending && approvedAmount ? <p className="mt-0.5 text-[9px] font-bold text-slate-400">Limit {formatIDR(approvedAmount)}</p> : null}
                   </div>
                   <button
                     type="button"
@@ -192,17 +223,15 @@ export function MasterAgentCreditApplicationList({
 
                 {openId === item.id ? (
                   <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3">
-                    {item.analyst_recommendation || item.analyst_note ? (
-                      <div className="mb-3 rounded-2xl border border-sky-100 bg-sky-50 p-3 text-[11px] font-semibold text-sky-700">
-                        <p className="font-black text-slate-950">Catatan Review</p>
-                        <p className="mt-1">
-                          {item.analyst_recommendation === "approved" ? "Layak" : item.analyst_recommendation === "rejected" ? "Tidak layak" : "Belum ada rekomendasi"}
-                          {item.analyst_recommended_amount ? ` - ${formatIDR(item.analyst_recommended_amount)}` : ""}
-                        </p>
-                        {item.analyst_note ? <p className="mt-1 leading-5 text-slate-500">{item.analyst_note}</p> : null}
-                      </div>
-                    ) : null}
                     <div className="grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
+                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                        <p className="font-black text-slate-950">Status Pinjaman</p>
+                        <p className="mt-1 break-words leading-5">{getDisplayStatus(item)}</p>
+                      </div>
+                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                        <p className="font-black text-slate-950">Jatuh Tempo</p>
+                        <p className="mt-1 break-words leading-5">{formatDate(item.loan_due_date)}</p>
+                      </div>
                       <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
                         <p className="font-black text-slate-950">Email</p>
                         <p className="mt-1 break-all leading-5">{getApplicantText(item, "email", item.member_email || "-")}</p>

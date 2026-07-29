@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "./BrandLogo";
@@ -13,15 +13,16 @@ type Props = {
 export function SidebarDesktop({ sections, onLogout }: Props) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const isMasterPanel = pathname.startsWith("/dashboard/master");
 
   return (
-    <aside className={`hidden w-70 shrink-0 self-start border-r md:sticky md:top-0 md:flex md:h-screen md:flex-col ${isMasterPanel ? "border-emerald-300/10 bg-[linear-gradient(180deg,#052e26_0%,#046c3b_52%,#03341f_100%)]" : "border-white/10 bg-[#0A1325]"}`}>
-      <div className="border-b border-white/10 px-5 py-2 text-center">
-        <div className="mt-1">
+    <aside className="hidden w-72 shrink-0 self-start border-r border-emerald-100 bg-[#f8fffb] md:sticky md:top-0 md:flex md:h-screen md:flex-col">
+      <div className="border-b border-emerald-100 bg-white px-5 py-4">
+        <div className="flex justify-center">
           <BrandLogo />
         </div>
-        {isMasterPanel ? <p className="-mt-2 mb-3 text-xs font-bold text-lime-100/80"></p> : null}
+        <p className="mt-3 text-center text-[11px] font-black uppercase tracking-[0.18em] text-[#064e3b]">
+          Control Center
+        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -31,19 +32,19 @@ export function SidebarDesktop({ sections, onLogout }: Props) {
           const isOpen = section.title ? openSections[key] ?? active : true;
 
           return (
-            <div key={key} className={idx === 0 ? "space-y-1" : "mt-5 border-t border-white/10 pt-4"}>
+            <div key={key} className={idx === 0 ? "space-y-1" : "mt-5 border-t border-emerald-100 pt-4"}>
               {section.title ? (
                 <button
                   type="button"
-                  className={`mb-2 flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-[14px] font-bold uppercase tracking-[0.08em] transition ${
+                  className={`mb-2 flex w-full items-center justify-between rounded-2xl border px-3 py-2.5 text-left text-[13px] font-black uppercase tracking-[0.09em] outline-none transition focus-visible:ring-4 focus-visible:ring-emerald-200 ${
                     active
-                      ? "border-cyan-300/35 bg-linear-to-r from-cyan-400/18 via-sky-400/12 to-transparent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                      : "border-transparent text-white/65 hover:border-white/10 hover:bg-white/6 hover:text-white/90"
+                      ? "border-[#052e26] bg-white text-[#052e26] shadow-[0_10px_22px_rgba(6,78,59,0.07)]"
+                      : "border-transparent text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-950"
                   }`}
                   onClick={() => setOpenSections((prev) => ({ ...prev, [key]: !isOpen }))}
                 >
-                  <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]">{section.title}</span>
-                  <ChevronDown className={`h-4 w-4 transition ${isOpen ? "rotate-180 text-white" : "text-white/65"}`} />
+                  <span>{section.title}</span>
+                  <ChevronDown className={`h-4 w-4 transition ${isOpen ? "rotate-180 text-[#052e26]" : "text-slate-600"}`} />
                 </button>
               ) : null}
               {isOpen ? (
@@ -58,12 +59,13 @@ export function SidebarDesktop({ sections, onLogout }: Props) {
         })}
       </div>
 
-      <div className="border-t border-white/10 p-4">
+      <div className="border-t border-emerald-100 bg-white p-4">
         <button
           type="button"
           onClick={onLogout}
-          className={`w-full rounded-xl border px-3 py-2 text-sm font-medium transition ${isMasterPanel ? "border-white/15 bg-white/10 text-white hover:bg-white/15" : "border-red-300/25 bg-red-400/10 text-red-200 hover:bg-red-400/15"}`}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-sm font-black text-rose-700 transition hover:bg-rose-100"
         >
+          <LogOut className="h-4 w-4" />
           Logout
         </button>
       </div>

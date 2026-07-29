@@ -3,11 +3,16 @@ package repository
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 )
 
 func (r *AdminBusinessReportRepository) ListDailyBusiness(ctx context.Context, in AdminDailyBusinessArgs) ([]AdminDailyBusinessRow, error) {
 	if r == nil || r.db == nil {
 		return nil, errors.New("db not initialized")
+	}
+	if err := r.ensureDailyBusinessSupport(ctx); err != nil {
+		return nil, err
 	}
 
 	scope := normalizeAdminReportScope(in.Scope)
@@ -574,6 +579,9 @@ func (r *AdminBusinessReportRepository) RefreshDailyBusinessCache(ctx context.Co
 	if r == nil || r.db == nil {
 		return nil, errors.New("db not initialized")
 	}
+	if err := r.ensureDailyBusinessSupport(ctx); err != nil {
+		return nil, err
+	}
 	if days <= 0 || days > 366 {
 		days = 93
 	}
@@ -585,7 +593,63 @@ SELECT
   now() AS refreshed_at
 `, days).Scan(&out.RefreshedRows, &out.RefreshedAt)
 	if err != nil {
+		if isMissingDailyBusinessRefreshFunction(err) {
+			out.RefreshedRows = 0
+			out.RefreshedAt = time.Now()
+			return out, nil
+		}
 		return nil, err
 	}
 	return out, nil
+}
+
+func isMissingDailyBusinessRefreshFunction(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "refresh_admin_daily_business_cache") &&
+		(strings.Contains(msg, "does not exist") || strings.Contains(msg, "undefined_function"))
+}
+
+func (r *AdminBusinessReportRepository) ensureDailyBusinessSupport(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx, `
+CREATE TABLE IF NOT EXISTS public.retail_commission_ledger (
+  id BIGSERIAL PRIMARY KEY,
+  member_id BIGINT,
+  source_member_id BIGINT,
+  source_app_order_id BIGINT,
+  level TEXT NOT NULL DEFAULT '',
+  amount BIGINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.h2h_commission_ledger (
+  id BIGSERIAL PRIMARY KEY,
+  member_id BIGINT,
+  source_member_id BIGINT,
+  source_transaksi_member_id BIGINT,
+  level TEXT NOT NULL DEFAULT '',
+  amount BIGINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.admin_daily_business_cache (
+  scope TEXT NOT NULL,
+  day DATE NOT NULL,
+  month_key TEXT NOT NULL,
+  transaction_count BIGINT NOT NULL DEFAULT 0,
+  transaction_amount BIGINT NOT NULL DEFAULT 0,
+  provider_payment_amount BIGINT NOT NULL DEFAULT 0,
+  margin_amount BIGINT NOT NULL DEFAULT 0,
+  commission_amount BIGINT NOT NULL DEFAULT 0,
+  transaction_expense_amount BIGINT NOT NULL DEFAULT 0,
+  member_deposit_amount BIGINT NOT NULL DEFAULT 0,
+  provider_deposit_amount BIGINT NOT NULL DEFAULT 0,
+  deposit_gap_amount BIGINT NOT NULL DEFAULT 0,
+  profit_amount BIGINT NOT NULL DEFAULT 0,
+  refreshed_at TIMESTAMP NOT NULL DEFAULT now(),
+  PRIMARY KEY (scope, day)
+);
+CREATE INDEX IF NOT EXISTS admin_daily_business_cache_day_scope_idx
+  ON public.admin_daily_business_cache (day DESC, scope);
+`)
+	return err
 }

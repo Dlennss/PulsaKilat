@@ -31,7 +31,7 @@ export default async function MasterCreditHistoryPage() {
   const finishedLimit = historyItems.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
   const stats = [
     { label: "Total Riwayat", value: String(historyItems.length), hint: "Data selesai/arsip", icon: Archive, tone: "from-emerald-500 to-lime-400" },
-    { label: "Ditolak", value: String(rejected), hint: "Analis atau master", icon: FileX2, tone: "from-rose-500 to-orange-400" },
+    { label: "Ditolak", value: String(rejected), hint: "Keputusan master", icon: FileX2, tone: "from-rose-500 to-orange-400" },
     { label: "Lunas", value: String(paid), hint: "Pinjaman selesai", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
     { label: "Nominal Selesai", value: formatIDR(finishedLimit), hint: "Total ACC di arsip", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
   ];

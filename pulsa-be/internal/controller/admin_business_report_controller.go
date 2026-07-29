@@ -67,7 +67,7 @@ func (h *AdminBusinessReportController) DailyBusiness(w http.ResponseWriter, r *
 		HasTo:   hasTo,
 	})
 	if err != nil {
-		helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
+		helper.SafeErrorResponse(w, http.StatusBadRequest, "Gagal memuat laporan bisnis.", err, "admin daily business report")
 		return
 	}
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
@@ -85,7 +85,7 @@ func (h *AdminBusinessReportController) RefreshDailyBusinessCache(w http.Respons
 		helper.QueryInt(r, "days", 0),
 	)
 	if err != nil {
-		helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
+		helper.SafeErrorResponse(w, http.StatusBadRequest, "Gagal update data laporan bisnis.", err, "admin daily business cache refresh")
 		return
 	}
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "item": item})

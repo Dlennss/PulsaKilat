@@ -167,6 +167,7 @@ export const adminNavSections: NavSection[] = [
       { href: "/dashboard/admin/master/produk", label: "Produk" },
       { href: "/dashboard/admin/master/provider", label: "Provider" },
       { href: "/dashboard/admin/master/produk/provider/map", label: "Mapping & Fee Provider" },
+      { href: "/dashboard/admin/integrasi/pulsa24jam", label: "Integrasi Pulsa24Jam" },
       { href: "/dashboard/admin/provider-merchant-ids", label: "Merchant ID Rajabiller" },
       { href: "/dashboard/admin/master/fee-kategori-aplikasi", label: "Fee Kategori Retail" },
       { href: "/dashboard/admin/master/iklan", label: "Iklan Guest" },

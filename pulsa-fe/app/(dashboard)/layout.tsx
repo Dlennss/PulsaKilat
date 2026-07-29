@@ -259,14 +259,22 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
 
   if (!ready) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#050A14] text-sm text-white/70">
-        Memeriksa sesi...
+      <div className="grid min-h-screen place-items-center bg-[#eef8f3] p-6">
+        <div className="w-full max-w-sm rounded-[28px] border border-emerald-100 bg-white p-5 shadow-[0_24px_60px_rgba(6,78,59,0.10)]">
+          <div className="h-5 w-32 animate-pulse rounded-full bg-emerald-100" />
+          <div className="mt-4 h-10 animate-pulse rounded-2xl bg-emerald-50" />
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#050A14] text-white">
+    <div className="min-h-screen bg-[#eef8f3] text-slate-950">
       <div className="flex min-h-screen">
         <SidebarDesktop sections={navSections} onLogout={logout} />
 

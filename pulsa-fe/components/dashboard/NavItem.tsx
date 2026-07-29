@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 
 type Props = {
   href: string;
@@ -26,14 +27,19 @@ export function NavItem({ href, label, onClick }: Props) {
       href={href}
       onClick={onClick}
       className={[
-        "flex items-center justify-between rounded-xl border px-3 py-2.5 text-[13px] font-medium uppercase tracking-[0.08em] transition",
+        "group flex items-center justify-between rounded-2xl border px-3 py-2.5 text-[13px] font-black uppercase tracking-[0.08em] outline-none transition focus-visible:ring-4 focus-visible:ring-emerald-200",
         active
-          ? "border-cyan-400/35 bg-linear-to-r from-cyan-400/18 via-sky-400/12 to-indigo-400/14 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-          : "border-transparent text-white/80 hover:border-white/10 hover:bg-white/8 hover:text-white",
+          ? "border-[#052e26] bg-white text-[#052e26] shadow-[0_10px_20px_rgba(6,78,59,0.10)]"
+          : "border-transparent text-slate-800 hover:border-slate-300 hover:bg-white hover:text-slate-950",
       ].join(" ")}
+      aria-current={active ? "page" : undefined}
     >
       <span>{label}</span>
-      {active ? <span className="h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.75)]" /> : null}
+      {active ? (
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#052e26] text-white">
+          <CheckCircle2 className="h-4 w-4" />
+        </span>
+      ) : null}
     </Link>
   );
 }

@@ -20,7 +20,7 @@ export default async function UserSaldoTagihanPage() {
   if (role !== "agent" && role !== "user") redirect("/user/saldo");
 
   const applications = await getMyAgentCreditApplications(session.backendToken);
-  const bills = applications.filter((item) => item.status === "approved");
+  const bills = applications.filter((item) => item.status === "approved" && Number(item.outstanding_amount || 0) > 0);
 
   return (
     <main className="min-h-screen bg-[#eef8f3] px-3 pb-24 pt-3">
