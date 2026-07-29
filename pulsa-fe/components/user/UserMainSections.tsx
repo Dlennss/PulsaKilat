@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowUpRight, BookOpen, CalendarClock, Code2, Gamepad2, PlugZap, ReceiptText, Smartphone, Wifi, Zap } from "lucide-react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 
+const accessibleActionButtonClass =
+  "inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-[#052e26] bg-[#052e26] px-3.5 text-[11px] font-black text-white! shadow-[0_10px_20px_rgba(6,78,59,0.18)] transition visited:text-white! hover:-translate-y-0.5 hover:bg-[#064e3b] hover:text-white! focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200 active:translate-y-0";
+
 export function UserPulsaDataShortcut() {
   return (
     <section>
@@ -119,12 +122,9 @@ export function UserRecentActivity({ href = "/kategori" }: UserRecentActivityPro
             </p>
           </div>
 
-          <Link
-            href={href}
-            prefetch={false}
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-2xl bg-linear-to-r from-[#052e26] via-[#047857] to-[#a3e635] px-3 text-[11px] font-black text-white shadow-[0_10px_20px_rgba(6,78,59,0.20)] transition hover:brightness-105"
-          >
+          <Link href={href} prefetch={false} className={accessibleActionButtonClass}>
             Pilih Layanan
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.6} />
           </Link>
         </div>
       </div>
@@ -168,12 +168,9 @@ export function UserFavoriteTransactions({ href = "/kategori" }: UserFavoriteTra
             </p>
           </div>
 
-          <Link
-            href={href}
-            prefetch={false}
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-2xl bg-linear-to-r from-[#052e26] via-[#047857] to-[#a3e635] px-3 text-[11px] font-black text-white shadow-[0_10px_20px_rgba(6,78,59,0.20)] transition hover:brightness-105"
-          >
+          <Link href={href} prefetch={false} className={accessibleActionButtonClass}>
             Mulai Transaksi
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.6} />
           </Link>
         </div>
       </div>
@@ -233,12 +230,9 @@ export function UserMonthlyBills({ href = "/kategori", variant = "user", agentBi
             </p>
           </div>
 
-          <Link
-            href={billHref}
-            prefetch={false}
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-2xl bg-linear-to-r from-[#052e26] via-[#047857] to-[#a3e635] px-3 text-[11px] font-black text-white shadow-[0_10px_20px_rgba(6,78,59,0.20)] transition hover:brightness-105"
-          >
+          <Link href={billHref} prefetch={false} className={accessibleActionButtonClass}>
             {isAgentBill ? "Bayar" : "Cek Tagihan"}
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.6} />
           </Link>
         </div>
       </div>
