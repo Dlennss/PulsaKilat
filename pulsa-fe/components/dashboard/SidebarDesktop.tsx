@@ -15,42 +15,42 @@ export function SidebarDesktop({ sections, onLogout }: Props) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   return (
-    <aside className="hidden w-72 shrink-0 self-start border-r border-emerald-100 bg-[#f8fffb] md:sticky md:top-0 md:flex md:h-screen md:flex-col">
-      <div className="border-b border-emerald-100 bg-white px-5 py-4">
+    <aside className="hidden w-72 shrink-0 self-start border-r border-emerald-950/20 bg-[radial-gradient(circle_at_20%_0%,rgba(190,242,100,0.18),transparent_30%),linear-gradient(180deg,#052e26_0%,#064e3b_46%,#047857_100%)] md:sticky md:top-0 md:flex md:h-screen md:flex-col">
+      <div className="border-b border-white/15 px-5 py-5">
         <div className="flex justify-center">
-          <BrandLogo />
+          <BrandLogo variant="dark" />
         </div>
-        <p className="mt-3 text-center text-[11px] font-black uppercase tracking-[0.18em] text-[#064e3b]">
+        <p className="mt-3 text-center text-[11px] font-black uppercase tracking-[0.18em] text-lime-100">
           Control Center
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-4 py-5">
         {sections.map((section, idx) => {
           const key = section.title || `section-${idx}`;
           const active = section.items.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"));
           const isOpen = section.title ? openSections[key] ?? active : true;
 
           return (
-            <div key={key} className={idx === 0 ? "space-y-1" : "mt-5 border-t border-emerald-100 pt-4"}>
+            <div key={key} className={idx === 0 ? "space-y-1" : "mt-5 border-t border-white/15 pt-4"}>
               {section.title ? (
                 <button
                   type="button"
-                  className={`mb-2 flex w-full items-center justify-between rounded-2xl border px-3 py-2.5 text-left text-[13px] font-black uppercase tracking-[0.09em] outline-none transition focus-visible:ring-4 focus-visible:ring-emerald-200 ${
+                  className={`mb-3 flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left text-[13px] font-black uppercase tracking-[0.10em] outline-none transition focus-visible:ring-4 focus-visible:ring-emerald-200 ${
                     active
-                      ? "border-[#052e26] bg-white text-[#052e26] shadow-[0_10px_22px_rgba(6,78,59,0.07)]"
-                      : "border-transparent text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-950"
+                      ? "border-white bg-white text-[#052e26] shadow-[0_14px_28px_rgba(0,0,0,0.16)]"
+                      : "border-white/15 bg-white/8 text-white hover:border-white/35 hover:bg-white/14 hover:text-white"
                   }`}
                   onClick={() => setOpenSections((prev) => ({ ...prev, [key]: !isOpen }))}
                 >
                   <span>{section.title}</span>
-                  <ChevronDown className={`h-4 w-4 transition ${isOpen ? "rotate-180 text-[#052e26]" : "text-slate-600"}`} />
+                  <ChevronDown className={`h-4 w-4 transition ${isOpen ? "rotate-180 text-[#052e26]" : "text-lime-100"}`} />
                 </button>
               ) : null}
               {isOpen ? (
-                <div className="space-y-1">
+                <div className="space-y-1.5 rounded-[24px] border border-white/10 bg-[#033b2e]/25 p-2 shadow-inner shadow-black/5">
                   {section.items.map((item) => (
-                    <NavItem key={item.href} href={item.href} label={item.label} />
+                    <NavItem key={item.href} href={item.href} label={item.label} variant="dark" />
                   ))}
                 </div>
               ) : null}
@@ -59,11 +59,11 @@ export function SidebarDesktop({ sections, onLogout }: Props) {
         })}
       </div>
 
-      <div className="border-t border-emerald-100 bg-white p-4">
+      <div className="border-t border-white/15 p-4">
         <button
           type="button"
           onClick={onLogout}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-sm font-black text-rose-700 transition hover:bg-rose-100"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white px-3 py-2.5 text-sm font-black text-rose-700 transition hover:bg-rose-50"
         >
           <LogOut className="h-4 w-4" />
           Logout
