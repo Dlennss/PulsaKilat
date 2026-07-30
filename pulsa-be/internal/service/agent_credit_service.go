@@ -25,6 +25,7 @@ type AgentCreditSubmitInput struct {
 	ApplicantData   map[string]any `json:"applicant_data"`
 	DocumentData    map[string]any `json:"document_data"`
 	AgentSignature  string         `json:"agent_signature"`
+	TermsAccepted   bool           `json:"terms_accepted"`
 }
 
 type AgentCreditDecisionInput struct {
@@ -36,10 +37,12 @@ type AgentCreditDecisionInput struct {
 }
 
 type AgentCreditPaymentInput struct {
-	ApplicationID int64  `json:"application_id"`
-	MemberID      int64  `json:"member_id"`
-	Amount        int64  `json:"amount"`
-	Note          string `json:"note"`
+	ApplicationID int64          `json:"application_id"`
+	MemberID      int64          `json:"member_id"`
+	Amount        int64          `json:"amount"`
+	Note          string         `json:"note"`
+	PaymentMethod string         `json:"payment_method"`
+	PaymentProof  map[string]any `json:"payment_proof"`
 }
 
 func isCreditReviewer(role string) bool {
@@ -92,6 +95,16 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	if in.ApplicantData == nil {
 		in.ApplicantData = map[string]any{}
 	}
+	if !in.TermsAccepted {
+		if accepted, ok := in.ApplicantData["terms_accepted"].(bool); ok {
+			in.TermsAccepted = accepted
+		}
+	}
+	if !in.TermsAccepted {
+		return nil, errors.New("syarat dan ketentuan wajib disetujui")
+	}
+	in.ApplicantData["terms_accepted"] = true
+	in.ApplicantData["terms_version"] = "pulsakilat-agent-credit-2026-07"
 	tenorMonths := normalizeCreditTenor(in.ApplicantData["tenor_months"])
 	if tenorMonths == 0 {
 		return nil, errors.New("tenor cicilan wajib pilih 3, 6, atau 12 bulan")
@@ -120,6 +133,24 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	}
 	if in.DocumentData == nil {
 		in.DocumentData = map[string]any{}
+	}
+	if role == helper.RoleRetailAgent {
+		if selfie, hasLegacySelfie := in.DocumentData["selfie"]; hasLegacySelfie {
+			if _, ok := in.DocumentData["selfie_ktp"]; !ok {
+				in.DocumentData["selfie_ktp"] = selfie
+			}
+		}
+		requiredDocuments := map[string]string{
+			"ktp":              "foto KTP wajib diupload",
+			"store":            "foto toko wajib diupload",
+			"selfie_ktp":       "foto selfie memegang KTP wajib diupload",
+			"selfie_marketing": "foto selfie dengan marketing wajib diupload",
+		}
+		for key, message := range requiredDocuments {
+			if in.DocumentData[key] == nil {
+				return nil, errors.New(message)
+			}
+		}
 	}
 	return s.repo.CreateApplication(ctx, repository.AgentCreditApplicationInput{
 		MemberID:        targetMemberID,
@@ -226,10 +257,19 @@ func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.Aut
 	if in.Amount <= 0 {
 		return errors.New("nominal cicilan wajib diisi")
 	}
+	if strings.TrimSpace(in.PaymentMethod) == "" {
+		in.PaymentMethod = "transfer"
+	}
+	proofURL, _ := in.PaymentProof["data_url"].(string)
+	if !strings.HasPrefix(strings.TrimSpace(proofURL), "data:image/") {
+		return errors.New("bukti transfer wajib diupload")
+	}
 	return s.repo.PayInstallment(ctx, repository.AgentCreditPaymentInput{
 		ApplicationID: in.ApplicationID,
 		MemberID:      auth.MemberID,
 		Amount:        in.Amount,
 		Note:          strings.TrimSpace(in.Note),
+		PaymentMethod: strings.TrimSpace(in.PaymentMethod),
+		PaymentProof:  in.PaymentProof,
 	})
 }

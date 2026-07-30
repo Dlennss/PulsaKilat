@@ -9,6 +9,7 @@ import {
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { getAgentCreditApplications } from "@/lib/api.auth";
+import { attachAgentCreditPaymentsFallback } from "@/lib/agent-credit-payment-fallback.server";
 import { MasterAgentCreditApplicationList } from "@/components/dashboard/MasterAgentCreditApplicationList";
 
 type SessionShape = {
@@ -22,7 +23,8 @@ function formatIDR(value: number) {
 
 export default async function MasterDashboardPage() {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
-  const applications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const rawApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const applications = await attachAgentCreditPaymentsFallback(rawApplications);
   const masterItems = applications.filter((item) => {
     if (item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review") return true;
     if (item.status !== "approved") return false;

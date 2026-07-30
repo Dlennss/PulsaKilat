@@ -374,13 +374,18 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
   const notice = getApplicationNotice(latestApplication);
   const NoticeIcon = notice?.icon;
   const hasOpenApplication = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review" || latestApplication?.status === "analysis_review" || latestApplication?.status === "master_review";
-  const isApproved = latestApplication?.status === "approved";
+  const isPaidOff = latestApplication?.status === "approved" && (String(latestApplication.loan_status || "").toLowerCase() === "paid" || Number(latestApplication.outstanding_amount || 0) <= 0);
+  const isApproved = latestApplication?.status === "approved" && !isPaidOff;
   const canReapply = latestApplication?.status === "rejected" || latestApplication?.status === "analysis_rejected" || latestApplication?.status === "master_rejected";
+  const canRefill = Boolean(isPaidOff);
   const creditLevelCode = String(latestApplication?.credit_level_code || "start").trim().toLowerCase();
   const creditLevelName = latestApplication?.credit_level_name || "Kilat Start";
   const creditLevelImage = levelBadgeByCode[creditLevelCode] || levelBadgeByCode.start;
   const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
   const creditLimitAmount = Number(latestApplication?.credit_limit_amount || defaultCreditAmount);
+  const totalPaidAmount = initialApplications.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
+  const totalActiveCredit = initialApplications.reduce((sum, item) => sum + Math.max(0, Number(item.outstanding_amount || 0)), 0);
+  const currentOutstanding = Math.max(0, Number(latestApplication?.outstanding_amount || 0));
   const applicantDefaults = latestApplication?.applicant_data || {};
   const applicantText = (key: string, fallback = "") => {
     const value = applicantDefaults[key];
@@ -396,13 +401,14 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
     setSubmitting(true);
     setError("");
     try {
-      const [ktpImage, storeImage, selfieImage] = await Promise.all([
+      const [ktpImage, storeImage, selfieKtpImage, selfieMarketingImage] = await Promise.all([
         readStoredImage(fileFromForm(form, "document_ktp")),
         readStoredImage(fileFromForm(form, "document_store")),
-        readStoredImage(fileFromForm(form, "document_selfie")),
+        readStoredImage(fileFromForm(form, "document_selfie_ktp")),
+        readStoredImage(fileFromForm(form, "document_selfie_marketing")),
       ]);
-      if (!ktpImage || !storeImage || !selfieImage) {
-        throw new Error("Foto KTP, foto toko, dan selfie wajib diupload");
+      if (!ktpImage || !storeImage || !selfieKtpImage || !selfieMarketingImage) {
+        throw new Error("Foto KTP, foto toko, selfie memegang KTP, dan selfie dengan marketing wajib diupload");
       }
 
       const response = await fetch("/api/agent-credit/applications", {
@@ -427,9 +433,11 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           document_data: {
             ktp: ktpImage,
             store: storeImage,
-            selfie: selfieImage,
+            selfie_ktp: selfieKtpImage,
+            selfie_marketing: selfieMarketingImage,
           },
           agent_signature: signatureData,
+          terms_accepted: agreed,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; item?: AgentCreditApplication };
@@ -560,10 +568,41 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           <div className="space-y-3">
             <UploadBox name="document_ktp" title="Foto KTP" desc="KTP asli, jelas, tidak buram" icon={Upload} />
             <UploadBox name="document_store" title="Foto Toko" desc="Tampak depan toko/usaha" icon={Store} />
-            <UploadBox name="document_selfie" title="Selfie Pegang KTP" desc="Wajah dan KTP terlihat jelas" icon={UsersRound} />
+            <UploadBox name="document_selfie_ktp" title="Selfie Memegang KTP" desc="Wajah agent dan KTP terlihat jelas" icon={UserRound} />
+            <UploadBox name="document_selfie_marketing" title="Selfie dengan Marketing" desc="Agent dan marketing terlihat jelas dalam satu foto" icon={UsersRound} />
           </div>
           <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-[10px] font-semibold leading-4 text-[#047857]">
-            Tips cepat lolos: cahaya cukup, wajah terlihat, dan foto selfie harus sambil memegang KTP.
+            Tips cepat lolos: cahaya cukup, wajah agent dan marketing terlihat, serta foto tidak blur.
+          </div>
+        </section>
+
+        <section className="rounded-[26px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
+          <div className="mb-4 flex items-start gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
+              <BadgeCheck className="h-5 w-5" strokeWidth={2.4} />
+            </span>
+            <div>
+              <h2 className="text-lg font-black text-slate-950">Ringkasan Kredit</h2>
+              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Cek dulu sebelum tanda tangan pengajuan.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-2xl bg-emerald-50 px-3 py-3 ring-1 ring-emerald-100">
+              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Limit Aktif</p>
+              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(creditLimitAmount)}</p>
+            </div>
+            <div className="rounded-2xl bg-sky-50 px-3 py-3 ring-1 ring-sky-100">
+              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-sky-700">Kredit Berjalan</p>
+              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(totalActiveCredit || currentOutstanding)}</p>
+            </div>
+            <div className="rounded-2xl bg-lime-50 px-3 py-3 ring-1 ring-lime-100">
+              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-lime-700">Sudah Lunas</p>
+              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(totalPaidAmount)}</p>
+            </div>
+            <div className="rounded-2xl bg-amber-50 px-3 py-3 ring-1 ring-amber-100">
+              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">Refill</p>
+              <p className="mt-1 text-sm font-black text-slate-950">{canRefill ? "Bisa diajukan" : totalActiveCredit > 0 ? "Lunasi dulu" : "Siap diajukan"}</p>
+            </div>
           </div>
         </section>
 
@@ -578,17 +617,19 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             </div>
           </div>
           <ol className="space-y-2 text-[11px] font-semibold leading-5 text-slate-600">
-            <li>1. Pengajuan hanya untuk agent PulsaKilat yang aktif.</li>
-            <li>2. Limit kredit maksimal Rp500.000 dan dapat berubah sesuai hasil penilaian.</li>
-            <li>3. Pelunasan wajib dilakukan sesuai tempo agar akses tetap aktif.</li>
-            <li>4. Data KTP, toko, selfie, dan tanda tangan dipakai untuk validasi.</li>
+            <li>1. Pinjaman saldo hanya digunakan untuk kebutuhan transaksi operasional di PulsaKilat.</li>
+            <li>2. Semua data, foto dokumen, selfie memegang KTP, selfie dengan marketing, dan tanda tangan wajib benar serta dapat dipertanggungjawabkan.</li>
+            <li>3. Pembayaran angsuran atau pelunasan wajib disertai bukti transfer yang valid.</li>
+            <li>4. Agent hanya bisa mengajukan refill setelah pinjaman sebelumnya lunas dan tidak ada pembayaran yang bermasalah.</li>
+            <li>5. Jika pembayaran terlambat lebih dari 3 hari, akun perlu evaluasi/perbaikan sebelum bisa naik limit atau mengajukan refill.</li>
+            <li>6. PulsaKilat berhak menolak, menunda, atau mengevaluasi ulang pengajuan jika data/bukti tidak sesuai.</li>
           </ol>
           <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3">
             <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border border-[#047857] bg-white text-[#047857]">
               {agreed ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
             </span>
             <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="sr-only" />
-            <span className="text-[11px] font-black leading-4 text-slate-950">Saya menyatakan data benar dan bersedia mengikuti ketentuan kredit saldo PulsaKilat.</span>
+            <span className="text-[11px] font-black leading-4 text-slate-950">Saya sudah membaca, memahami, dan menyetujui syarat & ketentuan pinjaman saldo PulsaKilat.</span>
           </label>
         </section>
 
@@ -666,7 +707,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           disabled={!agreed || !signatureReady || !signatureData || hasOpenApplication || isApproved || submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
-          {isApproved ? "Sudah Disetujui" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : canReapply ? "Ajukan Ulang" : "Ajukan Kredit Saldo"}
+          {isApproved ? "Kredit Masih Aktif" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : canRefill ? "Ajukan Refill" : canReapply ? "Ajukan Ulang" : "Ajukan Kredit Saldo"}
           <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
         </button>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, FileSignature, Search } from "lucide-react";
+import { ChevronDown, Download, Eye, FileSignature, ReceiptText, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 import { MasterAgentCreditDecisionControls } from "@/components/dashboard/MasterAgentCreditDecisionControls";
@@ -15,6 +15,19 @@ function formatDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function getApplicantText(item: AgentCreditApplication, key: string, fallback = "-") {
@@ -82,15 +95,15 @@ function getDisplayStatusClass(item: AgentCreditApplication) {
   return getStatusClass(item.status);
 }
 
-function hasStoredImage(item: AgentCreditApplication, key: string) {
-  const value = item.document_data?.[key];
-  if (!value || typeof value !== "object") return false;
-  const image = value as { data_url?: unknown };
-  return typeof image.data_url === "string" && image.data_url.startsWith("data:image/");
-}
-
 function getStoredImageSrc(item: AgentCreditApplication, key: string) {
   const value = item.document_data?.[key];
+  if (!value && key === "selfie_marketing") {
+    const legacyValue = item.document_data?.selfie;
+    if (legacyValue && typeof legacyValue === "object") {
+      const image = legacyValue as { data_url?: unknown };
+      return typeof image.data_url === "string" && image.data_url.startsWith("data:image/") ? image.data_url : "";
+    }
+  }
   if (!value || typeof value !== "object") return "";
   const image = value as { data_url?: unknown };
   return typeof image.data_url === "string" && image.data_url.startsWith("data:image/") ? image.data_url : "";
@@ -100,6 +113,18 @@ function getSignatureSrc(item: AgentCreditApplication) {
   return typeof item.agent_signature_data === "string" && item.agent_signature_data.startsWith("data:image/")
     ? item.agent_signature_data
     : "";
+}
+
+function getPaymentProofSrc(payment: NonNullable<AgentCreditApplication["payments"]>[number]) {
+  const src = payment.payment_proof?.data_url;
+  return typeof src === "string" && src.startsWith("data:image/") ? src : "";
+}
+
+function getPaymentStatusLabel(status: string, daysLate?: number) {
+  if (Number(daysLate || 0) > 0) return `Telat ${daysLate} hari`;
+  if (status === "partial") return "Sebagian";
+  if (status === "late") return "Telat";
+  return "Tepat waktu";
 }
 
 function searchableText(item: AgentCreditApplication) {
@@ -135,6 +160,7 @@ export function MasterAgentCreditApplicationList({
 }) {
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
+  const [previewProof, setPreviewProof] = useState<{ agentName: string; src: string; title: string } | null>(null);
   const trimmedQuery = query.trim().toLowerCase();
   const filteredApplications = useMemo(() => {
     if (!trimmedQuery) return applications;
@@ -169,9 +195,12 @@ export function MasterAgentCreditApplicationList({
             const docs = [
               { label: "Foto KTP", src: getStoredImageSrc(item, "ktp") },
               { label: "Foto Toko", src: getStoredImageSrc(item, "store") },
-              { label: "Selfie KTP", src: getStoredImageSrc(item, "selfie") },
+              { label: "Selfie KTP", src: getStoredImageSrc(item, "selfie_ktp") },
+              { label: "Selfie Marketing", src: getStoredImageSrc(item, "selfie_marketing") },
             ];
             const signatureSrc = getSignatureSrc(item);
+            const payments = item.payments || [];
+            const paymentTotal = payments.length || Number(item.payment_count || 0);
             const outstanding = Number(item.outstanding_amount || 0);
             const approvedAmount = Number(item.approved_amount || 0);
             const isPending = item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review";
@@ -257,11 +286,79 @@ export function MasterAgentCreditApplicationList({
                         {docs.map((doc) => (
                           <span
                             key={doc.label}
-                            className={hasStoredImage(item, doc.label === "Foto KTP" ? "ktp" : doc.label === "Foto Toko" ? "store" : "selfie") ? "rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-400"}
+                            className={doc.src ? "rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-400"}
                           >
                             {doc.label} {doc.src ? "ada" : "kosong"}
                           </span>
                         ))}
+                      </div>
+                    </div>
+                    <div className="mt-3 rounded-2xl border border-emerald-100 bg-white p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-black text-slate-950">Riwayat Pembayaran</p>
+                          <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                            Nominal, tanggal, status, dan bukti transfer agent.
+                          </p>
+                        </div>
+                        <span className="w-fit rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black text-emerald-700">
+                          {paymentTotal} pembayaran
+                        </span>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {payments.length ? (
+                          payments.map((payment) => {
+                            const proofSrc = getPaymentProofSrc(payment);
+                            return (
+                              <div key={payment.id} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                                <div className="flex min-w-0 items-start gap-3">
+                                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
+                                    <ReceiptText className="h-5 w-5" strokeWidth={2.4} />
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-black text-slate-950">{formatIDR(payment.amount)}</p>
+                                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                                      {formatDateTime(payment.paid_at)} - {getPaymentStatusLabel(payment.status, payment.days_late)}
+                                    </p>
+                                    {payment.note ? <p className="mt-1 line-clamp-2 text-[10px] font-semibold text-slate-400">{payment.note}</p> : null}
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 sm:justify-end">
+                                  {proofSrc ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewProof({ agentName, src: proofSrc, title: payment.payment_proof?.name || `Bukti pembayaran #${payment.id}` })}
+                                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 text-xs font-black text-white transition hover:bg-emerald-800"
+                                      >
+                                        <Eye className="h-4 w-4" strokeWidth={2.4} />
+                                        Lihat Bukti
+                                      </button>
+                                      <a
+                                        href={proofSrc}
+                                        download={payment.payment_proof?.name || `bukti-pembayaran-${payment.id}.png`}
+                                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50"
+                                      >
+                                        <Download className="h-4 w-4" strokeWidth={2.4} />
+                                        Download
+                                      </a>
+                                    </>
+                                  ) : (
+                                    <span className="inline-flex h-10 items-center rounded-xl bg-slate-100 px-3 text-xs font-black text-slate-400">
+                                      Bukti belum ada
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs font-bold text-slate-400">
+                            {paymentTotal > 0
+                              ? "Pembayaran sudah tercatat, tetapi detail bukti belum terkirim dari backend. Restart backend agar daftar pembayaran dan bukti transfer tampil."
+                              : "Belum ada pembayaran untuk pinjaman ini."}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -287,6 +384,37 @@ export function MasterAgentCreditApplicationList({
           </div>
         )}
       </div>
+      {previewProof ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
+          <section className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_28px_80px_rgba(15,23,42,0.35)]">
+            <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-black text-slate-950">Bukti Transfer</h3>
+                <p className="truncate text-[11px] font-bold text-slate-500">{previewProof.agentName} - {previewProof.title}</p>
+              </div>
+              <a
+                href={previewProof.src}
+                download={previewProof.title}
+                className="inline-flex h-10 items-center gap-2 rounded-2xl bg-emerald-700 px-3 text-xs font-black text-white transition hover:bg-emerald-800"
+              >
+                <Download className="h-4 w-4" strokeWidth={2.5} />
+                Download
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewProof(null)}
+                className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                aria-label="Tutup bukti transfer"
+              >
+                <X className="h-4 w-4" strokeWidth={2.6} />
+              </button>
+            </div>
+            <div className="max-h-[78vh] overflow-y-auto bg-slate-100 p-3 sm:p-5">
+              <img src={previewProof.src} alt={previewProof.title} className="mx-auto max-h-[70vh] w-auto max-w-full rounded-2xl bg-white object-contain shadow-[0_16px_36px_rgba(15,23,42,0.12)]" />
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

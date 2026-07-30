@@ -15,6 +15,7 @@ import {
   EyeOff,
   ReceiptText,
   ShieldCheck,
+  Upload,
   WalletCards,
   Loader2,
 } from "lucide-react";
@@ -82,8 +83,32 @@ function getPaidAmount(item: AgentCreditApplication) {
   return Math.max(0, Number(item.approved_amount || 0) - Number(item.outstanding_amount || 0));
 }
 
+type StoredPaymentProof = {
+  name: string;
+  type: string;
+  size: number;
+  data_url: string;
+};
+
+function readStoredPaymentProof(file: File | null): Promise<StoredPaymentProof | null> {
+  if (!file) return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Gagal membaca bukti ${file.name}`));
+    reader.onload = () => {
+      resolve({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data_url: String(reader.result || ""),
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 const paymentMethods = [
-  { id: "wallet", title: "Saldo PulsaKilat", desc: "Bayar langsung dari saldo akun", icon: WalletCards },
+  { id: "wallet", title: "Saldo PulsaKilat", desc: "Lampirkan bukti mutasi saldo akun", icon: WalletCards },
   { id: "va", title: "Virtual Account", desc: "BCA, BRI, BNI, Mandiri", icon: CreditCard },
   { id: "transfer", title: "Transfer Bank", desc: "Konfirmasi manual oleh marketing", icon: Banknote },
 ];
@@ -134,6 +159,8 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   const [selectedInstallments, setSelectedInstallments] = useState<number[]>([]);
   const [installmentPickerOpen, setInstallmentPickerOpen] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0].id);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofName, setProofName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -184,22 +211,31 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
 
   async function paySelectedBill() {
     if (!selectedBill || paymentAmount <= 0 || busy) return;
+    if (!proofFile) {
+      setError("Bukti pembayaran wajib diupload");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
+      const paymentProof = await readStoredPaymentProof(proofFile);
       const response = await fetch("/api/agent-credit/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           application_id: selectedBill.id,
           amount: paymentAmount,
+          payment_method: selectedMethod,
           note: `Cicilan ${activeInstallments.join(", ")} via ${method.title}${selectedMethod === "va" ? ` - VA ${paymentHelper.value}` : ""}`,
+          payment_proof: paymentProof,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!response.ok || !body.ok) {
         throw new Error(body.error || "Pembayaran gagal diproses");
       }
+      setProofFile(null);
+      setProofName("");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pembayaran gagal diproses");
@@ -470,10 +506,34 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                 <span className="font-black text-slate-950">{formatIDR(paymentAmount)}</span>
               </div>
             </div>
+            <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-[22px] border border-dashed border-emerald-300 bg-emerald-50/60 p-3 transition hover:bg-emerald-50">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#047857] ring-1 ring-emerald-100">
+                <Upload className="h-5 w-5" strokeWidth={2.4} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-slate-950">Upload Bukti Transfer</span>
+                <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-500">
+                  {proofName || "Foto/screenshot bukti pembayaran wajib dilampirkan"}
+                </span>
+              </span>
+              <span className={proofFile ? "rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-black text-white" : "rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#047857] ring-1 ring-emerald-100"}>
+                {proofFile ? "Siap" : "Pilih"}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  setProofFile(file);
+                  setProofName(file?.name || "");
+                }}
+              />
+            </label>
             <button
               type="button"
               onClick={paySelectedBill}
-              disabled={paymentAmount <= 0 || busy}
+              disabled={paymentAmount <= 0 || busy || !proofFile}
               className="mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_34px_rgba(5,150,105,0.22)] disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <BadgeCheck className="h-5 w-5" />}

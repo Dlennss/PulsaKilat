@@ -28,6 +28,7 @@ export type AgentCreditApplication = {
   outstanding_amount?: number;
   paid_amount?: number;
   payment_count?: number;
+  payments?: AgentCreditPayment[];
   credit_level_code?: string;
   credit_level_name?: string;
   credit_needs_repair?: boolean;
@@ -37,6 +38,25 @@ export type AgentCreditApplication = {
   loan_due_date?: string;
   created_at: string;
   updated_at: string;
+};
+
+export type AgentCreditPayment = {
+  id: number;
+  loan_id: number;
+  application_id: number;
+  member_id: number;
+  amount: number;
+  due_date: string;
+  paid_at: string;
+  days_late: number;
+  status: string;
+  note?: string;
+  payment_proof?: {
+    name?: string;
+    type?: string;
+    size?: number;
+    data_url?: string;
+  };
 };
 
 // ============================================

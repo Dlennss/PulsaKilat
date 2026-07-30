@@ -29,6 +29,8 @@ type AgentCreditPaymentInput struct {
 	MemberID      int64
 	Amount        int64
 	Note          string
+	PaymentMethod string
+	PaymentProof  map[string]any
 }
 
 type AgentCreditDecisionInput struct {
@@ -52,36 +54,51 @@ type AgentCreditProfile struct {
 }
 
 type AgentCreditApplication struct {
-	ID                       int64          `json:"id"`
-	MemberID                 int64          `json:"member_id"`
-	MemberName               string         `json:"member_name"`
-	MemberEmail              string         `json:"member_email"`
-	MemberPhone              string         `json:"member_phone"`
-	RequestedAmount          int64          `json:"requested_amount"`
-	ApprovedAmount           int64          `json:"approved_amount"`
-	Status                   string         `json:"status"`
-	ApplicantData            map[string]any `json:"applicant_data"`
-	DocumentData             map[string]any `json:"document_data"`
-	HasAgentSignature        bool           `json:"has_agent_signature"`
-	AgentSignatureData       string         `json:"agent_signature_data,omitempty"`
-	AgentSignatureAt         *time.Time     `json:"agent_signature_at,omitempty"`
-	MarketingNote            string         `json:"marketing_note"`
-	AnalystNote              string         `json:"analyst_note"`
-	AnalystRecommendation    string         `json:"analyst_recommendation"`
-	AnalystRecommendedAmount int64          `json:"analyst_recommended_amount"`
-	LoanStatus               string         `json:"loan_status"`
-	OutstandingAmount        int64          `json:"outstanding_amount"`
-	PaidAmount               int64          `json:"paid_amount"`
-	PaymentCount             int64          `json:"payment_count"`
-	CreditLevelCode          string         `json:"credit_level_code"`
-	CreditLevelName          string         `json:"credit_level_name"`
-	CreditNeedsRepair        bool           `json:"credit_needs_repair"`
-	QualifiedPaidTotal       int64          `json:"qualified_paid_total"`
-	CreditLimitAmount        int64          `json:"credit_limit_amount"`
-	LoanApprovedAt           *time.Time     `json:"loan_approved_at,omitempty"`
-	LoanDueDate              *time.Time     `json:"loan_due_date,omitempty"`
-	CreatedAt                time.Time      `json:"created_at"`
-	UpdatedAt                time.Time      `json:"updated_at"`
+	ID                       int64                `json:"id"`
+	MemberID                 int64                `json:"member_id"`
+	MemberName               string               `json:"member_name"`
+	MemberEmail              string               `json:"member_email"`
+	MemberPhone              string               `json:"member_phone"`
+	RequestedAmount          int64                `json:"requested_amount"`
+	ApprovedAmount           int64                `json:"approved_amount"`
+	Status                   string               `json:"status"`
+	ApplicantData            map[string]any       `json:"applicant_data"`
+	DocumentData             map[string]any       `json:"document_data"`
+	HasAgentSignature        bool                 `json:"has_agent_signature"`
+	AgentSignatureData       string               `json:"agent_signature_data,omitempty"`
+	AgentSignatureAt         *time.Time           `json:"agent_signature_at,omitempty"`
+	MarketingNote            string               `json:"marketing_note"`
+	AnalystNote              string               `json:"analyst_note"`
+	AnalystRecommendation    string               `json:"analyst_recommendation"`
+	AnalystRecommendedAmount int64                `json:"analyst_recommended_amount"`
+	LoanStatus               string               `json:"loan_status"`
+	OutstandingAmount        int64                `json:"outstanding_amount"`
+	PaidAmount               int64                `json:"paid_amount"`
+	PaymentCount             int64                `json:"payment_count"`
+	Payments                 []AgentCreditPayment `json:"payments,omitempty"`
+	CreditLevelCode          string               `json:"credit_level_code"`
+	CreditLevelName          string               `json:"credit_level_name"`
+	CreditNeedsRepair        bool                 `json:"credit_needs_repair"`
+	QualifiedPaidTotal       int64                `json:"qualified_paid_total"`
+	CreditLimitAmount        int64                `json:"credit_limit_amount"`
+	LoanApprovedAt           *time.Time           `json:"loan_approved_at,omitempty"`
+	LoanDueDate              *time.Time           `json:"loan_due_date,omitempty"`
+	CreatedAt                time.Time            `json:"created_at"`
+	UpdatedAt                time.Time            `json:"updated_at"`
+}
+
+type AgentCreditPayment struct {
+	ID            int64          `json:"id"`
+	LoanID        int64          `json:"loan_id"`
+	ApplicationID int64          `json:"application_id"`
+	MemberID      int64          `json:"member_id"`
+	Amount        int64          `json:"amount"`
+	DueDate       time.Time      `json:"due_date"`
+	PaidAt        time.Time      `json:"paid_at"`
+	DaysLate      int64          `json:"days_late"`
+	Status        string         `json:"status"`
+	Note          string         `json:"note"`
+	PaymentProof  map[string]any `json:"payment_proof,omitempty"`
 }
 
 type AgentCreditReviewState struct {
@@ -394,7 +411,13 @@ LIMIT $1
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := r.attachPayments(ctx, items); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 func (r *AgentCreditRepository) ListMemberApplications(ctx context.Context, memberID int64, limit int) ([]AgentCreditApplication, error) {
@@ -540,7 +563,88 @@ LIMIT $2
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := r.attachPayments(ctx, items); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func parseAgentCreditPaymentNote(raw string) (string, map[string]any) {
+	payload := map[string]any{}
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return raw, nil
+	}
+	note := raw
+	if value, ok := payload["note"].(string); ok {
+		note = value
+	}
+	proof, _ := payload["payment_proof"].(map[string]any)
+	return note, proof
+}
+
+func (r *AgentCreditRepository) attachPayments(ctx context.Context, items []AgentCreditApplication) error {
+	if len(items) == 0 {
+		return nil
+	}
+	ids := make([]int64, 0, len(items))
+	indexByID := make(map[int64]int, len(items))
+	for i := range items {
+		ids = append(ids, items[i].ID)
+		indexByID[items[i].ID] = i
+	}
+	idsJSON, err := json.Marshal(ids)
+	if err != nil {
+		return err
+	}
+	rows, err := r.db.QueryContext(ctx, `
+SELECT
+  p.id,
+  p.loan_id,
+  COALESCE(l.application_id, 0) AS application_id,
+  p.member_id,
+  p.amount,
+  p.due_date,
+  p.paid_at,
+  p.days_late,
+  p.status,
+  p.note
+FROM public.agent_credit_payment p
+JOIN public.agent_credit_loan l ON l.id = p.loan_id
+WHERE l.application_id IN (
+  SELECT value::bigint FROM jsonb_array_elements_text($1::jsonb)
+)
+ORDER BY p.paid_at DESC, p.id DESC
+`, string(idsJSON))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var payment AgentCreditPayment
+		var rawNote string
+		if err := rows.Scan(
+			&payment.ID,
+			&payment.LoanID,
+			&payment.ApplicationID,
+			&payment.MemberID,
+			&payment.Amount,
+			&payment.DueDate,
+			&payment.PaidAt,
+			&payment.DaysLate,
+			&payment.Status,
+			&rawNote,
+		); err != nil {
+			return err
+		}
+		payment.Note, payment.PaymentProof = parseAgentCreditPaymentNote(rawNote)
+		if index, ok := indexByID[payment.ApplicationID]; ok {
+			items[index].Payments = append(items[index].Payments, payment)
+		}
+	}
+	return rows.Err()
 }
 
 func (r *AgentCreditRepository) MarketingReviewApplication(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
@@ -811,12 +915,25 @@ FOR UPDATE
 	if amount < outstanding {
 		paymentStatus = "partial"
 	}
+	paymentNote := in.Note
+	if len(in.PaymentProof) > 0 {
+		notePayload, marshalErr := json.Marshal(map[string]any{
+			"payment_method": in.PaymentMethod,
+			"note":           in.Note,
+			"payment_proof":  in.PaymentProof,
+		})
+		if marshalErr != nil {
+			return marshalErr
+		}
+		paymentNote = string(notePayload)
+	}
+
 	_, err = tx.ExecContext(ctx, `
 INSERT INTO public.agent_credit_payment
   (loan_id, member_id, amount, due_date, days_late, status, note)
 VALUES
   ($1, $2, $3, $4, $5, $6, $7)
-`, loanID, memberID, amount, dueDate, daysLate, paymentStatus, in.Note)
+`, loanID, memberID, amount, dueDate, daysLate, paymentStatus, paymentNote)
 	if err != nil {
 		return err
 	}

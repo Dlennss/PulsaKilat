@@ -2,6 +2,7 @@ import { BadgeCheck, Clock3, FileSignature, LayoutDashboard, ShieldCheck, Sparkl
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { getAgentCreditApplications } from "@/lib/api.auth";
+import { attachAgentCreditPaymentsFallback } from "@/lib/agent-credit-payment-fallback.server";
 
 type SessionShape = {
   backendToken?: string;
@@ -13,7 +14,8 @@ function formatIDR(value: number) {
 
 export default async function MasterDashboardPage() {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
-  const applications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const rawApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const applications = await attachAgentCreditPaymentsFallback(rawApplications);
   const waiting = applications.filter((item) => item.status === "submitted" || item.status === "marketing_review").length;
   const approved = applications.filter((item) => item.status === "approved").length;
   const activeLimit = applications.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
