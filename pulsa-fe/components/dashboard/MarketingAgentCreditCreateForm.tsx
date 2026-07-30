@@ -44,7 +44,7 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
           },
           document_data: {},
           agent_signature: "",
-          terms_accepted: true,
+          terms_accepted: false,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as ApiBody;

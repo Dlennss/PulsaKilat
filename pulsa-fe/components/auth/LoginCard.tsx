@@ -14,6 +14,7 @@ const TURNSTILE_ENABLED = /^(1|true|yes|on)$/i.test(process.env.NEXT_PUBLIC_TURN
 const GOOGLE_LOGIN_ENABLED = String(process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED ?? "false").toLowerCase() === "true";
 
 type SessionShape = { backendToken?: string; user?: { role?: string } };
+type PasswordLoginResp = { ok?: boolean; token?: string; role?: string; error?: string };
 
 function cn(...v: Array<string | false | null | undefined>) {
   return v.filter(Boolean).join(" ");
@@ -134,15 +135,24 @@ export function LoginCard() {
     }
     setLoading(true);
     try {
-      const result = await signIn("credentials", { redirect: false, email, password });
-      if (!result || result.error) { setErr("Email atau password salah."); return; }
-      const sess = (await getSession().catch(() => null)) as SessionShape | null;
-      const backendToken = (sess?.backendToken || "").trim();
-      if (backendToken) {
-        localStorage.setItem("auth_token", backendToken);
-        localStorage.setItem("auth_source", "password");
+      const loginResponse = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, turnstileToken }),
+        cache: "no-store",
+      });
+      const loginBody = (await loginResponse.json().catch(() => ({}))) as PasswordLoginResp;
+      const backendToken = String(loginBody.token || "").trim();
+      if (!loginResponse.ok || !loginBody.ok || !backendToken) {
+        setErr("Email atau password salah.");
+        return;
       }
-      router.replace(toDashboardByRole(sess?.user?.role || "member"));
+
+      localStorage.setItem("auth_token", backendToken);
+      localStorage.setItem("auth_source", "password");
+
+      void signIn("credentials", { redirect: false, email, password }).catch(() => undefined);
+      router.replace(toDashboardByRole(loginBody.role || decodeJwt(backendToken)?.role || "member"));
     } finally {
       setLoading(false);
     }

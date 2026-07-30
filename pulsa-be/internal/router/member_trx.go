@@ -11,6 +11,7 @@ import (
 	"pulsa2/chytron"
 	"pulsa2/gemilang"
 	"pulsa2/internal/controller"
+	"pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 	"pulsa2/internal/service"
 	"pulsa2/javapay"
@@ -26,25 +27,26 @@ import (
 )
 
 type MemberTrxDeps struct {
-	DB       *sql.DB
-	YSClient *yuscom.Client
-	JPClient *javapay.Client
-	TLClient *talenta.Client
-	MKClient *multikom.Client
-	SGClient *sagaramobile.Client
-	MNClient *minions.Client
-	TRClient *trionik.Client
-	AJClient *ajs.Client
-	GMClient *gemilang.Client
-	SMClient *smb.Client
-	LBClient *loketbayar.Client
-	CHClient *chytron.Client
-	RJClient *rajabiller.Client
+	DB           *sql.DB
+	YSClient     *yuscom.Client
+	JPClient     *javapay.Client
+	TLClient     *talenta.Client
+	MKClient     *multikom.Client
+	SGClient     *sagaramobile.Client
+	MNClient     *minions.Client
+	TRClient     *trionik.Client
+	AJClient     *ajs.Client
+	GMClient     *gemilang.Client
+	SMClient     *smb.Client
+	LBClient     *loketbayar.Client
+	CHClient     *chytron.Client
+	RJClient     *rajabiller.Client
+	ExtraClients []provider.Client
 }
 
 func MemberTrxRouter(mux *http.ServeMux, deps MemberTrxDeps) {
 	repo := repository.NewMemberTrxRepository(deps.DB)
-	svc := service.NewMemberTrxService(repo, deps.YSClient, deps.JPClient, deps.TLClient, deps.MKClient, deps.SGClient, deps.MNClient, deps.TRClient, deps.AJClient, deps.GMClient, deps.SMClient, deps.LBClient, deps.CHClient, deps.RJClient)
+	svc := service.NewMemberTrxService(repo, deps.YSClient, deps.JPClient, deps.TLClient, deps.MKClient, deps.SGClient, deps.MNClient, deps.TRClient, deps.AJClient, deps.GMClient, deps.SMClient, deps.LBClient, deps.CHClient, deps.RJClient, deps.ExtraClients...)
 	ctrl := controller.NewMemberTrxController(svc)
 
 	mux.HandleFunc("/v1/trx", ctrl.Handle)

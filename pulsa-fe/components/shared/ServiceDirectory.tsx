@@ -342,13 +342,13 @@ export function ServiceDirectory({ mode = "guest", role }: ServiceDirectoryProps
       <Link
         href={mode === "user" ? "/user" : "/"}
         prefetch={false}
-        className="group flex items-center justify-between rounded-[24px] bg-[#052e26] px-4 py-4 text-white shadow-[0_16px_34px_rgba(5,46,38,0.22)]"
+        className="group flex items-center justify-between rounded-[24px] border border-emerald-300/30 bg-[#052e26] px-4 py-4 text-white shadow-[0_16px_34px_rgba(5,46,38,0.22)]"
       >
         <span>
-          <span className="block text-sm font-black">Kembali ke beranda</span>
-          <span className="mt-0.5 block text-xs font-semibold text-white/65">Lihat promo dan produk utama.</span>
+          <span className="block text-sm font-black !text-white">Kembali ke beranda</span>
+          <span className="mt-0.5 block text-xs font-semibold !text-emerald-50">Lihat promo dan produk utama.</span>
         </span>
-        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-lime-300 text-[#052e26] transition group-hover:translate-x-0.5">
+        <span className="grid h-10 w-10 place-items-center rounded-2xl border border-white/70 bg-lime-300 text-[#052e26] shadow-[0_8px_18px_rgba(163,230,53,0.28)] transition group-hover:translate-x-0.5">
           <ChevronRight className="h-5 w-5" strokeWidth={2.6} />
         </span>
       </Link>

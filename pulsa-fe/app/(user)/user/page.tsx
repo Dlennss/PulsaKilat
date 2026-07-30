@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { getMyAgentCreditApplications } from "@/lib/api.auth";
 import { getCategories } from "@/lib/api.products";
 import type { UserCategoryItem, UserSession } from "@/components/user/types";
@@ -17,7 +16,7 @@ type SessionShape = {
 };
 
 export default async function UserAppHomePage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const categories = (await getCategories()) as UserCategoryItem[];
   const role = String(session?.user?.role || "").trim().toLowerCase();
   const isAgent = role === "agent";

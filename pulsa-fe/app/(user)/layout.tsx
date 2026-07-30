@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import type { UserSession } from "@/components/user/types";
 import { AppTopHeader } from "@/components/shared/AppTopHeader";
 
@@ -16,7 +15,7 @@ type SessionShape = {
 };
 
 export default async function UserLayout({ children }: { children: React.ReactNode }) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const role = String(session?.user?.role || "").trim().toLowerCase();
   const isRetailRole = role === "user" || role === "agent" || role === "master";
 

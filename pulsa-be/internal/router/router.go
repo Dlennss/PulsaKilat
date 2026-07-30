@@ -8,6 +8,7 @@ import (
 	"pulsa2/chytron"
 	"pulsa2/gemilang"
 	"pulsa2/internal/helper"
+	"pulsa2/internal/provider"
 	"pulsa2/javapay"
 	"pulsa2/loketbayar"
 	"pulsa2/minions"
@@ -20,14 +21,14 @@ import (
 	"pulsa2/yuscom"
 )
 
-func Register(mux *http.ServeMux, wrap Middleware, db *sql.DB, jwtSecret []byte, ysClient *yuscom.Client, jpClient *javapay.Client, tlClient *talenta.Client, mkClient *multikom.Client, sgClient *sagaramobile.Client, mnClient *minions.Client, trClient *trionik.Client, ajClient *ajs.Client, gmClient *gemilang.Client, smClient *smb.Client, lbClient *loketbayar.Client, chClient *chytron.Client, rjClient *rajabiller.Client) {
+func Register(mux *http.ServeMux, wrap Middleware, db *sql.DB, jwtSecret []byte, ysClient *yuscom.Client, jpClient *javapay.Client, tlClient *talenta.Client, mkClient *multikom.Client, sgClient *sagaramobile.Client, mnClient *minions.Client, trClient *trionik.Client, ajClient *ajs.Client, gmClient *gemilang.Client, smClient *smb.Client, lbClient *loketbayar.Client, chClient *chytron.Client, rjClient *rajabiller.Client, extraClients ...provider.Client) {
 	AuthRouter(mux, wrap, db, jwtSecret)
 	AppKategoriRouter(mux, db)
 	AppBrandRouter(mux, db)
 	AppProdukRouter(mux, db)
 	H2HProdukRouter(mux, db)
 	AppAdRouter(mux, db)
-	AppOrderRouter(mux, db, jwtSecret, ysClient, gmClient)
+	AppOrderRouter(mux, db, jwtSecret, ysClient, gmClient, extraClients...)
 	AppOrderMeRouter(mux, db, jwtSecret)
 	AppOrderRefundMeRouter(mux, db, jwtSecret)
 	AppOrderAdminRouter(mux, wrap, db)

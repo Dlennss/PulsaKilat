@@ -1,9 +1,8 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 
 type SessionShape = {
   backendToken?: string;
@@ -99,7 +98,7 @@ WHERE p.id = target.id;
 }
 
 export async function POST(req: Request) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const token = String(session?.backendToken || "").trim();
   if (!token) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

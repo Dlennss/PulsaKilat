@@ -49,6 +49,9 @@ func appOrderProviderLooksLikeSystemIssue(provider, body string) bool {
 	switch strings.TrimSpace(strings.ToLower(provider)) {
 	case "gemilang":
 		return gemilang.LooksLikeSystemIssue(body)
+	case "pulsa24jam":
+		upper := strings.ToUpper(strings.TrimSpace(body))
+		return strings.Contains(upper, "TIMEOUT") || strings.Contains(upper, "SYSTEM ERROR") || strings.Contains(upper, "MAINTENANCE")
 	default:
 		return yuscom.LooksLikeSystemIssue(body)
 	}
@@ -58,6 +61,9 @@ func appOrderProviderImmediateReject(provider, body string) bool {
 	switch strings.TrimSpace(strings.ToLower(provider)) {
 	case "gemilang":
 		return helper.LooksLikeGemilangImmediateReject(body)
+	case "pulsa24jam":
+		upper := strings.ToUpper(strings.TrimSpace(body))
+		return strings.Contains(upper, "GAGAL") || strings.Contains(upper, "FAILED") || strings.Contains(upper, `"STATUS":"FAILED"`) || strings.Contains(upper, `"SUCCESS":FALSE`)
 	default:
 		return helper.LooksLikeYuscomImmediateReject(body)
 	}
@@ -67,6 +73,14 @@ func appOrderProviderLooksLikeAccepted(provider, body string) bool {
 	switch strings.TrimSpace(strings.ToLower(provider)) {
 	case "gemilang":
 		return helper.LooksLikeGemilangAccepted(body) || helper.LooksLikeGemilangSuccess(body)
+	case "pulsa24jam":
+		upper := strings.ToUpper(strings.TrimSpace(body))
+		return strings.Contains(upper, "SUKSES") ||
+			strings.Contains(upper, "SUCCESS") ||
+			strings.Contains(upper, "PENDING") ||
+			strings.Contains(upper, `"OK":TRUE`) ||
+			strings.Contains(upper, `"SUCCESS":TRUE`) ||
+			strings.Contains(upper, `"RC":"00"`)
 	default:
 		return helper.LooksLikeYuscomAccepted(body) || strings.Contains(strings.ToUpper(strings.TrimSpace(body)), "SUKSES")
 	}

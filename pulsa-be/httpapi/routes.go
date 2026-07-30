@@ -11,6 +11,7 @@ import (
 	"pulsa2/gemilang"
 	"pulsa2/internal/handler"
 	"pulsa2/internal/helper"
+	"pulsa2/internal/provider"
 	internalrouter "pulsa2/internal/router"
 	"pulsa2/javapay"
 	"pulsa2/loketbayar"
@@ -25,20 +26,21 @@ import (
 )
 
 type Deps struct {
-	DB *sql.DB
-	YS *yuscom.Client
-	JP *javapay.Client
-	TL *talenta.Client
-	MK *multikom.Client
-	SG *sagaramobile.Client
-	MN *minions.Client
-	TR *trionik.Client
-	AJ *ajs.Client
-	GM *gemilang.Client
-	SM *smb.Client
-	LB *loketbayar.Client
-	CH *chytron.Client
-	RJ *rajabiller.Client
+	DB  *sql.DB
+	YS  *yuscom.Client
+	JP  *javapay.Client
+	TL  *talenta.Client
+	MK  *multikom.Client
+	SG  *sagaramobile.Client
+	MN  *minions.Client
+	TR  *trionik.Client
+	AJ  *ajs.Client
+	GM  *gemilang.Client
+	SM  *smb.Client
+	LB  *loketbayar.Client
+	CH  *chytron.Client
+	RJ  *rajabiller.Client
+	P24 provider.Client
 }
 
 func Routes(d Deps) http.Handler {
@@ -72,7 +74,7 @@ func Routes(d Deps) http.Handler {
 		CHClient: d.CH,
 		RJClient: d.RJ,
 	})
-	internalrouter.AppOrderPaymentRouter(mux, d.DB, d.YS, d.GM)
+	internalrouter.AppOrderPaymentRouter(mux, d.DB, d.YS, d.GM, d.P24)
 
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	if len(jwtSecret) < 32 {
@@ -98,23 +100,25 @@ func Routes(d Deps) http.Handler {
 		d.LB,
 		d.CH,
 		d.RJ,
+		d.P24,
 	)
 
 	internalrouter.MemberTrxRouter(mux, internalrouter.MemberTrxDeps{
-		DB:       d.DB,
-		YSClient: d.YS,
-		JPClient: d.JP,
-		TLClient: d.TL,
-		MKClient: d.MK,
-		SGClient: d.SG,
-		MNClient: d.MN,
-		TRClient: d.TR,
-		AJClient: d.AJ,
-		GMClient: d.GM,
-		SMClient: d.SM,
-		LBClient: d.LB,
-		CHClient: d.CH,
-		RJClient: d.RJ,
+		DB:           d.DB,
+		YSClient:     d.YS,
+		JPClient:     d.JP,
+		TLClient:     d.TL,
+		MKClient:     d.MK,
+		SGClient:     d.SG,
+		MNClient:     d.MN,
+		TRClient:     d.TR,
+		AJClient:     d.AJ,
+		GMClient:     d.GM,
+		SMClient:     d.SM,
+		LBClient:     d.LB,
+		CHClient:     d.CH,
+		RJClient:     d.RJ,
+		ExtraClients: []provider.Client{d.P24},
 	})
 
 	reconcileH := handler.NewReconcileHandler(d.DB)

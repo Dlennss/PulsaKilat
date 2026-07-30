@@ -14,6 +14,7 @@ import (
 	"pulsa2/config"
 	"pulsa2/gemilang"
 	"pulsa2/httpapi"
+	"pulsa2/internal/provider"
 	"pulsa2/javapay"
 	"pulsa2/loketbayar"
 	"pulsa2/minions"
@@ -216,21 +217,38 @@ func main() {
 		log.Printf("rajabiller client nonaktif: env RAJABILLER_* belum lengkap")
 	}
 
+	var p24 provider.Client
+	if cfg.Pulsa24JamBaseURL != "" && cfg.Pulsa24JamMemberID != "" && cfg.Pulsa24JamAPIKey != "" && cfg.Pulsa24JamPIN != "" {
+		p24 = provider.NewPulsa24JamAdapter(provider.Pulsa24JamConfig{
+			BaseURL:       cfg.Pulsa24JamBaseURL,
+			MemberID:      cfg.Pulsa24JamMemberID,
+			APIKey:        cfg.Pulsa24JamAPIKey,
+			PIN:           cfg.Pulsa24JamPIN,
+			Password:      cfg.Pulsa24JamPassword,
+			Secret:        cfg.Pulsa24JamSecret,
+			CallbackToken: cfg.Pulsa24JamCallbackToken,
+			Timeout:       cfg.Pulsa24JamTimeout,
+		})
+	} else {
+		log.Printf("pulsa24jam client nonaktif: env PULSA24JAM_* belum lengkap")
+	}
+
 	handler := httpapi.Routes(httpapi.Deps{
-		DB: dbConn,
-		YS: ys,
-		JP: jp,
-		TL: tl,
-		MK: mk,
-		LB: lb,
-		SG: sg,
-		MN: mn,
-		TR: tr,
-		AJ: aj,
-		GM: gm,
-		SM: smbc,
-		CH: ch,
-		RJ: rj,
+		DB:  dbConn,
+		YS:  ys,
+		JP:  jp,
+		TL:  tl,
+		MK:  mk,
+		LB:  lb,
+		SG:  sg,
+		MN:  mn,
+		TR:  tr,
+		AJ:  aj,
+		GM:  gm,
+		SM:  smbc,
+		CH:  ch,
+		RJ:  rj,
+		P24: p24,
 	})
 
 	srv := &http.Server{

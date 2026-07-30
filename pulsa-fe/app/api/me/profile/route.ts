@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 
 type SessionShape = {
   backendToken?: string;
@@ -9,7 +8,7 @@ type SessionShape = {
 const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8081";
 
 async function proxyProfile(method: "GET" | "PATCH", req?: Request) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const token = String(session?.backendToken || "").trim();
   if (!token) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

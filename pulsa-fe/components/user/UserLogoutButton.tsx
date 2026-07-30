@@ -13,6 +13,7 @@ export function UserLogoutButton({ className, iconOnly = false }: UserLogoutButt
   async function onLogout() {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_source");
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     await signOut({ callbackUrl: "/" });
   }
 

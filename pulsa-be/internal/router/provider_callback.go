@@ -59,6 +59,7 @@ func ProviderCallbackRouter(mux *http.ServeMux, deps ProviderCallbackDeps) {
 	mux.HandleFunc("/v1/webhook/loketbayar", helper.ProviderIPGuard("loketbayar", ctrl.CallbackLoketBayar))
 	mux.HandleFunc("/v1/webhook/chytron", helper.ProviderIPGuard("chytron", ctrl.CallbackChytron))
 	mux.HandleFunc("/v1/webhook/rajabiller", helper.ProviderIPGuard("rajabiller", ctrl.CallbackRajabiller))
+	mux.HandleFunc("/v1/webhook/pulsa24jam", helper.ProviderIPGuard("pulsa24jam", ctrl.CallbackPulsa24Jam))
 
 	mux.HandleFunc("/webhook/javapay", helper.ProviderIPGuard("javapay", ctrl.CallbackJavapay))
 	mux.HandleFunc("/webhook/yuscom", helper.ProviderIPGuard("yuscom", ctrl.CallbackYuscom))
@@ -74,6 +75,7 @@ func ProviderCallbackRouter(mux *http.ServeMux, deps ProviderCallbackDeps) {
 	mux.HandleFunc("/webhook/loketbayar", helper.ProviderIPGuard("loketbayar", ctrl.CallbackLoketBayar))
 	mux.HandleFunc("/webhook/chytron", helper.ProviderIPGuard("chytron", ctrl.CallbackChytron))
 	mux.HandleFunc("/webhook/rajabiller", helper.ProviderIPGuard("rajabiller", ctrl.CallbackRajabiller))
+	mux.HandleFunc("/webhook/pulsa24jam", helper.ProviderIPGuard("pulsa24jam", ctrl.CallbackPulsa24Jam))
 
 	mux.HandleFunc("/v1/callback", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {

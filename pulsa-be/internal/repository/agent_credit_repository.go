@@ -17,6 +17,7 @@ func NewAgentCreditRepository(db *sql.DB) *AgentCreditRepository {
 }
 
 type AgentCreditApplicationInput struct {
+	ID              int64
 	MemberID        int64
 	RequestedAmount int64
 	ApplicantData   map[string]any
@@ -105,6 +106,15 @@ type AgentCreditReviewState struct {
 	Status                   string
 	AnalystRecommendation    string
 	AnalystRecommendedAmount int64
+	HasAgentSignature        bool
+	TermsAccepted            bool
+	HasKTPDocument           bool
+	HasStoreDocument         bool
+	HasSelfieKTPDocument     bool
+	HasSelfieMarketing       bool
+	MarketingVerified        bool
+	MasterVerified           bool
+	AnalystVerified          bool
 }
 
 func (r *AgentCreditRepository) CreateApplication(ctx context.Context, in AgentCreditApplicationInput) (*AgentCreditApplication, error) {
@@ -152,14 +162,92 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 func (r *AgentCreditRepository) GetApplicationReviewState(ctx context.Context, applicationID int64) (*AgentCreditReviewState, error) {
 	var state AgentCreditReviewState
 	err := r.db.QueryRowContext(ctx, `
-SELECT status, COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0)
+SELECT
+  status,
+  COALESCE(analyst_recommendation, ''),
+  COALESCE(analyst_recommended_amount, 0),
+  COALESCE(agent_signature_data, '') <> '',
+  COALESCE((applicant_data->>'terms_accepted')::boolean, false),
+  COALESCE(document_data->'ktp'->>'data_url', '') <> '',
+  COALESCE(document_data->'store'->>'data_url', '') <> '',
+  COALESCE(document_data->'selfie_ktp'->>'data_url', '') <> '',
+  COALESCE(document_data->'selfie_marketing'->>'data_url', document_data->'selfie'->>'data_url', '') <> '',
+  COALESCE(applicant_data->>'marketing_signature_data', '') <> '',
+  COALESCE(applicant_data->>'master_signature_data', applicant_data->>'marketing_signature_data', '') <> '',
+  COALESCE(analyst_recommendation, '') = 'approved'
 FROM public.agent_credit_application
 WHERE id = $1
-`, applicationID).Scan(&state.Status, &state.AnalystRecommendation, &state.AnalystRecommendedAmount)
+`, applicationID).Scan(
+		&state.Status,
+		&state.AnalystRecommendation,
+		&state.AnalystRecommendedAmount,
+		&state.HasAgentSignature,
+		&state.TermsAccepted,
+		&state.HasKTPDocument,
+		&state.HasStoreDocument,
+		&state.HasSelfieKTPDocument,
+		&state.HasSelfieMarketing,
+		&state.MarketingVerified,
+		&state.MasterVerified,
+		&state.AnalystVerified,
+	)
 	if err != nil {
 		return nil, err
 	}
 	return &state, nil
+}
+
+func (r *AgentCreditRepository) CompleteApplicationConsent(ctx context.Context, in AgentCreditApplicationInput) (*AgentCreditApplication, error) {
+	applicantJSON, err := json.Marshal(in.ApplicantData)
+	if err != nil {
+		return nil, err
+	}
+	documentJSON, err := json.Marshal(in.DocumentData)
+	if err != nil {
+		return nil, err
+	}
+
+	var item AgentCreditApplication
+	var applicantRaw, documentRaw []byte
+	err = r.db.QueryRowContext(ctx, `
+UPDATE public.agent_credit_application
+SET
+  requested_amount = CASE WHEN $3 > 0 THEN $3 ELSE requested_amount END,
+  applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $4::jsonb,
+  document_data = COALESCE(document_data, '{}'::jsonb) || $5::jsonb,
+  agent_signature_data = NULLIF($6, ''),
+  agent_signature_at = CASE WHEN NULLIF($6, '') IS NULL THEN agent_signature_at ELSE now() END,
+  status = CASE
+    WHEN status IN ('draft', 'marketing_review') THEN 'submitted'
+    ELSE status
+  END,
+  updated_at = now()
+WHERE id = $1
+  AND member_id = $2
+  AND status IN ('draft', 'submitted', 'marketing_review', 'analysis_review', 'master_review')
+RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
+  COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
+`, in.ID, in.MemberID, in.RequestedAmount, string(applicantJSON), string(documentJSON), in.AgentSignature).Scan(
+		&item.ID,
+		&item.MemberID,
+		&item.RequestedAmount,
+		&item.ApprovedAmount,
+		&item.Status,
+		&applicantRaw,
+		&documentRaw,
+		&item.AgentSignatureData,
+		&item.AgentSignatureAt,
+		&item.MarketingNote,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+	_ = json.Unmarshal(documentRaw, &item.DocumentData)
+	item.HasAgentSignature = item.AgentSignatureData != ""
+	return &item, nil
 }
 
 func tenorMonthsFromApplicant(data map[string]any) int64 {
@@ -647,21 +735,31 @@ ORDER BY p.paid_at DESC, p.id DESC
 	return rows.Err()
 }
 
-func (r *AgentCreditRepository) MarketingReviewApplication(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
+func (r *AgentCreditRepository) MarketingReviewApplication(ctx context.Context, in AgentCreditDecisionInput, signatureData string) (*AgentCreditApplication, error) {
+	meta := map[string]any{
+		"marketing_signature_data": signatureData,
+		"marketing_signature_at":   time.Now().Format(time.RFC3339),
+		"marketing_verified":       true,
+	}
+	metaJSON, err := json.Marshal(meta)
+	if err != nil {
+		return nil, err
+	}
 	var item AgentCreditApplication
 	var applicantRaw, documentRaw []byte
-	err := r.db.QueryRowContext(ctx, `
+	err = r.db.QueryRowContext(ctx, `
 UPDATE public.agent_credit_application
 SET
   status = $2,
   marketing_user_id = $3,
   marketing_reviewed_at = now(),
   marketing_note = $4,
+  applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $5::jsonb,
   updated_at = now()
 WHERE id = $1 AND status IN ('submitted', 'marketing_review')
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
-`, in.ID, in.Status, in.MarketingID, in.MarketingNote).Scan(
+`, in.ID, in.Status, in.MarketingID, in.MarketingNote, string(metaJSON)).Scan(
 		&item.ID,
 		&item.MemberID,
 		&item.RequestedAmount,
@@ -681,6 +779,145 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
 	_ = json.Unmarshal(documentRaw, &item.DocumentData)
 	item.HasAgentSignature = item.AgentSignatureData != ""
+	return &item, nil
+}
+
+func (r *AgentCreditRepository) MasterReviewApplication(ctx context.Context, in AgentCreditDecisionInput, signatureData string) (*AgentCreditApplication, error) {
+	meta := map[string]any{
+		"master_signature_data": signatureData,
+		"master_signature_at":   time.Now().Format(time.RFC3339),
+		"master_verified":       true,
+	}
+	metaJSON, err := json.Marshal(meta)
+	if err != nil {
+		return nil, err
+	}
+	var item AgentCreditApplication
+	var applicantRaw, documentRaw []byte
+	err = r.db.QueryRowContext(ctx, `
+UPDATE public.agent_credit_application
+SET
+  status = $2,
+  marketing_user_id = $3,
+  marketing_reviewed_at = now(),
+  marketing_note = $4,
+  applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $5::jsonb,
+  updated_at = now()
+WHERE id = $1 AND status IN ('submitted', 'marketing_review')
+RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
+  COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
+`, in.ID, in.Status, in.MasterID, in.MarketingNote, string(metaJSON)).Scan(
+		&item.ID,
+		&item.MemberID,
+		&item.RequestedAmount,
+		&item.ApprovedAmount,
+		&item.Status,
+		&applicantRaw,
+		&documentRaw,
+		&item.AgentSignatureData,
+		&item.AgentSignatureAt,
+		&item.MarketingNote,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+	_ = json.Unmarshal(documentRaw, &item.DocumentData)
+	item.HasAgentSignature = item.AgentSignatureData != ""
+	return &item, nil
+}
+
+func (r *AgentCreditRepository) AnalystFinalDecision(ctx context.Context, in AgentCreditDecisionInput, signatureData, riskLevel string, riskScore int64) (*AgentCreditApplication, error) {
+	meta := map[string]any{
+		"analyst_decision_at": time.Now().Format(time.RFC3339),
+		"risk_level":          riskLevel,
+		"risk_score":          riskScore,
+	}
+	metaJSON, err := json.Marshal(meta)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var item AgentCreditApplication
+	var applicantRaw, documentRaw []byte
+	err = tx.QueryRowContext(ctx, `
+UPDATE public.agent_credit_application
+SET
+  status = $2,
+  approved_amount = CASE WHEN $2 IN ('approved', 'ready_to_disburse') THEN $3 ELSE 0 END,
+  analyst_user_id = $4,
+  analyst_reviewed_at = now(),
+  analyst_note = $5,
+  analyst_recommendation = $6,
+  analyst_recommended_amount = CASE WHEN $2 IN ('approved', 'ready_to_disburse') THEN $3 ELSE 0 END,
+  applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $7::jsonb,
+  updated_at = now()
+WHERE id = $1 AND status = 'analysis_review'
+RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
+  COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note,
+  COALESCE(analyst_note, ''), COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0),
+  created_at, updated_at
+`, in.ID, in.Status, in.ApprovedAmount, in.AnalystID, in.AnalystNote, in.Recommendation, string(metaJSON)).Scan(
+		&item.ID,
+		&item.MemberID,
+		&item.RequestedAmount,
+		&item.ApprovedAmount,
+		&item.Status,
+		&applicantRaw,
+		&documentRaw,
+		&item.AgentSignatureData,
+		&item.AgentSignatureAt,
+		&item.MarketingNote,
+		&item.AnalystNote,
+		&item.AnalystRecommendation,
+		&item.AnalystRecommendedAmount,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+	_ = json.Unmarshal(documentRaw, &item.DocumentData)
+	item.HasAgentSignature = item.AgentSignatureData != ""
+
+	if in.Status == "approved" {
+		tenorMonths := tenorMonthsFromApplicant(item.ApplicantData)
+		_, err = tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_loan
+  (application_id, member_id, principal_amount, outstanding_amount, status, approved_at, due_date)
+VALUES
+  ($1, $2, $3, $3, 'active', now(), (now() + ($4::text || ' months')::interval)::date)
+ON CONFLICT (application_id) DO UPDATE SET
+  principal_amount = EXCLUDED.principal_amount,
+  outstanding_amount = LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount),
+  status = CASE WHEN public.agent_credit_loan.outstanding_amount <= 0 THEN 'paid' ELSE 'active' END,
+  due_date = EXCLUDED.due_date,
+  updated_at = now()
+`, item.ID, item.MemberID, in.ApprovedAmount, tenorMonths)
+		if err != nil {
+			return nil, err
+		}
+	} else if in.Status != "ready_to_disburse" {
+		_, err = tx.ExecContext(ctx, `
+UPDATE public.agent_credit_loan
+SET status = 'cancelled', updated_at = now()
+WHERE application_id = $1 AND status <> 'paid'
+`, item.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
 	return &item, nil
 }
 
@@ -791,7 +1028,10 @@ SET
   marketing_reviewed_at = now(),
   marketing_note = $5,
   updated_at = now()
-WHERE id = $1 AND status IN ('submitted', 'marketing_review', 'analysis_review', 'approved', 'rejected', 'master_rejected')
+WHERE id = $1 AND (
+  ($2 = 'approved' AND status = 'ready_to_disburse')
+  OR ($2 <> 'approved' AND status IN ('submitted', 'marketing_review', 'analysis_review', 'master_review', 'ready_to_disburse', 'approved', 'rejected', 'master_rejected'))
+)
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
 `, in.ID, in.Status, in.ApprovedAmount, in.MasterID, in.MarketingNote).Scan(

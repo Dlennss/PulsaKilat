@@ -25,6 +25,12 @@ const masterOnlyPrefixes = [
 ];
 
 function filterMasterNavForRole(role: AppRole | null) {
+  if (role === "analis") {
+    return [
+      { items: [{ href: "/dashboard/master", label: "Dashboard" }] },
+      { title: "Analisa Kredit", items: [{ href: "/dashboard/master/analis", label: "Analis Kredit" }] },
+    ];
+  }
   if (role === "master") return masterNavSections;
   return masterNavSections
     .map((section) => ({
@@ -115,7 +121,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
   const forceLogoutToLogin = useCallback(() => {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_source");
-    void signOut({ redirect: false }).finally(() => {
+    void fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined).finally(() => signOut({ redirect: false })).finally(() => {
       router.replace("/login");
     });
   }, [router]);

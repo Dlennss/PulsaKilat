@@ -9,8 +9,11 @@ ALTER TABLE public.agent_credit_application
       'analysis_review',
       'master_review',
       'marketing_review',
+      'ready_to_disburse',
       'approved',
       'rejected',
+      'analysis_rejected',
+      'master_rejected',
       'cancelled'
     )
   );

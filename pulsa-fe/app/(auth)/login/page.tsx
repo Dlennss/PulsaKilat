@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { isJwtValid } from "@/lib/jwt";
 import { LoginCard } from "@/components/auth/LoginCard";
 import { BackgroundAuth } from "@/components/auth/BackgroundAuth";
@@ -19,7 +18,7 @@ function toPathByRole(role?: string | null) {
 }
 
 export default async function LoginPage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const isValid = isJwtValid(session?.backendToken);
   if (session?.backendToken && isValid) {
     redirect(toPathByRole(session.user?.role || "member"));

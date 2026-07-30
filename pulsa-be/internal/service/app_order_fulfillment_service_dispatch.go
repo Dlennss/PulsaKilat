@@ -9,6 +9,7 @@ import (
 
 	"pulsa2/internal/helper"
 	"pulsa2/internal/helper/providersn"
+	providerpkg "pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 )
 
@@ -228,6 +229,28 @@ func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, p
 		_, sn = providersn.ParseGemilangSNRefFromMsg(body)
 		if strings.TrimSpace(sn) == "" {
 			sn = strings.TrimSpace(acc.Ticket)
+		}
+	case "pulsa24jam":
+		client := s.providerClients["pulsa24jam"]
+		if client == nil {
+			return 0, "", fmt.Errorf("pulsa24jam client belum tersedia"), 0, ""
+		}
+		resp, nextErr := client.Pay(ctx, providerpkg.PayRequest{
+			Command: "PAY",
+			Product: providerProductCode,
+			Dest:    order.Dest,
+			Qty:     order.Qty,
+			RefID:   order.InvoiceID,
+		})
+		callErr = nextErr
+		if resp != nil {
+			hs = resp.HTTPStatus
+			body = resp.Body
+			price = resp.Price
+			sn = strings.TrimSpace(resp.ProviderRef)
+			if sn == "" {
+				sn = strings.TrimSpace(resp.Message)
+			}
 		}
 	default:
 		if s.ysClient == nil {

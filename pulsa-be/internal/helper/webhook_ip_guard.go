@@ -31,6 +31,7 @@ func loadProviderIPMap() {
 		"loketbayar":   "LOKETBAYAR_BASE_URL",
 		"chytron":      "CHYTRON_BASE_URL",
 		"rajabiller":   "RAJABILLER_BASE_URL",
+		"pulsa24jam":   "PULSA24JAM_BASE_URL",
 	}
 
 	for provider, envKey := range envMap {
@@ -78,6 +79,9 @@ func loadProviderIPMap() {
 		providerIPMap["rajabiller"] = existing + ",34.128.119.54,34.128.94.169"
 	} else {
 		providerIPMap["rajabiller"] = "34.128.119.54,34.128.94.169"
+	}
+	if p24 := os.Getenv("PULSA24JAM_CALLBACK_IP"); p24 != "" {
+		providerIPMap["pulsa24jam"] = strings.TrimSpace(p24)
 	}
 
 	// Extra IPs from env (comma-separated): PROVIDER_EXTRA_IPS=yuscom:1.2.3.4,javapay:5.6.7.8

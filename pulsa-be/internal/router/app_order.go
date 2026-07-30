@@ -6,12 +6,13 @@ import (
 
 	"pulsa2/gemilang"
 	"pulsa2/internal/controller"
+	"pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 	"pulsa2/internal/service"
 	"pulsa2/yuscom"
 )
 
-func AppOrderRouter(mux *http.ServeMux, db *sql.DB, jwtSecret []byte, ysClient *yuscom.Client, gmClient *gemilang.Client) {
+func AppOrderRouter(mux *http.ServeMux, db *sql.DB, jwtSecret []byte, ysClient *yuscom.Client, gmClient *gemilang.Client, extraClients ...provider.Client) {
 	orderRepo := repository.NewAppOrderRepository(db)
 	produkRepo := repository.NewProdukRepository(db)
 	pricingRepo := repository.NewProdukAppPricingRepository(db)
@@ -23,7 +24,7 @@ func AppOrderRouter(mux *http.ServeMux, db *sql.DB, jwtSecret []byte, ysClient *
 	svc := service.NewAppOrderService(orderRepo, paymentRepo, produkRepo, pricingRepo, feeRepo, appProviderRepo, billingCheckRepo)
 	billingCheckSvc := service.NewAppBillingCheckService(billingCheckRepo, produkRepo, pricingRepo, ysClient)
 	callbackRepo := repository.NewProviderCallbackRepository(db)
-	fulfillmentSvc := service.NewAppOrderFulfillmentService(orderRepo, appProviderRepo, callbackRepo, pricingRepo, ysClient, gmClient)
+	fulfillmentSvc := service.NewAppOrderFulfillmentService(orderRepo, appProviderRepo, callbackRepo, pricingRepo, ysClient, gmClient, extraClients...)
 	paymentSvc := service.NewAppOrderPaymentService(paymentRepo, orderRepo, bankRepo, fulfillmentSvc)
 	ctrl := controller.NewAppOrderController(svc, paymentSvc, "/v1/app", jwtSecret)
 	billingCtrl := controller.NewAppBillingCheckController(billingCheckSvc, "/v1/app", jwtSecret)

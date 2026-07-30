@@ -117,7 +117,7 @@ func (e *ServiceError) Error() string {
 	return e.Message
 }
 
-func NewMemberTrxService(repo *repository.MemberTrxRepository, ysClient *yuscom.Client, jpClient *javapay.Client, tlClient *talenta.Client, mkClient *multikom.Client, sgClient *sagaramobile.Client, mnClient *minions.Client, trClient *trionik.Client, ajClient *ajs.Client, gmClient *gemilang.Client, smClient *smb.Client, lbClient *loketbayar.Client, chClient *chytron.Client, rjClient *rajabiller.Client) *MemberTrxService {
+func NewMemberTrxService(repo *repository.MemberTrxRepository, ysClient *yuscom.Client, jpClient *javapay.Client, tlClient *talenta.Client, mkClient *multikom.Client, sgClient *sagaramobile.Client, mnClient *minions.Client, trClient *trionik.Client, ajClient *ajs.Client, gmClient *gemilang.Client, smClient *smb.Client, lbClient *loketbayar.Client, chClient *chytron.Client, rjClient *rajabiller.Client, extraClients ...provider.Client) *MemberTrxService {
 	clients := map[string]provider.Client{}
 	if ysClient != nil {
 		clients["yuscom"] = &provider.YuscomAdapter{C: ysClient}
@@ -157,6 +157,11 @@ func NewMemberTrxService(repo *repository.MemberTrxRepository, ysClient *yuscom.
 	}
 	if rjClient != nil {
 		clients["rajabiller"] = &provider.RajabillerAdapter{C: rjClient}
+	}
+	for _, client := range extraClients {
+		if client != nil && client.Name() != "" {
+			clients[client.Name()] = client
+		}
 	}
 
 	return &MemberTrxService{

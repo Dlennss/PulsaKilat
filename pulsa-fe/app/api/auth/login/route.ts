@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyTurnstileToken } from "@/lib/serverTurnstile";
+import { PK_AUTH_COOKIE } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
@@ -71,5 +72,13 @@ export async function POST(req: Request) {
   }
 
   const role = decodeRole(data.token) || "member";
-  return NextResponse.json({ ok: true, token: data.token, role });
+  const response = NextResponse.json({ ok: true, token: data.token, role });
+  response.cookies.set(PK_AUTH_COOKIE, data.token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: req.url.startsWith("https://") || process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  return response;
 }

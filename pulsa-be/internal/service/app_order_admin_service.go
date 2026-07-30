@@ -53,7 +53,7 @@ func (s *AppOrderAdminService) ListProviderTrx(ctx context.Context, f repository
 		f.Provider = "yuscom"
 	}
 	switch f.Provider {
-	case "yuscom", "javapay", "talentapay":
+	case "yuscom", "javapay", "talentapay", "pulsa24jam":
 	default:
 		return nil, fmt.Errorf("provider tidak valid")
 	}

@@ -42,9 +42,11 @@ function getStatusLabel(status: string) {
     case "marketing_review":
       return "Dicek master";
     case "analysis_review":
-      return "Menunggu master";
+      return "Menunggu analis";
     case "master_review":
       return "Menunggu master";
+    case "ready_to_disburse":
+      return "Menunggu aktivasi";
     case "approved":
       return "Disetujui";
     case "analysis_rejected":
@@ -71,6 +73,8 @@ function getStatusClass(status: string) {
   switch (status) {
     case "approved":
       return "bg-emerald-100 text-emerald-700";
+    case "ready_to_disburse":
+      return "bg-sky-100 text-sky-700";
     case "rejected":
     case "analysis_rejected":
     case "master_rejected":
@@ -127,6 +131,10 @@ function getPaymentStatusLabel(status: string, daysLate?: number) {
   return "Tepat waktu";
 }
 
+function isTruthy(value: unknown) {
+  return value === true || String(value).trim().toLowerCase() === "true";
+}
+
 function searchableText(item: AgentCreditApplication) {
   const fields = [
     item.id,
@@ -155,7 +163,7 @@ export function MasterAgentCreditApplicationList({
   showActions = true,
 }: {
   applications: AgentCreditApplication[];
-  mode?: "marketing" | "master";
+  mode?: "marketing" | "master" | "analyst";
   showActions?: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -195,15 +203,39 @@ export function MasterAgentCreditApplicationList({
             const docs = [
               { label: "Foto KTP", src: getStoredImageSrc(item, "ktp") },
               { label: "Foto Toko", src: getStoredImageSrc(item, "store") },
-              { label: "Selfie KTP", src: getStoredImageSrc(item, "selfie_ktp") },
-              { label: "Selfie Marketing", src: getStoredImageSrc(item, "selfie_marketing") },
+              { label: "Selfie Pegang KTP", src: getStoredImageSrc(item, "selfie_ktp") },
+              { label: "Foto Bersama Marketing", src: getStoredImageSrc(item, "selfie_marketing") },
             ];
             const signatureSrc = getSignatureSrc(item);
             const payments = item.payments || [];
             const paymentTotal = payments.length || Number(item.payment_count || 0);
             const outstanding = Number(item.outstanding_amount || 0);
             const approvedAmount = Number(item.approved_amount || 0);
-            const isPending = item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review";
+            const isPending = item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review" || item.status === "ready_to_disburse";
+            const termsAccepted = isTruthy(item.applicant_data?.terms_accepted);
+            const docsComplete = docs.every((doc) => Boolean(doc.src));
+            const masterSignature =
+              typeof item.applicant_data?.master_signature_data === "string" && item.applicant_data.master_signature_data.startsWith("data:image/")
+                ? item.applicant_data.master_signature_data
+                : typeof item.applicant_data?.marketing_signature_data === "string"
+                  ? item.applicant_data.marketing_signature_data
+                  : "";
+            const canApprove =
+              mode === "analyst"
+                ? Boolean(masterSignature && item.status === "analysis_review")
+                : mode === "master"
+                    ? Boolean(docsComplete && (item.has_agent_signature || signatureSrc) && termsAccepted)
+                  : mode === "marketing"
+                    ? Boolean(docsComplete && (item.has_agent_signature || signatureSrc) && termsAccepted)
+                    : Boolean(item.has_agent_signature || signatureSrc) && termsAccepted;
+            const approveBlockReason =
+              mode === "analyst"
+                ? "Master belum verifikasi dan tanda tangan."
+                : (mode === "marketing" || mode === "master") && !docsComplete
+                    ? "Empat dokumen wajib harus lengkap sebelum dikirim ke analis."
+                  : !termsAccepted
+                  ? "Agent belum mencentang persetujuan syarat & ketentuan."
+                  : "Agent belum tanda tangan persetujuan.";
             return (
               <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)]">
                 <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center">
@@ -246,6 +278,8 @@ export function MasterAgentCreditApplicationList({
                       analystRecommendedAmount={item.analyst_recommended_amount}
                       status={item.status}
                       mode={mode}
+                      canApprove={canApprove}
+                      approveBlockReason={approveBlockReason}
                     />
                   </div>
                 ) : null}
@@ -279,6 +313,12 @@ export function MasterAgentCreditApplicationList({
                           {!signatureSrc ? <span className="text-[10px] font-black text-slate-400">Belum ada tanda tangan</span> : null}
                         </div>
                       </div>
+                      {masterSignature ? (
+                        <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                          <p className="font-black text-slate-950">Tanda Tangan Master</p>
+                          <div className="mt-2 grid h-20 place-items-center rounded-xl bg-slate-50 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${masterSignature})` }} />
+                        </div>
+                      ) : null}
                     </div>
                     <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                       <MasterAgentCreditDocumentButton agentName={agentName} documents={docs} />

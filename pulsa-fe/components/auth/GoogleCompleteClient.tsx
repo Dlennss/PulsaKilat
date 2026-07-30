@@ -81,6 +81,11 @@ export default function GoogleCompleteClient() {
         if (backendToken) {
           localStorage.setItem("auth_token", backendToken);
           localStorage.setItem("auth_source", "google");
+          await fetch("/api/auth/persist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: backendToken }),
+          }).catch(() => undefined);
 
           let refundClaimed = false;
           if (refundContext.invoiceId && refundContext.guestEmail && refundContext.guestPhone) {

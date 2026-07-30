@@ -17,12 +17,14 @@ export default async function MasterDashboardPage() {
   const rawApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
   const applications = await attachAgentCreditPaymentsFallback(rawApplications);
   const waiting = applications.filter((item) => item.status === "submitted" || item.status === "marketing_review").length;
+  const inAnalysis = applications.filter((item) => item.status === "analysis_review").length;
   const approved = applications.filter((item) => item.status === "approved").length;
   const activeLimit = applications.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
   const stats = [
     { label: "Total Pengajuan", value: String(applications.length), hint: "Semua data pinjaman", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
     { label: "Menunggu Review", value: String(waiting), hint: "Perlu dicek", icon: Clock3, tone: "from-amber-400 to-orange-500" },
-    { label: "Sudah ACC", value: String(approved), hint: "Disetujui", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
+    { label: "Di Analis", value: String(inAnalysis), hint: "Menunggu keputusan final", icon: BadgeCheck, tone: "from-cyan-500 to-sky-500" },
+    { label: "Sudah ACC", value: String(approved), hint: "Final oleh analis", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
     { label: "Limit Aktif", value: formatIDR(activeLimit), hint: "Total limit berjalan", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
   ];
 

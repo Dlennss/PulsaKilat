@@ -284,6 +284,17 @@ function SignaturePad({ signerName, onSignatureChange }: { signerName: string; o
 
 function getApplicationNotice(application?: AgentCreditApplication) {
   if (!application) return null;
+  if (
+    (application.status === "submitted" || application.status === "marketing_review" || application.status === "analysis_review" || application.status === "master_review" || application.status === "ready_to_disburse") &&
+    !application.has_agent_signature
+  ) {
+    return {
+      title: "Perlu tanda tangan",
+      desc: "Pengajuan sudah dibuat. Lengkapi dokumen, centang ketentuan, lalu tanda tangan agar bisa dicek master.",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+      icon: PenLine,
+    };
+  }
   switch (application.status) {
     case "approved":
       return {
@@ -318,10 +329,17 @@ function getApplicationNotice(application?: AgentCreditApplication) {
         className: "border-amber-200 bg-amber-50 text-amber-700",
         icon: SearchCheck,
       };
+    case "ready_to_disburse":
+      return {
+        title: "Menunggu aktivasi",
+        desc: `Analis sudah menyetujui nominal ${formatIDR(application.approved_amount || application.requested_amount)}. Limit sedang disiapkan.`,
+        className: "border-sky-200 bg-sky-50 text-sky-700",
+        icon: BadgeCheck,
+      };
     case "analysis_review":
       return {
-        title: "Sedang dicek",
-        desc: "Master sedang mengecek data pengajuan.",
+        title: "Sedang dianalisa",
+        desc: "Master sudah verifikasi. Analis sedang mengecek risiko dan nominal aman.",
         className: "border-sky-200 bg-sky-50 text-sky-700",
         icon: SearchCheck,
       };
@@ -373,7 +391,9 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
   const [error, setError] = useState("");
   const notice = getApplicationNotice(latestApplication);
   const NoticeIcon = notice?.icon;
-  const hasOpenApplication = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review" || latestApplication?.status === "analysis_review" || latestApplication?.status === "master_review";
+  const isPendingStatus = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review" || latestApplication?.status === "analysis_review" || latestApplication?.status === "master_review" || latestApplication?.status === "ready_to_disburse";
+  const unsignedPendingApplication = Boolean(isPendingStatus && latestApplication && !latestApplication.has_agent_signature);
+  const hasOpenApplication = Boolean(isPendingStatus && !unsignedPendingApplication);
   const isPaidOff = latestApplication?.status === "approved" && (String(latestApplication.loan_status || "").toLowerCase() === "paid" || Number(latestApplication.outstanding_amount || 0) <= 0);
   const isApproved = latestApplication?.status === "approved" && !isPaidOff;
   const canReapply = latestApplication?.status === "rejected" || latestApplication?.status === "analysis_rejected" || latestApplication?.status === "master_rejected";
@@ -415,6 +435,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: unsignedPendingApplication ? latestApplication?.id : undefined,
           requested_amount: requestedAmount,
           applicant_data: {
             agent_name: String(form.get("agent_name") || ""),
@@ -429,6 +450,8 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             family_relation: String(form.get("family_relation") || ""),
             family_address: String(form.get("family_address") || ""),
             tenor_months: Number(form.get("tenor_months") || tenorMonths),
+            terms_accepted: agreed,
+            terms_version: "pulsakilat-agent-credit-2026-07",
           },
           document_data: {
             ktp: ktpImage,
@@ -640,7 +663,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             </span>
             <div>
               <h2 className="text-lg font-black text-slate-950">Tanda Tangan & Persetujuan</h2>
-              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Agent tanda tangan, lalu master mengecek dan memberi keputusan final.</p>
+              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Agent tanda tangan, master verifikasi, lalu analis memberi keputusan final.</p>
             </div>
           </div>
 
@@ -707,7 +730,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           disabled={!agreed || !signatureReady || !signatureData || hasOpenApplication || isApproved || submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
-          {isApproved ? "Kredit Masih Aktif" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : canRefill ? "Ajukan Refill" : canReapply ? "Ajukan Ulang" : "Ajukan Kredit Saldo"}
+          {isApproved ? "Kredit Masih Aktif" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : unsignedPendingApplication ? "Kirim Tanda Tangan" : canRefill ? "Ajukan Refill" : canReapply ? "Ajukan Ulang" : "Ajukan Kredit Saldo"}
           <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
         </button>
 

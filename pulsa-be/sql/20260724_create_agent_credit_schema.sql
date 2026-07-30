@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.agent_credit_application (
   approved_amount BIGINT NOT NULL DEFAULT 0 CHECK (approved_amount >= 0),
   rank_id BIGINT REFERENCES public.agent_credit_rank(id) ON DELETE SET NULL,
   status TEXT NOT NULL DEFAULT 'submitted' CHECK (
-    status IN ('draft', 'submitted', 'analysis_review', 'master_review', 'marketing_review', 'approved', 'rejected', 'cancelled')
+    status IN ('draft', 'submitted', 'analysis_review', 'master_review', 'marketing_review', 'ready_to_disburse', 'approved', 'rejected', 'analysis_rejected', 'master_rejected', 'cancelled')
   ),
   applicant_data JSONB NOT NULL DEFAULT '{}'::jsonb,
   document_data JSONB NOT NULL DEFAULT '{}'::jsonb,

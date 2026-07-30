@@ -108,6 +108,16 @@ type Config struct {
 	RajabillerMerchantID string
 	RajabillerTimeout    time.Duration
 
+	// H2H provider: PULSA24JAM
+	Pulsa24JamBaseURL       string
+	Pulsa24JamMemberID      string
+	Pulsa24JamAPIKey        string
+	Pulsa24JamPIN           string
+	Pulsa24JamPassword      string
+	Pulsa24JamSecret        string
+	Pulsa24JamCallbackToken string
+	Pulsa24JamTimeout       time.Duration
+
 	Port string
 }
 
@@ -192,6 +202,10 @@ func Load() Config {
 	rjto, err := time.ParseDuration(getEnv("RAJABILLER_TIMEOUT", "45s"))
 	if err != nil {
 		log.Fatalf("invalid RAJABILLER_TIMEOUT: %v", err)
+	}
+	p24to, err := time.ParseDuration(getEnv("PULSA24JAM_TIMEOUT", "30s"))
+	if err != nil {
+		log.Fatalf("invalid PULSA24JAM_TIMEOUT: %v", err)
 	}
 
 	return Config{
@@ -279,6 +293,15 @@ func Load() Config {
 		RajabillerPIN:        getEnv("RAJABILLER_PIN", ""),
 		RajabillerMerchantID: getEnv("RAJABILLER_MERCHANT_ID", ""),
 		RajabillerTimeout:    rjto,
+
+		Pulsa24JamBaseURL:       getEnv("PULSA24JAM_BASE_URL", ""),
+		Pulsa24JamMemberID:      getEnvAny("", "PULSA24JAM_MEMBERID", "PULSA24JAM_MEMBER_ID"),
+		Pulsa24JamAPIKey:        getEnv("PULSA24JAM_API_KEY", ""),
+		Pulsa24JamPIN:           getEnv("PULSA24JAM_PIN", ""),
+		Pulsa24JamPassword:      getEnv("PULSA24JAM_PASSWORD", ""),
+		Pulsa24JamSecret:        getEnv("PULSA24JAM_SECRET", ""),
+		Pulsa24JamCallbackToken: getEnv("PULSA24JAM_CALLBACK_TOKEN", ""),
+		Pulsa24JamTimeout:       p24to,
 
 		Port: getEnv("PORT", "8080"),
 	}
