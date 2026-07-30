@@ -53,6 +53,12 @@ type DraftOrder = {
   total: number;
 };
 
+type UniversalOrderResponse = {
+  ok?: boolean;
+  error?: string;
+  item?: UserAppOrder;
+};
+
 const serviceMap: Record<string, ServiceMeta> = {
   "hp-pascabayar": {
     title: "HP Pascabayar",
@@ -371,6 +377,17 @@ function saveLocalOrder(order: DraftOrder) {
   window.localStorage.setItem(key, JSON.stringify([toLocalAppOrder(order), ...current].slice(0, 30)));
 }
 
+function draftFromServerOrder(item: UserAppOrder, fallback: Omit<DraftOrder, "invoiceId">): DraftOrder {
+  return {
+    invoiceId: item.invoice_id,
+    service: fallback.service,
+    destination: item.dest || fallback.destination,
+    provider: fallback.provider,
+    product: fallback.product,
+    total: Number(item.harga_final || fallback.total),
+  };
+}
+
 export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: string }) {
   const service = useMemo(() => {
     const meta = serviceMap[serviceSlug] || defaultService;
@@ -381,6 +398,8 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
   const [selectedProvider, setSelectedProvider] = useState(service.providers[0]);
   const [selectedProduct, setSelectedProduct] = useState(service.products[0]);
   const [completedOrder, setCompletedOrder] = useState<DraftOrder | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState("");
 
   const selectedProductIndex = Math.max(0, service.products.indexOf(selectedProduct));
   const subtotal = productPrice(selectedProduct, selectedProductIndex);
@@ -388,18 +407,41 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
   const total = subtotal + adminFee;
   const canContinue = destination.trim().length >= 3;
 
-  function createOrder() {
-    if (!canContinue) return;
-    const order: DraftOrder = {
-      invoiceId: `PK${Date.now().toString().slice(-9)}`,
+  async function createOrder() {
+    if (!canContinue || isCreating) return;
+    const orderData = {
       service: service.title,
       destination: destination.trim(),
       provider: selectedProvider,
       product: selectedProduct,
       total,
     };
-    saveLocalOrder(order);
-    setCompletedOrder(order);
+    setIsCreating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/app/universal-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
+      });
+      const body = (await res.json().catch(() => ({}))) as UniversalOrderResponse;
+      if (res.ok && body.ok && body.item) {
+        const serverOrder = draftFromServerOrder(body.item, orderData);
+        setCompletedOrder(serverOrder);
+        return;
+      }
+      throw new Error(body.error || "Transaksi gagal disimpan ke server");
+    } catch (err) {
+      const order: DraftOrder = {
+      invoiceId: `PK${Date.now().toString().slice(-9)}`,
+        ...orderData,
+      };
+      saveLocalOrder(order);
+      setCompletedOrder(order);
+      setError(err instanceof Error ? `${err.message}. Riwayat sementara disimpan di perangkat ini.` : "Riwayat sementara disimpan di perangkat ini.");
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   return (
@@ -439,6 +481,7 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
               </div>
               <h2 className="mt-4 text-xl font-black">Transaksi Dibuat</h2>
               <p className="mt-1 text-xs font-semibold text-white/75">Invoice siap dibayar.</p>
+              {error ? <p className="mx-auto mt-3 max-w-[260px] rounded-2xl bg-white/12 px-3 py-2 text-[10px] font-bold text-white/85">{error}</p> : null}
             </div>
             <div className="space-y-3 p-5">
               {[
@@ -573,11 +616,11 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
 
             <button
               type="button"
-              disabled={!canContinue}
+              disabled={!canContinue || isCreating}
               className="flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_34px_rgba(4,120,87,0.22)] transition hover:brightness-105 disabled:bg-none disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
               onClick={createOrder}
             >
-              Buat Transaksi
+              {isCreating ? "Menyimpan..." : "Buat Transaksi"}
               <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
             </button>
           </>
