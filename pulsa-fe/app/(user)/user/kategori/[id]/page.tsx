@@ -9,6 +9,7 @@ import { UserBottomNav } from "@/components/user/UserBottomNav";
 import { UserAuthClientSync } from "@/components/user/UserAuthClientSync";
 import { getBrandLogo } from "@/lib/brand-logos";
 import { GuestPulsaQuickOrder } from "@/components/guest/GuestPulsaQuickOrder";
+import { UserUniversalServicePageContent } from "@/components/user/UserUniversalServicePageContent";
 
 type SessionShape = {
   user?: UserSession;
@@ -19,11 +20,26 @@ type PageProps = {
   params: { id: string };
 };
 
+const UNIVERSAL_SERVICE_BY_CATEGORY_ID: Record<string, string> = {
+  "18": "hp-pascabayar",
+};
+
 export default async function UserKategoriPage({ params }: PageProps) {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
   const backendToken = session?.backendToken;
 
   const [{ id }] = await Promise.all([params]);
+  const universalService = UNIVERSAL_SERVICE_BY_CATEGORY_ID[String(id)];
+  if (universalService) {
+    return (
+      <>
+        {backendToken ? <UserAuthClientSync backendToken={backendToken} /> : null}
+        <UserUniversalServicePageContent serviceSlug={universalService} />
+        <UserBottomNav />
+      </>
+    );
+  }
+
   const brands = await getBrandsByKategori(id);
 
   return (
