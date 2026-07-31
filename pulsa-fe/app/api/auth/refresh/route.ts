@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const base = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8081";
+  const base = process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083";
   const auth = req.headers.get("authorization") || "";
   if (!auth) {
     return NextResponse.json({ ok: false, error: "missing bearer token" }, { status: 401 });

@@ -46,7 +46,7 @@ function isGoogleProviderConfigured() {
   return Boolean(googleClientID() && googleClientSecret());
 }
 
-const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8080";
+const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083";
 
 async function syncGoogleToBackend(email: string, nama: string, googleID: string, idToken: string): Promise<BackendGoogleLoginResp> {
   const r = await fetch(`${apiBase()}/v1/auth/google`, {

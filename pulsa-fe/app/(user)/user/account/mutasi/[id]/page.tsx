@@ -47,7 +47,7 @@ function formatReason(row: MutasiRow) {
 }
 
 async function getMutasiDetail(token: string, id: string): Promise<MutasiRow | null> {
-  const base = (process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8081").replace(/\/+$/, "");
+  const base = (process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083").replace(/\/+$/, "");
   try {
     const res = await fetch(`${base}/v1/history/mutasi/${encodeURIComponent(id)}`, {
       cache: "no-store",

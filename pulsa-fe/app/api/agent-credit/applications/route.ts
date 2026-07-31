@@ -5,7 +5,7 @@ type SessionShape = {
   backendToken?: string;
 };
 
-const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8081";
+const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083";
 
 async function proxy(path: string, method: "GET" | "POST", req?: Request) {
   const session = (await getAppServerSession()) as SessionShape | null;

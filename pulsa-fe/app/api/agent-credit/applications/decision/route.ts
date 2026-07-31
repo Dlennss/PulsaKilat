@@ -7,7 +7,7 @@ type SessionShape = {
 
 export const runtime = "nodejs";
 
-const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8080";
+const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083";
 
 export async function POST(req: Request) {
   const session = (await getAppServerSession()) as SessionShape | null;

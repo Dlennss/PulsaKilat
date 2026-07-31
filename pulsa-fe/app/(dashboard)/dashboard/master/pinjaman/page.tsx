@@ -6,8 +6,7 @@ import {
   Sparkles,
   WalletCards,
 } from "lucide-react";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { getAgentCreditApplications } from "@/lib/api.auth";
 import { attachAgentCreditPaymentsFallback } from "@/lib/agent-credit-payment-fallback.server";
 import { MasterAgentCreditApplicationList } from "@/components/dashboard/MasterAgentCreditApplicationList";
@@ -22,7 +21,7 @@ function formatIDR(value: number) {
 }
 
 export default async function MasterDashboardPage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const rawApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
   const applications = await attachAgentCreditPaymentsFallback(rawApplications);
   const role = String(session?.user?.role || "").trim().toLowerCase();

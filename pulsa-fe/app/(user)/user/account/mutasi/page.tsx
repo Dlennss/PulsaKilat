@@ -32,7 +32,7 @@ type MutasiRow = {
 const PAGE_SIZE = 10;
 
 async function getMutasiFiltered(token: string, arah: string, from: string, to: string, limit: number, offset: number): Promise<MutasiRow[]> {
-  const base = (process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8081").replace(/\/+$/, "");
+  const base = (process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083").replace(/\/+$/, "");
   try {
     const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (arah) qs.set("arah", arah);

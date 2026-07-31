@@ -36,7 +36,7 @@ export async function fetchAPI<T>(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<T[]> {
-  const base = (process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || 'http://127.0.0.1:8081').replace(/\/+$/, '');
+  const base = (process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || 'http://127.0.0.1:8083').replace(/\/+$/, '');
   const url = endpoint.startsWith('http') ? endpoint : `${base}${endpoint}`;
 
   const fetchOptions: RequestInit = {
@@ -98,7 +98,7 @@ export async function fetchAPIFull<T>(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<ApiResponse<T>> {
-  const base = (process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || 'http://127.0.0.1:8081').replace(/\/+$/, '');
+  const base = (process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || 'http://127.0.0.1:8083').replace(/\/+$/, '');
   const url = endpoint.startsWith('http') ? endpoint : `${base}${endpoint}`;
 
   const fetchOptions: RequestInit = {

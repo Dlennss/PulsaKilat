@@ -1,5 +1,5 @@
 export function requireApiBase(): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8081";
+  const base = process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083";
   return base.replace(/\/+$/, "");
 }
 

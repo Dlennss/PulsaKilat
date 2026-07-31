@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "email/google_id/id_token required" }, { status: 400 });
   }
 
-  const base = process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8080";
+  const base = process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083";
   const r = await fetch(`${base}/v1/auth/google`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
