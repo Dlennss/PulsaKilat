@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 
 	"pulsa2/internal/helper"
 	"pulsa2/internal/repository"
 )
+
+const minimumAgentCreditAmount int64 = 100000
 
 type AgentCreditService struct {
 	repo *repository.AgentCreditRepository
@@ -54,33 +55,6 @@ func isCreditReviewer(role string) bool {
 	return normalized == helper.RoleRetailMaster || normalized == helper.RoleRetailMarketing || normalized == helper.RoleRetailAnalyst
 }
 
-func normalizeCreditTenor(value any) int64 {
-	var tenor int64
-	switch v := value.(type) {
-	case int:
-		tenor = int64(v)
-	case int64:
-		tenor = v
-	case float64:
-		tenor = int64(math.Round(v))
-	case string:
-		switch strings.TrimSpace(v) {
-		case "3":
-			tenor = 3
-		case "6":
-			tenor = 6
-		case "12":
-			tenor = 12
-		}
-	}
-	switch tenor {
-	case 3, 6, 12:
-		return tenor
-	default:
-		return 0
-	}
-}
-
 func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditSubmitInput) (*repository.AgentCreditApplication, error) {
 	role := helper.NormalizeRole(auth.Role)
 	targetMemberID := auth.MemberID
@@ -111,18 +85,14 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	if in.TermsAccepted {
 		in.ApplicantData["terms_version"] = "pulsakilat-agent-credit-2026-07"
 	}
-	tenorMonths := normalizeCreditTenor(in.ApplicantData["tenor_months"])
-	if tenorMonths == 0 {
-		return nil, errors.New("tenor cicilan wajib pilih 3, 6, atau 12 bulan")
-	}
-	in.ApplicantData["tenor_months"] = tenorMonths
-	in.ApplicantData["tenor_label"] = fmt.Sprintf("%d bulan", tenorMonths)
 	if role == helper.RoleRetailAgent {
 		profile, err := s.repo.GetMemberCreditProfile(ctx, auth.MemberID)
 		if err != nil {
 			return nil, err
 		}
-		in.RequestedAmount = profile.LimitAmount
+		if in.RequestedAmount <= 0 {
+			in.RequestedAmount = profile.LimitAmount
+		}
 	}
 	if in.RequestedAmount <= 0 {
 		return nil, errors.New("nominal kredit wajib diisi")
@@ -130,6 +100,9 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	limitAmount := int64(500000)
 	if profile, err := s.repo.GetMemberCreditProfile(ctx, targetMemberID); err == nil && profile != nil {
 		limitAmount = profile.LimitAmount
+	}
+	if in.RequestedAmount < minimumAgentCreditAmount {
+		return nil, errors.New("nominal kredit minimal Rp100000")
 	}
 	if in.RequestedAmount > limitAmount {
 		return nil, fmt.Errorf("nominal kredit maksimal Rp%d", limitAmount)
@@ -362,7 +335,7 @@ func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.Aut
 		return errors.New("pengajuan tidak valid")
 	}
 	if in.Amount <= 0 {
-		return errors.New("nominal cicilan wajib diisi")
+		return errors.New("nominal pembayaran wajib diisi")
 	}
 	if strings.TrimSpace(in.PaymentMethod) == "" {
 		in.PaymentMethod = "transfer"

@@ -19,10 +19,11 @@ CREATE TABLE IF NOT EXISTS public.agent_credit_rank (
 INSERT INTO public.agent_credit_rank
   (code, name, description, limit_amount, min_on_time_payments, max_late_payments, sort_order)
 VALUES
-  ('starter', 'Starter', 'Limit awal untuk agent baru.', 500000, 0, 0, 10),
-  ('silver', 'Silver', 'Naik setelah pembayaran lancar.', 1000000, 3, 0, 20),
-  ('gold', 'Gold', 'Untuk agent dengan riwayat bayar sangat baik.', 2500000, 8, 1, 30),
-  ('platinum', 'Platinum', 'Limit tinggi untuk agent terpercaya.', 5000000, 15, 1, 40)
+  ('start', 'Kilat Start', 'Limit awal untuk agent baru.', 500000, 0, 0, 10),
+  ('plus', 'Kilat Plus', 'Naik setelah total pinjaman lunas tepat waktu mencapai Rp 1.000.000.', 1000000, 0, 0, 20),
+  ('pro', 'Kilat Pro', 'Naik setelah total pinjaman lunas tepat waktu mencapai Rp 1.500.000.', 1500000, 0, 0, 30),
+  ('max', 'Kilat Max', 'Limit maksimal setelah total pinjaman lunas tepat waktu mencapai Rp 2.000.000.', 2000000, 0, 0, 40),
+  ('elite', 'Kilat Elite', 'Level prestise untuk agent terbaik. Limit tetap maksimal Rp 2.000.000.', 2000000, 0, 0, 50)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,

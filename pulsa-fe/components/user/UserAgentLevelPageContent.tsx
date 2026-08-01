@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, CreditCard, Percent, ShieldCheck, WalletCards } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CheckCircle2, ShieldCheck, TrendingUp, WalletCards } from "lucide-react";
 import { useRef, useState } from "react";
 
 const kilatLevels = [
@@ -16,10 +16,10 @@ const kilatLevels = [
     text: "text-emerald-700",
     desc: "Level awal untuk agent baru yang baru bergabung. Cocok untuk mengenalkan sistem dan mulai membangun riwayat transaksi.",
     benefits: [
-      ["Beli Sekarang, Bayar Nanti 0%", "Nikmati bunga 0% dan bayar bulan depan", Percent],
-      ["Biaya Cicilan 3,95%", "Per bulan, untuk tenor 3 bulan dan lebih", CreditCard],
-      ["Tenor hingga 3 Bulan", "Bagi pembayaranmu menjadi jumlah cicilan lebih kecil", CalendarDays],
-      ["Limit Kredit hingga 500RB", "Limit awal untuk mulai membangun riwayat", WalletCards],
+      ["Limit sampai Rp 500.000", "Agent baru mulai dari limit dasar PulsaKilat", WalletCards],
+      ["Ajukan mulai Rp 100.000", "Nominal bisa dipilih bertahap sesuai kebutuhan", CheckCircle2],
+      ["Bayar tepat waktu", "Riwayat lunas tanpa telat menjadi syarat naik level", BadgeCheck],
+      ["Target naik level Rp 1.000.000", "Total pinjaman lunas tepat waktu harus menyentuh target ini", TrendingUp],
     ],
   },
   {
@@ -32,10 +32,10 @@ const kilatLevels = [
     text: "text-blue-700",
     desc: "Diberikan kepada agent yang sudah aktif bertransaksi dan memiliki riwayat pembayaran yang baik.",
     benefits: [
-      ["Beli Sekarang, Bayar Nanti 0%", "Nikmati bunga 0% dan bayar bulan depan", Percent],
-      ["Biaya Cicilan 2,95-3,95%", "Per bulan, untuk tenor 3 bulan dan lebih", CreditCard],
-      ["Tenor hingga 12 Bulan", "Bagi pembayaranmu menjadi jumlah cicilan lebih kecil", CalendarDays],
-      ["Limit Kredit meningkat", "Akses limit lebih besar sesuai performa", WalletCards],
+      ["Limit sampai Rp 1.000.000", "Terbuka setelah progress pembayaran bagus", WalletCards],
+      ["Syarat total lunas Rp 1.000.000", "Boleh dari beberapa pinjaman kecil sampai akumulasi tercapai", CheckCircle2],
+      ["Tidak pernah jatuh tempo", "Pembayaran telat lebih dari 3 hari perlu perbaikan akun", BadgeCheck],
+      ["Target berikutnya Rp 1.500.000", "Lunasi pinjaman lagi sampai total menyentuh target Pro", TrendingUp],
     ],
   },
   {
@@ -48,10 +48,10 @@ const kilatLevels = [
     text: "text-yellow-700",
     desc: "Untuk agent berpengalaman dengan volume transaksi tinggi. Mendapat limit lebih besar dan prioritas layanan.",
     benefits: [
-      ["Beli Sekarang, Bayar Nanti 0%", "Nikmati bunga 0% dan bayar bulan depan", Percent],
-      ["Biaya Cicilan 2,45%", "Per bulan, untuk tenor 3 bulan dan lebih", CreditCard],
-      ["Tenor hingga 24 Bulan", "Bagi pembayaranmu menjadi jumlah cicilan lebih kecil", CalendarDays],
-      ["Limit Kredit hingga 40JT", "Keuntungan tambahan untuk agent aktif", WalletCards],
+      ["Limit sampai Rp 1.500.000", "Limit naik setelah total lunas tepat waktu cukup", WalletCards],
+      ["Syarat total lunas Rp 1.500.000", "Nominal pinjaman fleksibel, yang dihitung total lunasnya", CheckCircle2],
+      ["Akun tetap sehat", "Riwayat telat membuat agent perlu memperbaiki performa dulu", BadgeCheck],
+      ["Target berikutnya Rp 2.000.000", "Akumulasi pinjaman lunas membuka limit maksimal", TrendingUp],
     ],
   },
   {
@@ -64,10 +64,10 @@ const kilatLevels = [
     text: "text-orange-700",
     desc: "Level premium untuk agent dengan performa sangat baik. Memiliki limit tinggi dan proses persetujuan lebih cepat.",
     benefits: [
-      ["Beli Sekarang, Bayar Nanti 0%", "Nikmati bunga 0% dan bayar bulan depan", Percent],
-      ["Biaya Cicilan 1,95-2,45%", "Per bulan, untuk tenor 3 bulan dan lebih", CreditCard],
-      ["Tenor hingga 24 Bulan", "Bagi pembayaranmu menjadi jumlah cicilan lebih kecil", CalendarDays],
-      ["Limit Kredit tinggi", "Akses fitur dan limit eksklusif", WalletCards],
+      ["Limit sampai Rp 2.000.000", "Ini batas maksimal nominal pinjaman saldo agent", WalletCards],
+      ["Syarat total lunas Rp 2.000.000", "Progress dihitung dari pinjaman yang sudah lunas tepat waktu", CheckCircle2],
+      ["Prioritas pengecekan", "Agent dengan riwayat bagus lebih mudah dievaluasi", BadgeCheck],
+      ["Jaga performa", "Pertahankan pembayaran lancar agar tetap di level tinggi", TrendingUp],
     ],
   },
   {
@@ -80,10 +80,10 @@ const kilatLevels = [
     text: "text-purple-700",
     desc: "Level tertinggi di PulsaKilat untuk agent terbaik dengan loyalitas, omzet, dan reputasi yang sangat baik.",
     benefits: [
-      ["Beli Sekarang, Bayar Nanti 0%", "Nikmati bunga 0% dan bayar bulan depan", Percent],
-      ["Biaya Cicilan terbaik", "Biaya lebih ringan untuk agent pilihan", CreditCard],
-      ["Tenor fleksibel", "Pilihan tenor mengikuti performa agent", CalendarDays],
-      ["Limit Kredit terbesar", "Layanan prioritas dan keuntungan eksklusif", WalletCards],
+      ["Limit tetap Rp 2.000.000", "Elite adalah status tertinggi, bukan tambahan limit di atas batas maksimal", WalletCards],
+      ["Syarat total lunas Rp 2.500.000", "Diberikan untuk agent yang terus menjaga pembayaran lancar", CheckCircle2],
+      ["Reputasi terbaik", "Level ini menandai agent paling stabil dan terpercaya", BadgeCheck],
+      ["Layanan prioritas", "Cocok untuk agent dengan loyalitas dan omzet kuat", TrendingUp],
     ],
   },
 ];
@@ -202,7 +202,7 @@ export function UserAgentLevelPageContent({ initialLevelCode = "start" }: { init
             <ShieldCheck className="h-8 w-8 shrink-0" strokeWidth={2.5} />
             <div>
               <p className="text-sm font-black">Naik Level Bertahap</p>
-              <p className="mt-1 text-[11px] font-semibold leading-5 text-[#047857]/75">Performa transaksi, pembayaran tepat waktu, dan reputasi agent menjadi dasar peningkatan level.</p>
+              <p className="mt-1 text-[11px] font-semibold leading-5 text-[#047857]/75">Level naik dari total pinjaman yang sudah lunas tepat waktu: Rp 1.000.000, Rp 1.500.000, lalu Rp 2.000.000.</p>
             </div>
           </div>
         </section>

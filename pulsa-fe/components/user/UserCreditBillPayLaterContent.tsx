@@ -1,23 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BadgeCheck,
   Banknote,
-  CalendarClock,
   CheckCircle2,
   ChevronRight,
   CreditCard,
-  Eye,
-  EyeOff,
+  Loader2,
   ReceiptText,
   ShieldCheck,
   Upload,
   WalletCards,
-  Loader2,
 } from "lucide-react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 
@@ -25,57 +22,28 @@ type Props = {
   bills: AgentCreditApplication[];
 };
 
+type StoredPaymentProof = {
+  name: string;
+  type: string;
+  size: number;
+  data_url: string;
+};
+
+const paymentMethods = [
+  { id: "wallet", title: "Saldo PulsaKilat", desc: "Lampirkan bukti mutasi saldo akun", icon: WalletCards },
+  { id: "va", title: "Virtual Account", desc: "BCA, BRI, BNI, Mandiri", icon: CreditCard },
+  { id: "transfer", title: "Transfer Bank", desc: "Konfirmasi manual oleh marketing", icon: Banknote },
+];
+
 function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
-function addMonths(value: string, months: number) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  date.setMonth(date.getMonth() + months);
-  return date;
-}
-
-function formatDate(value: Date | null) {
+function formatDate(value?: string | null) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(value);
-}
-
-function getTenorMonths(item: AgentCreditApplication) {
-  const value = item.applicant_data?.tenor_months;
-  const tenor = typeof value === "number" ? value : Number(value || 0);
-  return tenor === 3 || tenor === 6 || tenor === 12 ? tenor : 1;
-}
-
-function getInstallmentNo(item: AgentCreditApplication) {
-  const tenor = getTenorMonths(item);
-  const monthlyInstallment = getMonthlyInstallment(item);
-  const outstanding = Number(item.outstanding_amount || 0);
-  if (monthlyInstallment <= 0) return 1;
-  if (outstanding <= 0) return tenor;
-  const remainingInstallments = Math.min(tenor, Math.ceil(outstanding / monthlyInstallment));
-  return Math.min(tenor, tenor - remainingInstallments + 1);
-}
-
-function getDueDate(item: AgentCreditApplication) {
-  const baseDate = item.loan_approved_at || item.updated_at || item.created_at;
-  const dueDate = addMonths(baseDate, getInstallmentNo(item));
-  if (!dueDate && item.loan_due_date) {
-    const fallback = new Date(item.loan_due_date);
-    return Number.isNaN(fallback.getTime()) ? null : fallback;
-  }
-  return dueDate;
-}
-
-function getMonthlyInstallment(item: AgentCreditApplication) {
-  const approved = Number(item.approved_amount || item.requested_amount || 0);
-  const tenor = getTenorMonths(item);
-  return Math.ceil(approved / tenor);
-}
-
-function getCurrentBill(item: AgentCreditApplication) {
-  const outstanding = Number(item.outstanding_amount || 0);
-  return Math.min(outstanding, getMonthlyInstallment(item));
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(date);
 }
 
 function getPaidAmount(item: AgentCreditApplication) {
@@ -83,12 +51,43 @@ function getPaidAmount(item: AgentCreditApplication) {
   return Math.max(0, Number(item.approved_amount || 0) - Number(item.outstanding_amount || 0));
 }
 
-type StoredPaymentProof = {
-  name: string;
-  type: string;
-  size: number;
-  data_url: string;
-};
+function getVirtualAccountNumber(applicationId: number) {
+  return `8808${String(applicationId || 0).padStart(10, "0")}`;
+}
+
+function getPaymentHelper(methodId: string, applicationId: number) {
+  if (methodId === "va") {
+    return {
+      title: "Nomor Virtual Account",
+      value: getVirtualAccountNumber(applicationId),
+      desc: "Gunakan VA ini dari m-banking/ATM, lalu upload bukti transfer.",
+      rows: [
+        ["Bank", "BCA, BRI, BNI, Mandiri"],
+        ["Nama", "PulsaKilat Agent Credit"],
+      ],
+    };
+  }
+  if (methodId === "transfer") {
+    return {
+      title: "Rekening Tujuan",
+      value: "1234567890",
+      desc: "Transfer sesuai nominal pembayaran, lalu upload bukti transfer.",
+      rows: [
+        ["Bank", "BCA"],
+        ["Atas Nama", "PulsaKilat"],
+      ],
+    };
+  }
+  return {
+    title: "Sumber Dana",
+    value: "Saldo akun PulsaKilat",
+    desc: "Saldo akan dipotong setelah pembayaran dikonfirmasi.",
+    rows: [
+      ["Proses", "Instan"],
+      ["Biaya layanan", "Gratis"],
+    ],
+  };
+}
 
 function readStoredPaymentProof(file: File | null): Promise<StoredPaymentProof | null> {
   if (!file) return Promise.resolve(null);
@@ -107,57 +106,11 @@ function readStoredPaymentProof(file: File | null): Promise<StoredPaymentProof |
   });
 }
 
-const paymentMethods = [
-  { id: "wallet", title: "Saldo PulsaKilat", desc: "Lampirkan bukti mutasi saldo akun", icon: WalletCards },
-  { id: "va", title: "Virtual Account", desc: "BCA, BRI, BNI, Mandiri", icon: CreditCard },
-  { id: "transfer", title: "Transfer Bank", desc: "Konfirmasi manual oleh marketing", icon: Banknote },
-];
-
-function getVirtualAccountNumber(applicationId: number) {
-  return `8808${String(applicationId || 0).padStart(10, "0")}`;
-}
-
-function getPaymentHelper(methodId: string, applicationId: number) {
-  if (methodId === "va") {
-    return {
-      title: "Nomor Virtual Account",
-      value: getVirtualAccountNumber(applicationId),
-      desc: "Gunakan VA ini dari m-banking/ATM. Setelah transfer, tekan konfirmasi pembayaran.",
-      rows: [
-        ["Bank", "BCA, BRI, BNI, Mandiri"],
-        ["Nama", "PulsaKilat Agent Credit"],
-      ],
-    };
-  }
-  if (methodId === "transfer") {
-    return {
-      title: "Rekening Tujuan",
-      value: "1234567890",
-      desc: "Transfer sesuai total bayar, lalu konfirmasi agar tim PulsaKilat dapat mencatat pelunasan.",
-      rows: [
-        ["Bank", "BCA"],
-        ["Atas Nama", "PulsaKilat"],
-      ],
-    };
-  }
-  return {
-    title: "Sumber Dana",
-    value: "Saldo akun PulsaKilat",
-    desc: "Saldo akan langsung dipotong setelah kamu menekan tombol bayar.",
-    rows: [
-      ["Proses", "Instan"],
-      ["Biaya layanan", "Gratis"],
-    ],
-  };
-}
-
 export function UserCreditBillPayLaterContent({ bills }: Props) {
   const router = useRouter();
   const activeBills = bills.filter((item) => Number(item.outstanding_amount || 0) > 0);
   const selectedDefault = activeBills[0]?.id || bills[0]?.id || 0;
   const [selectedBillId, setSelectedBillId] = useState(selectedDefault);
-  const [selectedInstallments, setSelectedInstallments] = useState<number[]>([]);
-  const [installmentPickerOpen, setInstallmentPickerOpen] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0].id);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofName, setProofName] = useState("");
@@ -169,39 +122,19 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
     [bills, selectedBillId],
   );
   const totalOutstanding = activeBills.reduce((total, item) => total + Number(item.outstanding_amount || 0), 0);
-  const monthlyBill = selectedBill ? getCurrentBill(selectedBill) : 0;
   const selectedOutstanding = selectedBill ? Number(selectedBill.outstanding_amount || 0) : 0;
-  const dueDate = selectedBill ? getDueDate(selectedBill) : null;
   const approved = selectedBill ? Number(selectedBill.approved_amount || selectedBill.requested_amount || 0) : 0;
   const paid = selectedBill ? getPaidAmount(selectedBill) : 0;
   const progress = approved > 0 ? Math.min(100, Math.round((paid / approved) * 100)) : 0;
-  const isPaid = selectedBill ? Number(selectedBill.outstanding_amount || 0) <= 0 : false;
-  const selectedTenor = selectedBill ? getTenorMonths(selectedBill) : 0;
-  const selectedInstallmentNo = selectedBill ? getInstallmentNo(selectedBill) : 0;
-  const remainingInstallmentCount = selectedBill && monthlyBill > 0 ? Math.min(selectedTenor, Math.ceil(selectedOutstanding / monthlyBill)) : 0;
-  const installmentChoices = Array.from({ length: remainingInstallmentCount }, (_, index) => selectedInstallmentNo + index);
-  const activeInstallments = selectedInstallments.filter((item) => installmentChoices.includes(item));
-  const paymentAmount = selectedBill ? Math.min(selectedOutstanding, monthlyBill * activeInstallments.length) : 0;
+  const isPaid = selectedBill ? selectedOutstanding <= 0 : false;
+  const paymentAmount = selectedBill ? selectedOutstanding : 0;
   const method = paymentMethods.find((item) => item.id === selectedMethod) || paymentMethods[0];
   const MethodIcon = method.icon;
   const paymentHelper = getPaymentHelper(selectedMethod, selectedBill?.id || 0);
 
-  useEffect(() => {
-    setSelectedInstallments(selectedInstallmentNo > 0 ? [selectedInstallmentNo] : []);
-  }, [selectedBillId, selectedInstallmentNo]);
-
   function selectBill(id: number) {
     setSelectedBillId(id);
-    setSelectedInstallments([]);
-    setInstallmentPickerOpen(false);
-  }
-
-  function toggleInstallment(month: number) {
-    setSelectedInstallments((current) => {
-      const exists = current.includes(month);
-      const next = exists ? current.filter((item) => item !== month) : [...current, month];
-      return next.sort((a, b) => a - b);
-    });
+    setError("");
   }
 
   async function copyPaymentValue() {
@@ -226,7 +159,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
           application_id: selectedBill.id,
           amount: paymentAmount,
           payment_method: selectedMethod,
-          note: `Cicilan ${activeInstallments.join(", ")} via ${method.title}${selectedMethod === "va" ? ` - VA ${paymentHelper.value}` : ""}`,
+          note: `${paymentAmount >= selectedOutstanding ? "Pelunasan" : "Pembayaran"} pinjaman via ${method.title}${selectedMethod === "va" ? ` - VA ${paymentHelper.value}` : ""}`,
           payment_proof: paymentProof,
         }),
       });
@@ -254,8 +187,8 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
           </Link>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-lime-100">Tagihan Kredit Agent</p>
-            <h1 className="mt-1 text-2xl font-black">Bayar Cicilan</h1>
-            <p className="mt-1 text-xs font-semibold text-white/75">Pilih tagihan, metode bayar, lalu konfirmasi.</p>
+            <h1 className="mt-1 text-2xl font-black">Bayar Pinjaman</h1>
+            <p className="mt-1 text-xs font-semibold text-white/75">Pilih tagihan, upload bukti, lalu konfirmasi pelunasan.</p>
           </div>
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-[#047857]">
             <ReceiptText className="h-6 w-6" />
@@ -264,12 +197,12 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
       </section>
 
       <section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Total harus dibayar</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Total yang dibayar</p>
         <div className="mt-3 flex items-end justify-between gap-3">
           <div>
             <p className="text-3xl font-black tracking-tight text-slate-950">{formatIDR(paymentAmount)}</p>
             <p className="mt-1 text-xs font-semibold text-slate-500">
-              {selectedBill ? `${activeInstallments.length} cicilan dipilih dari tenor ${selectedTenor}` : "Tagihan bulan ini"}
+              {selectedBill ? `Sisa pinjaman ${formatIDR(selectedOutstanding)}` : "Belum ada tagihan aktif"}
             </p>
           </div>
           <span className={isPaid ? "rounded-full bg-emerald-100 px-3 py-1.5 text-[10px] font-black text-emerald-700" : "rounded-full bg-amber-100 px-3 py-1.5 text-[10px] font-black text-amber-700"}>
@@ -278,12 +211,12 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-2xl bg-emerald-50 px-3 py-3">
-            <p className="text-[9px] font-black uppercase text-emerald-700/70">Sisa pinjaman</p>
+            <p className="text-[9px] font-black uppercase text-emerald-700/70">Sisa semua</p>
             <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(totalOutstanding)}</p>
           </div>
           <div className="rounded-2xl bg-sky-50 px-3 py-3">
             <p className="text-[9px] font-black uppercase text-sky-700/70">Jatuh tempo</p>
-            <p className="mt-1 text-sm font-black text-slate-950">{formatDate(dueDate)}</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{formatDate(selectedBill?.loan_due_date)}</p>
           </div>
         </div>
       </section>
@@ -292,15 +225,12 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
         <>
           <section className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-black text-slate-950">Tagihan Bulan Ini</h2>
+              <h2 className="text-base font-black text-slate-950">Tagihan Pinjaman</h2>
               <span className="rounded-full bg-lime-100 px-3 py-1 text-[10px] font-black text-[#047857]">{bills.length} tagihan</span>
             </div>
             <div className="space-y-2">
               {bills.map((item) => {
                 const outstanding = Number(item.outstanding_amount || 0);
-                const bill = getCurrentBill(item);
-                const tenor = getTenorMonths(item);
-                const installmentNo = getInstallmentNo(item);
                 const selected = item.id === selectedBillId;
                 return (
                   <button
@@ -315,74 +245,17 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-black text-slate-950">Pinjaman #{item.id}</span>
                       <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">
-                        Cicilan {installmentNo}/{tenor} - sisa {formatIDR(outstanding)}
+                        Sisa {formatIDR(outstanding)} - jatuh tempo {formatDate(item.loan_due_date)}
                       </span>
                     </span>
                     <span className="text-right">
-                      <span className="block text-sm font-black text-slate-950">{formatIDR(bill)}</span>
+                      <span className="block text-sm font-black text-slate-950">{formatIDR(outstanding)}</span>
                       <span className="mt-0.5 block text-[9px] font-black text-slate-400">{outstanding <= 0 ? "Lunas" : "Bayar"}</span>
                     </span>
                   </button>
                 );
               })}
             </div>
-            {selectedBill && !isPaid ? (
-              <div className="mt-3 rounded-[26px] border border-emerald-100 bg-[linear-gradient(180deg,#f8fffb_0%,#ffffff_100%)] p-3 shadow-[0_12px_28px_rgba(6,78,59,0.06)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#047857]">Pilih Cicilan</p>
-                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
-                      {activeInstallments.length ? `${activeInstallments.length} bulan dipilih` : "Belum ada bulan dipilih"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedInstallments(installmentChoices)}
-                      className="h-9 rounded-full bg-emerald-950 px-3 text-[10px] font-black text-white shadow-[0_10px_20px_rgba(6,78,59,0.16)]"
-                    >
-                      Semua
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInstallmentPickerOpen((value) => !value)}
-                      className="grid h-9 w-9 place-items-center rounded-full bg-white text-[#047857] ring-1 ring-emerald-100"
-                      aria-label={installmentPickerOpen ? "Tutup pilihan cicilan" : "Buka pilihan cicilan"}
-                    >
-                      {installmentPickerOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                {installmentPickerOpen ? (
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {installmentChoices.map((month) => {
-                      const checked = activeInstallments.includes(month);
-                      return (
-                        <label
-                          key={month}
-                          className={checked ? "flex cursor-pointer items-center justify-between gap-2 rounded-[18px] border border-emerald-300 bg-emerald-50 px-3 py-3 text-slate-950" : "flex cursor-pointer items-center justify-between gap-2 rounded-[18px] border border-slate-200 bg-white px-3 py-3 text-slate-600"}
-                        >
-                          <span className="flex min-w-0 items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleInstallment(month)}
-                              className="h-4 w-4 rounded border-slate-300 text-[#047857] focus:ring-emerald-300"
-                            />
-                            <span className="text-xs font-black">Bulan {month}</span>
-                          </span>
-                          <span className="text-[10px] font-black text-[#047857]">{formatIDR(monthlyBill)}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : null}
-                <div className="mt-3 flex items-center justify-between rounded-[20px] bg-slate-950 px-4 py-3 text-white">
-                  <span className="text-[11px] font-semibold text-white/70">{activeInstallments.length} bulan dipilih</span>
-                  <span className="text-sm font-black">{formatIDR(paymentAmount)}</span>
-                </div>
-              </div>
-            ) : null}
           </section>
 
           {selectedBill ? (
@@ -390,11 +263,11 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
               <div className="bg-[linear-gradient(135deg,#f8fffb,#eefcf4)] p-4">
                 <div className="flex items-center gap-3">
                   <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-[#047857] ring-1 ring-emerald-100">
-                    <CalendarClock className="h-6 w-6" />
+                    <ShieldCheck className="h-6 w-6" />
                   </span>
                   <div>
-                    <h2 className="text-base font-black text-slate-950">Rincian Tagihan</h2>
-                    <p className="text-xs font-semibold text-slate-500">Jatuh tempo {formatDate(dueDate)}</p>
+                    <h2 className="text-base font-black text-slate-950">Rincian Pelunasan</h2>
+                    <p className="text-xs font-semibold text-slate-500">Nominal otomatis mengikuti sisa pinjaman aktif.</p>
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
@@ -403,16 +276,16 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                     <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(approved)}</p>
                   </div>
                   <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">
-                    <p className="text-[9px] font-black uppercase text-slate-400">Cicilan Bulan Ini</p>
-                    <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(monthlyBill)}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">
-                    <p className="text-[9px] font-black uppercase text-slate-400">Tenor</p>
-                    <p className="mt-1 text-sm font-black text-slate-950">{selectedTenor} bulan</p>
+                    <p className="text-[9px] font-black uppercase text-slate-400">Sudah Dibayar</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(paid)}</p>
                   </div>
                   <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">
                     <p className="text-[9px] font-black uppercase text-slate-400">Sisa Pinjaman</p>
-                    <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(Number(selectedBill.outstanding_amount || 0))}</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(selectedOutstanding)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">
+                    <p className="text-[9px] font-black uppercase text-slate-400">Jatuh Tempo</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{formatDate(selectedBill.loan_due_date)}</p>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -494,14 +367,14 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                 </div>
               </div>
               <div className="flex justify-between gap-3">
-                <span className="font-semibold text-slate-500">Cicilan dipilih</span>
+                <span className="font-semibold text-slate-500">Nominal bayar</span>
                 <span className="font-black text-slate-950">{formatIDR(paymentAmount)}</span>
               </div>
               <div className="flex justify-between gap-3">
                 <span className="font-semibold text-slate-500">Biaya layanan</span>
                 <span className="font-black text-[#047857]">Gratis</span>
               </div>
-              <div className="border-t border-slate-200 pt-2 flex justify-between gap-3">
+              <div className="flex justify-between gap-3 border-t border-slate-200 pt-2">
                 <span className="font-black text-slate-950">Total bayar</span>
                 <span className="font-black text-slate-950">{formatIDR(paymentAmount)}</span>
               </div>
@@ -537,13 +410,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
               className="mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_34px_rgba(5,150,105,0.22)] disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <BadgeCheck className="h-5 w-5" />}
-              {busy
-                ? "Memproses..."
-                : selectedMethod === "wallet"
-                  ? activeInstallments.length >= remainingInstallmentCount
-                    ? "Bayar & Lunasi"
-                    : "Bayar Cicilan"
-                  : "Konfirmasi Pembayaran"}
+              {busy ? "Memproses..." : "Konfirmasi Pelunasan"}
             </button>
             {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-xs font-black text-rose-600">{error}</p> : null}
           </section>
@@ -555,7 +422,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
               <ReceiptText className="h-8 w-8" />
             </div>
             <h2 className="mt-4 text-base font-black text-slate-950">Belum ada tagihan</h2>
-            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Tagihan akan muncul setelah pengajuan kredit disetujui oleh master.</p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Tagihan akan muncul setelah pengajuan kredit disetujui analis.</p>
           </div>
         </section>
       )}

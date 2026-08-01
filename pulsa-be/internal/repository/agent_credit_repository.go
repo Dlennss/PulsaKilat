@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"math"
 	"time"
 )
 
@@ -250,58 +249,17 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	return &item, nil
 }
 
-func tenorMonthsFromApplicant(data map[string]any) int64 {
-	value, ok := data["tenor_months"]
-	if !ok {
-		return 1
-	}
-	var tenor int64
-	switch v := value.(type) {
-	case int:
-		tenor = int64(v)
-	case int64:
-		tenor = v
-	case float64:
-		tenor = int64(math.Round(v))
-	case string:
-		switch v {
-		case "3":
-			tenor = 3
-		case "6":
-			tenor = 6
-		case "12":
-			tenor = 12
-		}
-	}
-	switch tenor {
-	case 3, 6, 12:
-		return tenor
-	default:
-		return 1
-	}
-}
-
-func installmentAmount(principal int64, tenorMonths int64) int64 {
-	if principal <= 0 {
-		return 0
-	}
-	if tenorMonths <= 0 {
-		return principal
-	}
-	return (principal + tenorMonths - 1) / tenorMonths
-}
-
 func creditLevelFromProgress(qualifiedPaidTotal int64, needsRepair bool) (string, string, int64) {
 	if needsRepair {
 		return "start", "Kilat Start", 500000
 	}
 	switch {
-	case qualifiedPaidTotal >= 5000000:
-		return "elite", "Kilat Elite", 5000000
-	case qualifiedPaidTotal >= 3000000:
-		return "max", "Kilat Max", 3000000
+	case qualifiedPaidTotal >= 2500000:
+		return "elite", "Kilat Elite", 2000000
 	case qualifiedPaidTotal >= 2000000:
-		return "pro", "Kilat Pro", 2000000
+		return "max", "Kilat Max", 2000000
+	case qualifiedPaidTotal >= 1500000:
+		return "pro", "Kilat Pro", 1500000
 	case qualifiedPaidTotal >= 1000000:
 		return "plus", "Kilat Plus", 1000000
 	default:
@@ -386,17 +344,17 @@ SELECT
   COALESCE(pay.payment_count, 0) AS payment_count,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 'start'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 'elite'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 'max'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'pro'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 'elite'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'max'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 'pro'
     WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'plus'
     ELSE 'start'
   END AS credit_level_code,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 'Kilat Start'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 'Kilat Elite'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 'Kilat Max'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'Kilat Pro'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 'Kilat Elite'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'Kilat Max'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 'Kilat Pro'
     WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'Kilat Plus'
     ELSE 'Kilat Start'
   END AS credit_level_name,
@@ -404,9 +362,9 @@ SELECT
   COALESCE(credit.qualified_paid_total, 0) AS qualified_paid_total,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 500000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 5000000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 3000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 2000000
     WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 2000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 1500000
     WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 1000000
     ELSE 500000
   END AS credit_limit_amount,
@@ -537,17 +495,17 @@ SELECT
   COALESCE(pay.payment_count, 0) AS payment_count,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 'start'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 'elite'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 'max'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'pro'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 'elite'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'max'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 'pro'
     WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'plus'
     ELSE 'start'
   END AS credit_level_code,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 'Kilat Start'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 'Kilat Elite'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 'Kilat Max'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'Kilat Pro'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 'Kilat Elite'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'Kilat Max'
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 'Kilat Pro'
     WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'Kilat Plus'
     ELSE 'Kilat Start'
   END AS credit_level_name,
@@ -555,9 +513,9 @@ SELECT
   COALESCE(credit.qualified_paid_total, 0) AS qualified_paid_total,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 500000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 5000000 THEN 5000000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 3000000 THEN 3000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 2000000
     WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 2000000
+    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 1500000
     WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 1000000
     ELSE 500000
   END AS credit_limit_amount,
@@ -889,19 +847,18 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	item.HasAgentSignature = item.AgentSignatureData != ""
 
 	if in.Status == "approved" {
-		tenorMonths := tenorMonthsFromApplicant(item.ApplicantData)
 		_, err = tx.ExecContext(ctx, `
 INSERT INTO public.agent_credit_loan
   (application_id, member_id, principal_amount, outstanding_amount, status, approved_at, due_date)
 VALUES
-  ($1, $2, $3, $3, 'active', now(), (now() + ($4::text || ' months')::interval)::date)
+  ($1, $2, $3, $3, 'active', now(), (now() + interval '1 month')::date)
 ON CONFLICT (application_id) DO UPDATE SET
   principal_amount = EXCLUDED.principal_amount,
   outstanding_amount = LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount),
   status = CASE WHEN public.agent_credit_loan.outstanding_amount <= 0 THEN 'paid' ELSE 'active' END,
   due_date = EXCLUDED.due_date,
   updated_at = now()
-`, item.ID, item.MemberID, in.ApprovedAmount, tenorMonths)
+`, item.ID, item.MemberID, in.ApprovedAmount)
 		if err != nil {
 			return nil, err
 		}
@@ -1052,20 +1009,19 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 		return nil, err
 	}
 	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
-	tenorMonths := tenorMonthsFromApplicant(item.ApplicantData)
 	if in.Status == "approved" {
 		_, err = tx.ExecContext(ctx, `
 INSERT INTO public.agent_credit_loan
   (application_id, member_id, principal_amount, outstanding_amount, status, approved_at, due_date)
 VALUES
-  ($1, $2, $3, $3, 'active', now(), (now() + ($4::text || ' months')::interval)::date)
+  ($1, $2, $3, $3, 'active', now(), (now() + interval '1 month')::date)
 ON CONFLICT (application_id) DO UPDATE SET
   principal_amount = EXCLUDED.principal_amount,
   outstanding_amount = LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount),
   status = CASE WHEN public.agent_credit_loan.outstanding_amount <= 0 THEN 'paid' ELSE 'active' END,
   due_date = EXCLUDED.due_date,
   updated_at = now()
-`, item.ID, item.MemberID, in.ApprovedAmount, tenorMonths)
+`, item.ID, item.MemberID, in.ApprovedAmount)
 		if err != nil {
 			return nil, err
 		}
@@ -1094,47 +1050,23 @@ func (r *AgentCreditRepository) PayInstallment(ctx context.Context, in AgentCred
 	}
 	defer tx.Rollback()
 
-	var loanID, memberID, principal, outstanding int64
-	var approvedAt, finalDueDate time.Time
-	var applicantRaw []byte
+	var loanID, memberID, outstanding int64
+	var dueDate time.Time
 	err = tx.QueryRowContext(ctx, `
 SELECT
   l.id,
   l.member_id,
-  l.principal_amount,
   l.outstanding_amount,
-  l.approved_at,
-  l.due_date,
-  a.applicant_data
+  l.due_date
 FROM public.agent_credit_loan l
-JOIN public.agent_credit_application a ON a.id = l.application_id
 WHERE l.application_id = $1 AND l.status IN ('active', 'overdue')
 FOR UPDATE
-`, in.ApplicationID).Scan(&loanID, &memberID, &principal, &outstanding, &approvedAt, &finalDueDate, &applicantRaw)
+`, in.ApplicationID).Scan(&loanID, &memberID, &outstanding, &dueDate)
 	if err != nil {
 		return err
 	}
 	if in.MemberID > 0 && in.MemberID != memberID {
 		return sql.ErrNoRows
-	}
-	applicantData := map[string]any{}
-	_ = json.Unmarshal(applicantRaw, &applicantData)
-	tenorMonths := tenorMonthsFromApplicant(applicantData)
-	currentBill := installmentAmount(principal, tenorMonths)
-	remainingInstallments := int64(1)
-	if currentBill > 0 {
-		remainingInstallments = (outstanding + currentBill - 1) / currentBill
-	}
-	if remainingInstallments > tenorMonths {
-		remainingInstallments = tenorMonths
-	}
-	installmentNo := tenorMonths - remainingInstallments + 1
-	if installmentNo < 1 {
-		installmentNo = 1
-	}
-	dueDate := approvedAt.AddDate(0, int(installmentNo), 0)
-	if dueDate.After(finalDueDate) {
-		dueDate = finalDueDate
 	}
 	amount := in.Amount
 	if amount > outstanding {

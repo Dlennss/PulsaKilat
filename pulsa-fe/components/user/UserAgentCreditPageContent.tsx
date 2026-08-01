@@ -367,11 +367,18 @@ function formatIDR(value: number) {
 }
 
 const defaultCreditAmount = 500000;
-const tenorOptions = [
-  { months: 3, label: "3 Bulan" },
-  { months: 6, label: "6 Bulan" },
-  { months: 12, label: "12 Bulan" },
-];
+
+function creditAmountOptions(limitAmount: number) {
+  const limit = Math.max(0, Number(limitAmount || 0));
+  const options: number[] = [];
+  for (let amount = 100000; amount <= limit; amount += 50000) {
+    options.push(amount);
+  }
+  if (limit >= 100000 && !options.includes(limit)) {
+    options.push(limit);
+  }
+  return options;
+}
 
 const levelBadgeByCode: Record<string, string> = {
   start: "/agent-levels/kilat-start-badge.png",
@@ -386,7 +393,8 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
   const [signatureReady, setSignatureReady] = useState(false);
   const [signatureData, setSignatureData] = useState("");
   const [latestApplication, setLatestApplication] = useState<AgentCreditApplication | undefined>(initialApplications[0]);
-  const [tenorMonths, setTenorMonths] = useState(3);
+  const [selectedRequestedAmount, setSelectedRequestedAmount] = useState(defaultCreditAmount);
+  const [amountPickerOpen, setAmountPickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const notice = getApplicationNotice(latestApplication);
@@ -403,6 +411,8 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
   const creditLevelImage = levelBadgeByCode[creditLevelCode] || levelBadgeByCode.start;
   const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
   const creditLimitAmount = Number(latestApplication?.credit_limit_amount || defaultCreditAmount);
+  const amountOptions = creditAmountOptions(creditLimitAmount);
+  const requestedAmount = amountOptions.includes(selectedRequestedAmount) ? selectedRequestedAmount : amountOptions[amountOptions.length - 1] || creditLimitAmount;
   const totalPaidAmount = initialApplications.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
   const totalActiveCredit = initialApplications.reduce((sum, item) => sum + Math.max(0, Number(item.outstanding_amount || 0)), 0);
   const currentOutstanding = Math.max(0, Number(latestApplication?.outstanding_amount || 0));
@@ -412,12 +422,16 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
     return typeof value === "string" && value.trim() ? value.trim() : fallback;
   };
 
+  useEffect(() => {
+    const options = creditAmountOptions(creditLimitAmount);
+    setSelectedRequestedAmount(options[options.length - 1] || creditLimitAmount);
+  }, [creditLimitAmount]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!agreed || !signatureReady || !signatureData || submitting) return;
 
     const form = new FormData(event.currentTarget);
-    const requestedAmount = creditLimitAmount;
     setSubmitting(true);
     setError("");
     try {
@@ -449,7 +463,6 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             family_whatsapp: String(form.get("family_whatsapp") || ""),
             family_relation: String(form.get("family_relation") || ""),
             family_address: String(form.get("family_address") || ""),
-            tenor_months: Number(form.get("tenor_months") || tenorMonths),
             terms_accepted: agreed,
             terms_version: "pulsakilat-agent-credit-2026-07",
           },
@@ -525,39 +538,43 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             <Field name="store_address" label="Alamat Toko" placeholder="Alamat lengkap toko" defaultValue={applicantText("store_address")} textarea className="sm:col-span-2" />
             <div className="rounded-[22px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)] p-4 sm:col-span-2">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Nominal Kredit Saldo</p>
-              <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(creditLimitAmount)}</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(requestedAmount)}</p>
               <p className="mt-1 text-[10px] font-semibold text-slate-400">
-                Limit mengikuti level agent dan naik setelah tagihan lunas tepat waktu.
+                Pilih nominal yang sudah ditentukan, maksimal {formatIDR(creditLimitAmount)}.
               </p>
-              <input type="hidden" name="requested_amount" value={creditLimitAmount} />
-            </div>
-            <div className="sm:col-span-2">
-              <p className="text-[10px] font-black text-slate-950">Pilih Tenor Cicilan</p>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {tenorOptions.map((item) => {
-                  const selected = tenorMonths === item.months;
-                  return (
-                    <label
-                      key={item.months}
-                      className={selected ? "cursor-pointer rounded-2xl border border-emerald-400 bg-emerald-50 px-2 py-3 text-center shadow-[0_10px_22px_rgba(4,120,87,0.10)]" : "cursor-pointer rounded-2xl border border-slate-200 bg-white px-2 py-3 text-center"}
-                    >
-                      <input
-                        type="radio"
-                        name="tenor_months"
-                        value={item.months}
-                        checked={selected}
-                        onChange={() => setTenorMonths(item.months)}
-                        className="sr-only"
-                      />
-                      <span className="block text-sm font-black text-slate-950">{item.label}</span>
-                      <span className="mt-1 block text-[10px] font-bold text-slate-500">{formatIDR(Math.ceil(creditLimitAmount / item.months))}/bln</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <button
+                type="button"
+                onClick={() => setAmountPickerOpen((value) => !value)}
+                className="mt-3 flex h-11 w-full items-center justify-between rounded-2xl border border-emerald-200 bg-white px-3 text-left text-xs font-black text-[#047857] shadow-[0_8px_18px_rgba(6,78,59,0.05)] transition hover:border-emerald-400"
+              >
+                <span>{amountPickerOpen ? "Tutup pilihan nominal" : "Buka pilihan nominal"}</span>
+                <ChevronRight className={amountPickerOpen ? "h-4 w-4 rotate-90 transition" : "h-4 w-4 transition"} strokeWidth={2.6} />
+              </button>
+              {amountPickerOpen ? (
+                <div className="mt-3 grid max-h-56 grid-cols-2 gap-2 overflow-y-auto rounded-2xl border border-emerald-100 bg-white/70 p-2 min-[380px]:grid-cols-3">
+                  {amountOptions.map((amount) => {
+                    const selected = requestedAmount === amount;
+                    return (
+                      <button
+                        key={amount}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRequestedAmount(amount);
+                          setAmountPickerOpen(false);
+                        }}
+                        className={selected
+                          ? "rounded-2xl border border-emerald-500 bg-emerald-950 px-3 py-2 text-xs font-black text-white shadow-[0_10px_22px_rgba(6,78,59,0.18)]"
+                          : "rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-[#047857] transition hover:border-emerald-400 hover:bg-emerald-100"}
+                      >
+                        {formatIDR(amount)}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              <input type="hidden" name="requested_amount" value={requestedAmount} />
             </div>
           </div>
-          <p className="mt-2 text-[10px] font-semibold text-slate-400">Cicilan otomatis mengikuti tenor yang dipilih.</p>
         </section>
 
         <section className="rounded-[26px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
@@ -611,8 +628,8 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-2xl bg-emerald-50 px-3 py-3 ring-1 ring-emerald-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Limit Aktif</p>
-              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(creditLimitAmount)}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Nominal Diajukan</p>
+              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(requestedAmount)}</p>
             </div>
             <div className="rounded-2xl bg-sky-50 px-3 py-3 ring-1 ring-sky-100">
               <p className="text-[9px] font-black uppercase tracking-[0.12em] text-sky-700">Kredit Berjalan</p>
@@ -642,7 +659,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
           <ol className="space-y-2 text-[11px] font-semibold leading-5 text-slate-600">
             <li>1. Pinjaman saldo hanya digunakan untuk kebutuhan transaksi operasional di PulsaKilat.</li>
             <li>2. Semua data, foto dokumen, selfie memegang KTP, selfie dengan marketing, dan tanda tangan wajib benar serta dapat dipertanggungjawabkan.</li>
-            <li>3. Pembayaran angsuran atau pelunasan wajib disertai bukti transfer yang valid.</li>
+            <li>3. Pembayaran atau pelunasan wajib disertai bukti transfer yang valid.</li>
             <li>4. Agent hanya bisa mengajukan refill setelah pinjaman sebelumnya lunas dan tidak ada pembayaran yang bermasalah.</li>
             <li>5. Jika pembayaran terlambat lebih dari 3 hari, akun perlu evaluasi/perbaikan sebelum bisa naik limit atau mengajukan refill.</li>
             <li>6. PulsaKilat berhak menolak, menunda, atau mengevaluasi ulang pengajuan jika data/bukti tidak sesuai.</li>
