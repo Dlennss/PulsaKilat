@@ -206,7 +206,7 @@ export function UserMonthlyBills({ href = "/kategori", variant = "user", agentBi
       <div className="px-0.5">
         <h2 className="text-lg font-black tracking-tight text-slate-950">Tagihan Bulan Ini</h2>
         <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
-          {isAgentBill ? "Tagihan pinjaman agent yang masih aktif" : "Tagihan aktif milik akunmu"}
+          {isAgentBill ? "Tagihan kredit agent yang sudah terpakai" : "Tagihan aktif milik akunmu"}
         </p>
       </div>
 
@@ -221,7 +221,7 @@ export function UserMonthlyBills({ href = "/kategori", variant = "user", agentBi
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-black text-slate-950">
-              {isAgentBill ? "Tagihan Pinjaman Agent" : "Belum ada tagihan"}
+              {isAgentBill ? "Tagihan Kredit Agent" : "Belum ada tagihan"}
             </p>
             <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
               {isAgentBill

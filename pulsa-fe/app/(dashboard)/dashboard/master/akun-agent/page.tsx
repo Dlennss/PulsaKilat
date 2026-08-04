@@ -11,9 +11,9 @@ export default function MasterAkunAgentPage() {
             <div className="max-w-2xl">
               <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/12 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-lime-100">
                 <UserCog className="h-3.5 w-3.5" />
-                Master Agent
+                Marketing Agent
               </p>
-              <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Master Kelola Agent</h1>
+              <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Marketing Kelola Agent</h1>
               <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-emerald-50/90 sm:text-base">
                 Edit dan hapus akun agent retail PulsaKilat langsung dari data database.
               </p>

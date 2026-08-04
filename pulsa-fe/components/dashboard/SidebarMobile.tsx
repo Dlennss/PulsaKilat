@@ -2,6 +2,7 @@ import { ChevronDown, LogOut, X } from "lucide-react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "./BrandLogo";
+import { MarketingSidebarContent } from "./MarketingSidebarContent";
 import { NavItem } from "./NavItem";
 import { type NavSection } from "./nav";
 
@@ -15,8 +16,29 @@ type Props = {
 export function SidebarMobile({ sections, open, onClose, onLogout }: Props) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const isMarketingSidebar = sections.some((section) => section.title === "Marketing");
 
   if (!open) return null;
+
+  if (isMarketingSidebar) {
+    return (
+      <div className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm md:hidden" onClick={onClose}>
+        <aside
+          className="h-full w-72 overflow-hidden border-r border-emerald-950/20 shadow-[0_24px_60px_rgba(6,78,59,0.18)]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MarketingSidebarContent
+            sections={sections}
+            onLogout={() => {
+              onClose();
+              onLogout();
+            }}
+            onNavigate={onClose}
+          />
+        </aside>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm md:hidden" onClick={onClose}>

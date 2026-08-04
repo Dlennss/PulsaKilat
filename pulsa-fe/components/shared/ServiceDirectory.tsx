@@ -62,7 +62,8 @@ const userPath = {
   bpjs: "/user/kategori?layanan=bpjs",
   tv: "/user/kategori?layanan=tv-kabel",
   internet: "/user/kategori?layanan=internet-wifi",
-  hpPascabayar: "/user/kategori?layanan=hp-pascabayar",
+  hpPascabayar: "/user/kategori/hp-pascabayar",
+  esimRoaming: "/user/kategori/esim-roaming",
 };
 
 function fallbackPath(mode: DirectoryMode, slug: string) {
@@ -116,7 +117,7 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
         { label: "Pulsa", href: path.pulsaData, iconSrc: iconPath.pulsa },
         { label: "Paket Data", href: path.pulsaData, iconSrc: iconPath.paketData },
         { label: "HP Pascabayar", href: path.hpPascabayar, iconSrc: iconPath.hpPascabayar },
-        { label: "eSIM & Roaming", href: fallbackPath(mode, "esim-roaming"), iconSrc: iconPath.esimRoaming },
+        { label: "eSIM & Roaming", href: mode === "user" ? userPath.esimRoaming : fallbackPath(mode, "esim-roaming"), iconSrc: iconPath.esimRoaming },
       ],
     },
     {

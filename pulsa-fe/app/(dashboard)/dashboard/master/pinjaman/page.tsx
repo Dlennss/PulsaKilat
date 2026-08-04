@@ -1,10 +1,11 @@
 import {
   BadgeCheck,
+  Camera,
   Clock3,
   FileSignature,
   ShieldCheck,
   Sparkles,
-  WalletCards,
+  UsersRound,
 } from "lucide-react";
 import { getAppServerSession } from "@/lib/server-auth";
 import { getAgentCreditApplications } from "@/lib/api.auth";
@@ -15,10 +16,6 @@ type SessionShape = {
   backendToken?: string;
   user?: { role?: string };
 };
-
-function formatIDR(value: number) {
-  return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
-}
 
 export default async function MasterDashboardPage() {
   const session = (await getAppServerSession()) as SessionShape | null;
@@ -33,44 +30,42 @@ export default async function MasterDashboardPage() {
     return loanStatus === "active" || loanStatus === "overdue" || Number(item.outstanding_amount || 0) > 0;
   });
   const reviewMode = role === "marketing" ? "marketing" : "master";
-  const waiting = masterItems.filter((item) => item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review").length;
+  const waiting = masterItems.filter((item) => item.status === "submitted" || item.status === "marketing_review" || item.status === "master_review").length;
   const inAnalysis = applications.filter((item) => item.status === "analysis_review").length;
   const approved = masterItems.filter((item) => item.status === "approved").length;
-  const activeOutstanding = masterItems.reduce((total, item) => total + Number(item.outstanding_amount || 0), 0);
   const stats = [
-    { label: "Total Data", value: String(masterItems.length), hint: masterItems.length ? "Masuk panel master" : "Belum ada data", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
-    { label: "Perlu ACC", value: String(waiting), hint: role === "marketing" ? "Menunggu verifikasi marketing" : "Menunggu proses", icon: Clock3, tone: "from-amber-400 to-orange-500" },
-    { label: "Di Analis", value: String(inAnalysis), hint: inAnalysis ? "Menunggu keputusan analis" : "Belum ada", icon: ShieldCheck, tone: "from-cyan-500 to-sky-500" },
-    { label: "Disetujui", value: String(approved), hint: approved ? "Keputusan final analis" : "Belum ada ACC", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
-    { label: "Sisa Tagihan", value: formatIDR(activeOutstanding), hint: activeOutstanding ? "Pinjaman berjalan" : "Belum ada tagihan", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
+    { label: "Total Pengajuan", value: String(masterItems.length), hint: "Data masuk marketing", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
+    { label: "Perlu Didampingi", value: String(waiting), hint: "Cek dokumen dan selfie", icon: Camera, tone: "from-amber-400 to-orange-500" },
+    { label: "Dikirim Analis", value: String(inAnalysis), hint: "Menunggu keputusan final", icon: ShieldCheck, tone: "from-cyan-500 to-sky-500" },
+    { label: "Disetujui", value: String(approved), hint: "Kredit aktif dipantau", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
   ];
 
   return (
     <main className="-m-2 min-h-screen bg-[#eef7f2] p-3 text-slate-950 sm:p-5 lg:p-7">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-        <div className="overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-          <div className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_90%_10%,rgba(163,230,53,0.55),transparent_28%),linear-gradient(135deg,#052e26_0%,#057a45_48%,#3bd64a_100%)] px-5 py-6 text-white sm:px-7 lg:px-9 lg:py-8">
-            <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full border border-white/20 bg-white/10" />
-            <div className="absolute bottom-0 right-24 h-32 w-32 rounded-full bg-lime-300/20 blur-2xl" />
+        <div className="overflow-hidden rounded-[30px] border border-emerald-100 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+          <div className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_92%_10%,rgba(190,242,100,0.55),transparent_28%),linear-gradient(135deg,#053a2f_0%,#05824c_55%,#45d63f_100%)] px-5 py-7 text-white sm:px-7 lg:px-9 lg:py-9">
+            <div className="absolute -right-14 -top-20 h-56 w-56 rounded-full border border-white/25 bg-white/10" />
+            <div className="absolute bottom-0 right-28 h-32 w-32 rounded-full bg-lime-300/20 blur-2xl" />
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-2xl">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/12 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-lime-100">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Panel Master
+                  Pertemuan & Selfie
                 </p>
-                <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Data Kredit Saldo Agent</h1>
+                <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Pendampingan lapangan marketing</h1>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-emerald-50/90 sm:text-base">
-                  Cek dokumen agent, tanda tangan sebagai master, lalu kirim data lengkap ke analis untuk keputusan akhir.
+                  Lengkapi selfie bersama agent, cek dokumen pengajuan, tanda tangan sebagai marketing, lalu kirim berkas lengkap ke analis.
                 </p>
               </div>
               <div className="rounded-3xl border border-white/20 bg-white/12 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur">
                 <div className="flex items-center gap-3">
                   <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-emerald-700 shadow-lg">
-                    <ShieldCheck className="h-7 w-7" />
+                    <UsersRound className="h-7 w-7" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-100">Status Sistem</p>
-                    <p className="text-xl font-black">Siap Review</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-100">Mode Marketing</p>
+                    <p className="text-xl font-black">Dampingi Agent</p>
                   </div>
                 </div>
               </div>
@@ -98,8 +93,30 @@ export default async function MasterDashboardPage() {
               })}
             </div>
 
+            <div className="rounded-[26px] border border-emerald-100 bg-[linear-gradient(135deg,#f7fffb_0%,#eefbf4_100%)] p-4 shadow-[0_16px_36px_rgba(5,122,69,0.06)] sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
+                  <Clock3 className="h-7 w-7" strokeWidth={2.4} />
+                </div>
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">Fokus Pendampingan</p>
+                  <h2 className="mt-1 text-xl font-black text-slate-950">{waiting} pengajuan perlu ditangani</h2>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                    Buka detail pengajuan untuk memastikan data agent, dokumen, tanda tangan agent, dan selfie bersama marketing sudah lengkap.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid gap-5">
-              <MasterAgentCreditApplicationList applications={masterItems} mode={reviewMode} />
+              <MasterAgentCreditApplicationList
+                applications={masterItems}
+                mode={reviewMode}
+                eyebrow="Pengajuan Masuk"
+                title="Daftar pendampingan agent"
+                emptyTitle="Belum ada pengajuan"
+                emptyDescription="Data agent yang perlu didampingi marketing akan muncul di sini setelah pengajuan dikirim."
+              />
             </div>
           </div>
         </div>

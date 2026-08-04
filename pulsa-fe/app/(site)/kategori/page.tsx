@@ -6,10 +6,15 @@ import type { UserCategoryItem, UserSession } from "@/components/user/types";
 import { GuestBottomNav } from "@/components/guest/GuestBottomNav";
 import { ServiceDirectory } from "@/components/shared/ServiceDirectory";
 import { buildBreadcrumbJsonLd, buildCollectionJsonLd, buildPageMetadata } from "@/lib/site-search";
+import { UserUniversalServicePageContent } from "@/components/user/UserUniversalServicePageContent";
 
 type SessionShape = {
   user?: UserSession;
   backendToken?: string;
+};
+
+type PageProps = {
+  searchParams?: Promise<{ layanan?: string }>;
 };
 
 export const metadata: Metadata = buildPageMetadata({
@@ -19,8 +24,20 @@ export const metadata: Metadata = buildPageMetadata({
   keywords: ["kategori produk pulsakilat", "semua produk", "pulsakilat"],
 });
 
-export default async function GuestKategoriPage() {
+export default async function GuestKategoriPage({ searchParams }: PageProps) {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const serviceSlug = String(resolvedSearchParams?.layanan || "").trim().toLowerCase();
+
+  if (serviceSlug) {
+    return (
+      <>
+        <UserUniversalServicePageContent serviceSlug={serviceSlug} />
+        <GuestBottomNav isLoggedIn={!!session?.backendToken} />
+      </>
+    );
+  }
+
   const categories = (await getCategories()) as UserCategoryItem[];
   const collectionJsonLd = buildCollectionJsonLd({
     title: "Semua Kategori Produk | PulsaKilat",

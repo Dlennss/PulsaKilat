@@ -30,12 +30,13 @@ JOIN LATERAL (
   FROM public.produk_app_pricing a
   WHERE a.produk_id = p.id
     AND a.aktif = true
-    AND LOWER(TRIM(a.provider)) IN ('yuscom', 'gemilang')
+    AND LOWER(TRIM(a.provider)) IN ('yuscom', 'gemilang', 'pulsa24jam')
   ORDER BY
     a.harga ASC,
     CASE LOWER(TRIM(a.provider))
       WHEN 'yuscom' THEN 0
       WHEN 'gemilang' THEN 1
+      WHEN 'pulsa24jam' THEN 2
       ELSE 99
     END ASC,
     a.id DESC

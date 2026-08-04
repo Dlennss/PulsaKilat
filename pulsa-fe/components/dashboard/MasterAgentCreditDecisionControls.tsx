@@ -161,25 +161,21 @@ export function MasterAgentCreditDecisionControls({
   const [riskLevel, setRiskLevel] = useState("perhatian");
   const [riskScore, setRiskScore] = useState("50");
   const isFinal = status === "approved" || status === "rejected" || status === "analysis_rejected" || status === "master_rejected";
-  const canAct =
-    (mode === "marketing" && (status === "submitted" || status === "marketing_review")) ||
-    (mode === "analyst" && status === "analysis_review") ||
-    (mode === "master" && (status === "submitted" || status === "marketing_review")) ||
-    isFinal;
-  const isMasterInitialReview = mode === "master" && (status === "submitted" || status === "marketing_review");
-  const needsReviewerSignature = mode === "marketing" || isMasterInitialReview;
-  const approveLabel = mode === "marketing" ? "Verifikasi & Kirim" : mode === "analyst" ? "Setujui Analis" : "Kirim ke Analis";
+  const isMarketingReview = (mode === "marketing" || mode === "master") && (status === "submitted" || status === "marketing_review");
+  const canAct = isMarketingReview || (mode === "analyst" && status === "analysis_review") || isFinal;
+  const needsReviewerSignature = isMarketingReview;
+  const approveLabel = isMarketingReview ? "Kirim ke Analis" : mode === "analyst" ? "Setujui Pengajuan" : "Kirim ke Analis";
   const rejectLabel = "Tolak";
 
   async function decide(decision: DecisionAction) {
     if (busy) return;
     const isPositiveDecision = decision === "approved" || decision === "forward_to_analysis";
     if (isPositiveDecision && !canApprove) {
-      setError(approveBlockReason || "Agent wajib tanda tangan dan menyetujui ketentuan sebelum bisa ACC");
+      setError(approveBlockReason || "Data agent wajib lengkap sebelum dikirim ke analis");
       return;
     }
     if (needsReviewerSignature && !signatureData.startsWith("data:image/")) {
-      setError(mode === "marketing" ? "Tanda tangan marketing wajib diisi" : "Tanda tangan master wajib diisi");
+      setError("Tanda tangan marketing wajib diisi");
       return;
     }
     const parsedAmount = Number(amount.replace(/[^\d]/g, ""));
@@ -188,11 +184,11 @@ export function MasterAgentCreditDecisionControls({
           ? "Analisa risiko disetujui. Pinjaman saldo agent aktif."
           : mode === "marketing"
             ? "Marketing sudah cek data lapangan dan dokumen, lalu dikirim ke analis."
-            : isMasterInitialReview
-              ? "Master sudah cek data lapangan dan dokumen, lalu dikirim ke analis."
+            : isMarketingReview
+              ? "Marketing sudah cek data lapangan dan dokumen, lalu dikirim ke analis."
             : "Data agent sesuai dan dikirim ke analis."
         : "Data agent belum sesuai.";
-    const apiDecision = isMasterInitialReview && decision === "forward_to_analysis" ? "kirim_analis" : decision;
+    const apiDecision = isMarketingReview && decision === "forward_to_analysis" ? "kirim_analis" : decision;
     setBusy(decision);
     setError("");
     try {
@@ -205,7 +201,7 @@ export function MasterAgentCreditDecisionControls({
         body: JSON.stringify({
           id: applicationId,
           decision: apiDecision,
-          approved_amount: decision === "approved" && !isMasterInitialReview ? parsedAmount : 0,
+          approved_amount: decision === "approved" && !isMarketingReview ? parsedAmount : 0,
           note: note.trim() || defaultNote,
           reviewer_mode: mode,
           signature_data: needsReviewerSignature ? signatureData : "",
@@ -234,9 +230,9 @@ export function MasterAgentCreditDecisionControls({
             {status === "approved" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-black">{status === "approved" ? "Disetujui" : "Ditolak"}</span>
-            <span className="mt-0.5 block truncate text-[10px] font-bold opacity-70">
-              {status === "approved" ? "Limit agent sudah bisa diproses." : "Agent akan melihat pemberitahuan penolakan."}
+          <span className="block text-sm font-black">{status === "approved" ? "Disetujui Analis" : "Ditolak Analis"}</span>
+          <span className="mt-0.5 block truncate text-[10px] font-bold opacity-70">
+              {status === "approved" ? "Limit agent sudah aktif dan bisa dipantau." : "Agent akan melihat pemberitahuan dan bisa memperbaiki data."}
             </span>
           </span>
         </div>
@@ -265,12 +261,12 @@ export function MasterAgentCreditDecisionControls({
     <div className="rounded-2xl border border-emerald-100 bg-[linear-gradient(135deg,#ffffff_0%,#f8fffb_58%,#ecfdf5_100%)] p-3 shadow-[0_10px_24px_rgba(6,78,59,0.05)]">
       <div className="grid gap-2 xl:grid-cols-[160px_minmax(260px,1fr)_210px] xl:items-stretch">
         <label className="block min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-[0_8px_18px_rgba(15,23,42,0.035)] focus-within:border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-100">
-          <span className="block truncate text-[9px] font-black uppercase tracking-[0.08em] text-emerald-600">{mode === "marketing" || isMasterInitialReview ? "Nominal Diajukan" : "Nominal ACC"}</span>
+          <span className="block truncate text-[9px] font-black uppercase tracking-[0.08em] text-emerald-600">{isMarketingReview ? "Nominal Diajukan" : "Nominal ACC"}</span>
           <input
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             inputMode="numeric"
-            disabled={mode === "marketing" || isMasterInitialReview}
+            disabled={isMarketingReview}
             className="mt-1 h-8 w-full bg-transparent text-base font-black text-slate-950 outline-none disabled:text-slate-700"
           />
         </label>
@@ -279,7 +275,7 @@ export function MasterAgentCreditDecisionControls({
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder={mode === "marketing" || isMasterInitialReview ? "Catatan cek data" : "Catatan untuk agent"}
+            placeholder={isMarketingReview ? "Catatan hasil pendampingan lapangan" : "Catatan untuk agent"}
             rows={2}
             className="mt-1 min-h-10 w-full resize-none bg-transparent text-xs font-bold leading-5 text-slate-700 outline-none placeholder:text-slate-400"
           />
@@ -303,17 +299,17 @@ export function MasterAgentCreditDecisionControls({
         {needsReviewerSignature ? (
           <div className="xl:col-span-2">
             <ReviewSignaturePad
-              label={mode === "marketing" ? "Marketing" : "Master"}
-              signerName={mode === "marketing" ? "Marketing PulsaKilat" : "Master PulsaKilat"}
+              label="Marketing"
+              signerName="Marketing PulsaKilat"
               value={signatureData}
               onChange={setSignatureData}
             />
           </div>
         ) : null}
-        <div className={`grid min-w-0 grid-cols-1 gap-2 ${mode === "marketing" || isMasterInitialReview ? "" : "min-[390px]:grid-cols-2 xl:grid-cols-1"}`}>
+        <div className={`grid min-w-0 grid-cols-1 gap-2 ${isMarketingReview ? "" : "min-[390px]:grid-cols-2 xl:grid-cols-1"}`}>
           <button
             type="button"
-            onClick={() => decide(isMasterInitialReview ? "forward_to_analysis" : "approved")}
+            onClick={() => decide(isMarketingReview ? "forward_to_analysis" : "approved")}
             disabled={Boolean(busy) || !canApprove}
             className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#047857,#16a34a)] px-3 text-[11px] font-black leading-3 text-white shadow-[0_10px_18px_rgba(5,150,105,0.18)] transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
             title={!canApprove ? approveBlockReason || "Agent belum melengkapi persetujuan" : undefined}
@@ -346,7 +342,7 @@ export function MasterAgentCreditDecisionControls({
           Batal edit
         </button>
       ) : null}
-      {!canApprove ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-center text-[10px] font-black text-amber-700">{approveBlockReason || "Agent wajib tanda tangan dan menyetujui ketentuan sebelum bisa ACC."}</p> : null}
+      {!canApprove ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-center text-[10px] font-black text-amber-700">{approveBlockReason || "Data agent wajib lengkap sebelum dikirim ke analis."}</p> : null}
       {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
     </div>
   );

@@ -26,6 +26,7 @@ export type AgentCreditApplication = {
   analyst_recommended_amount?: number;
   loan_status?: string;
   outstanding_amount?: number;
+  credit_available_amount?: number;
   paid_amount?: number;
   payment_count?: number;
   payments?: AgentCreditPayment[];

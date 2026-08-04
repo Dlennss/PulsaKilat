@@ -34,6 +34,7 @@ type OperatorMatch = {
 function getOperatorVisual(operator: OperatorMatch | null) {
   const label = operator?.label || "";
   const key = normalizeName(label);
+  if (key.includes("by u") || key.includes("byu")) return { short: "by.U", color: "from-sky-500 to-cyan-400" };
   if (key.includes("telkomsel")) return { short: "Tsel", color: "from-red-500 to-rose-600" };
   if (key.includes("indosat")) return { short: "im3", color: "from-yellow-400 to-red-500" };
   if (key === "xl") return { short: "XL", color: "from-blue-600 to-cyan-400" };
@@ -48,7 +49,8 @@ function normalizeName(value: string) {
 }
 
 const OPERATOR_PREFIXES: Array<{ prefixes: string[]; match: OperatorMatch }> = [
-  { prefixes: ["0811", "0812", "0813", "0821", "0822", "0823", "0851", "0852", "0853"], match: { label: "Telkomsel", brandKeywords: ["telkomsel", "simpati", "as"] } },
+  { prefixes: ["0851"], match: { label: "by.U", brandKeywords: ["by u", "byu", "by.u"] } },
+  { prefixes: ["0811", "0812", "0813", "0821", "0822", "0823", "0852", "0853"], match: { label: "Telkomsel", brandKeywords: ["telkomsel", "simpati", "as"] } },
   { prefixes: ["0814", "0815", "0816", "0855", "0856", "0857", "0858"], match: { label: "Indosat", brandKeywords: ["indosat", "im3", "mentari", "isat"] } },
   { prefixes: ["0817", "0818", "0819", "0859", "0877", "0878"], match: { label: "XL", brandKeywords: ["xl"] } },
   { prefixes: ["0831", "0832", "0833", "0838"], match: { label: "AXIS", brandKeywords: ["axis"] } },

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -51,6 +52,7 @@ type AgentCreditProfile struct {
 	LimitAmount        int64  `json:"credit_limit_amount"`
 	NeedsRepair        bool   `json:"credit_needs_repair"`
 	QualifiedPaidTotal int64  `json:"qualified_paid_total"`
+	QualifiedPaidCount int64  `json:"qualified_paid_count"`
 }
 
 type AgentCreditApplication struct {
@@ -73,6 +75,7 @@ type AgentCreditApplication struct {
 	AnalystRecommendedAmount int64                `json:"analyst_recommended_amount"`
 	LoanStatus               string               `json:"loan_status"`
 	OutstandingAmount        int64                `json:"outstanding_amount"`
+	CreditAvailableAmount    int64                `json:"credit_available_amount"`
 	PaidAmount               int64                `json:"paid_amount"`
 	PaymentCount             int64                `json:"payment_count"`
 	Payments                 []AgentCreditPayment `json:"payments,omitempty"`
@@ -249,18 +252,14 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	return &item, nil
 }
 
-func creditLevelFromProgress(qualifiedPaidTotal int64, needsRepair bool) (string, string, int64) {
+func creditLevelFromProgress(qualifiedPaidCount int64, needsRepair bool) (string, string, int64) {
 	if needsRepair {
 		return "start", "Kilat Start", 500000
 	}
 	switch {
-	case qualifiedPaidTotal >= 2500000:
+	case qualifiedPaidCount >= 5:
 		return "elite", "Kilat Elite", 2000000
-	case qualifiedPaidTotal >= 2000000:
-		return "max", "Kilat Max", 2000000
-	case qualifiedPaidTotal >= 1500000:
-		return "pro", "Kilat Pro", 1500000
-	case qualifiedPaidTotal >= 1000000:
+	case qualifiedPaidCount >= 3:
 		return "plus", "Kilat Plus", 1000000
 	default:
 		return "start", "Kilat Start", 500000
@@ -269,6 +268,7 @@ func creditLevelFromProgress(qualifiedPaidTotal int64, needsRepair bool) (string
 
 func (r *AgentCreditRepository) GetMemberCreditProfile(ctx context.Context, memberID int64) (*AgentCreditProfile, error) {
 	var qualifiedPaidTotal int64
+	var qualifiedPaidCount int64
 	var needsRepair bool
 	err := r.db.QueryRowContext(ctx, `
 SELECT
@@ -281,6 +281,15 @@ SELECT
           AND COALESCE(pp.days_late, 0) > 0
       )
   ), 0)::bigint AS qualified_paid_total,
+  COUNT(*) FILTER (
+    WHERE pl.status = 'paid'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.agent_credit_payment pp
+        WHERE pp.loan_id = pl.id
+          AND COALESCE(pp.days_late, 0) > 0
+      )
+  )::bigint AS qualified_paid_count,
   EXISTS (
     SELECT 1
     FROM public.agent_credit_payment rp
@@ -289,17 +298,18 @@ SELECT
   ) AS needs_repair
 FROM public.agent_credit_loan pl
 WHERE pl.member_id = $1
-`, memberID).Scan(&qualifiedPaidTotal, &needsRepair)
+`, memberID).Scan(&qualifiedPaidTotal, &qualifiedPaidCount, &needsRepair)
 	if err != nil {
 		return nil, err
 	}
-	code, name, limit := creditLevelFromProgress(qualifiedPaidTotal, needsRepair)
+	code, name, limit := creditLevelFromProgress(qualifiedPaidCount, needsRepair)
 	return &AgentCreditProfile{
 		LevelCode:          code,
 		LevelName:          name,
 		LimitAmount:        limit,
 		NeedsRepair:        needsRepair,
 		QualifiedPaidTotal: qualifiedPaidTotal,
+		QualifiedPaidCount: qualifiedPaidCount,
 	}, nil
 }
 
@@ -340,32 +350,27 @@ SELECT
   COALESCE(a.analyst_recommended_amount, 0) AS analyst_recommended_amount,
   COALESCE(l.status, '') AS loan_status,
   COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
+  COALESCE(l.available_amount, 0) AS credit_available_amount,
   COALESCE(pay.paid_amount, 0) AS paid_amount,
   COALESCE(pay.payment_count, 0) AS payment_count,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 'start'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 'elite'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'max'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 'pro'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'plus'
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 'elite'
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 'plus'
     ELSE 'start'
   END AS credit_level_code,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 'Kilat Start'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 'Kilat Elite'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'Kilat Max'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 'Kilat Pro'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'Kilat Plus'
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 'Kilat Elite'
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 'Kilat Plus'
     ELSE 'Kilat Start'
   END AS credit_level_name,
   COALESCE(credit.needs_repair, false) AS credit_needs_repair,
   COALESCE(credit.qualified_paid_total, 0) AS qualified_paid_total,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 500000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 2000000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 2000000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 1500000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 1000000
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 2000000
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 1000000
     ELSE 500000
   END AS credit_limit_amount,
   l.approved_at AS loan_approved_at,
@@ -391,6 +396,15 @@ LEFT JOIN LATERAL (
             AND COALESCE(pp.days_late, 0) > 0
         )
     ), 0)::bigint AS qualified_paid_total,
+    COUNT(*) FILTER (
+      WHERE pl.status = 'paid'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.agent_credit_payment pp
+          WHERE pp.loan_id = pl.id
+            AND COALESCE(pp.days_late, 0) > 0
+        )
+    )::bigint AS qualified_paid_count,
     EXISTS (
       SELECT 1
       FROM public.agent_credit_payment rp
@@ -432,6 +446,7 @@ LIMIT $1
 			&item.AnalystRecommendedAmount,
 			&item.LoanStatus,
 			&item.OutstandingAmount,
+			&item.CreditAvailableAmount,
 			&item.PaidAmount,
 			&item.PaymentCount,
 			&item.CreditLevelCode,
@@ -491,32 +506,27 @@ SELECT
   COALESCE(a.analyst_recommended_amount, 0) AS analyst_recommended_amount,
   COALESCE(l.status, '') AS loan_status,
   COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
+  COALESCE(l.available_amount, 0) AS credit_available_amount,
   COALESCE(pay.paid_amount, 0) AS paid_amount,
   COALESCE(pay.payment_count, 0) AS payment_count,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 'start'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 'elite'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'max'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 'pro'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'plus'
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 'elite'
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 'plus'
     ELSE 'start'
   END AS credit_level_code,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 'Kilat Start'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 'Kilat Elite'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 'Kilat Max'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 'Kilat Pro'
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 'Kilat Plus'
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 'Kilat Elite'
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 'Kilat Plus'
     ELSE 'Kilat Start'
   END AS credit_level_name,
   COALESCE(credit.needs_repair, false) AS credit_needs_repair,
   COALESCE(credit.qualified_paid_total, 0) AS qualified_paid_total,
   CASE
     WHEN COALESCE(credit.needs_repair, false) THEN 500000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2500000 THEN 2000000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 2000000 THEN 2000000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1500000 THEN 1500000
-    WHEN COALESCE(credit.qualified_paid_total, 0) >= 1000000 THEN 1000000
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 2000000
+    WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 1000000
     ELSE 500000
   END AS credit_limit_amount,
   l.approved_at AS loan_approved_at,
@@ -542,6 +552,15 @@ LEFT JOIN LATERAL (
             AND COALESCE(pp.days_late, 0) > 0
         )
     ), 0)::bigint AS qualified_paid_total,
+    COUNT(*) FILTER (
+      WHERE pl.status = 'paid'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.agent_credit_payment pp
+          WHERE pp.loan_id = pl.id
+            AND COALESCE(pp.days_late, 0) > 0
+        )
+    )::bigint AS qualified_paid_count,
     EXISTS (
       SELECT 1
       FROM public.agent_credit_payment rp
@@ -584,6 +603,7 @@ LIMIT $2
 			&item.AnalystRecommendedAmount,
 			&item.LoanStatus,
 			&item.OutstandingAmount,
+			&item.CreditAvailableAmount,
 			&item.PaidAmount,
 			&item.PaymentCount,
 			&item.CreditLevelCode,
@@ -849,13 +869,14 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	if in.Status == "approved" {
 		_, err = tx.ExecContext(ctx, `
 INSERT INTO public.agent_credit_loan
-  (application_id, member_id, principal_amount, outstanding_amount, status, approved_at, due_date)
+  (application_id, member_id, principal_amount, outstanding_amount, available_amount, status, approved_at, due_date)
 VALUES
-  ($1, $2, $3, $3, 'active', now(), (now() + interval '1 month')::date)
+  ($1, $2, $3, 0, $3, 'active', now(), (now() + interval '1 month')::date)
 ON CONFLICT (application_id) DO UPDATE SET
   principal_amount = EXCLUDED.principal_amount,
   outstanding_amount = LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount),
-  status = CASE WHEN public.agent_credit_loan.outstanding_amount <= 0 THEN 'paid' ELSE 'active' END,
+  available_amount = GREATEST(EXCLUDED.principal_amount - LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount), 0),
+  status = 'active',
   due_date = EXCLUDED.due_date,
   updated_at = now()
 `, item.ID, item.MemberID, in.ApprovedAmount)
@@ -1012,13 +1033,14 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	if in.Status == "approved" {
 		_, err = tx.ExecContext(ctx, `
 INSERT INTO public.agent_credit_loan
-  (application_id, member_id, principal_amount, outstanding_amount, status, approved_at, due_date)
+  (application_id, member_id, principal_amount, outstanding_amount, available_amount, status, approved_at, due_date)
 VALUES
-  ($1, $2, $3, $3, 'active', now(), (now() + interval '1 month')::date)
+  ($1, $2, $3, 0, $3, 'active', now(), (now() + interval '1 month')::date)
 ON CONFLICT (application_id) DO UPDATE SET
   principal_amount = EXCLUDED.principal_amount,
   outstanding_amount = LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount),
-  status = CASE WHEN public.agent_credit_loan.outstanding_amount <= 0 THEN 'paid' ELSE 'active' END,
+  available_amount = GREATEST(EXCLUDED.principal_amount - LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount), 0),
+  status = 'active',
   due_date = EXCLUDED.due_date,
   updated_at = now()
 `, item.ID, item.MemberID, in.ApprovedAmount)
@@ -1075,6 +1097,9 @@ FOR UPDATE
 	if amount <= 0 {
 		return sql.ErrNoRows
 	}
+	if amount < outstanding {
+		return fmt.Errorf("pembayaran kredit wajib lunas: tagihan=%d pembayaran=%d", outstanding, amount)
+	}
 	daysLate := 0
 	now := time.Now()
 	if now.After(dueDate) {
@@ -1083,9 +1108,6 @@ FOR UPDATE
 	paymentStatus := "on_time"
 	if daysLate > 0 {
 		paymentStatus = "late"
-	}
-	if amount < outstanding {
-		paymentStatus = "partial"
 	}
 	paymentNote := in.Note
 	if len(in.PaymentProof) > 0 {
@@ -1113,7 +1135,8 @@ VALUES
 UPDATE public.agent_credit_loan
 SET
   outstanding_amount = GREATEST(outstanding_amount - $2, 0),
-  status = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN 'paid' ELSE status END,
+  available_amount = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN principal_amount ELSE available_amount END,
+  status = 'active',
   paid_at = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN now() ELSE paid_at END,
   updated_at = now()
 WHERE id = $1

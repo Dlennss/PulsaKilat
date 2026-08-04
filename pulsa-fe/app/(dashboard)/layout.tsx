@@ -8,7 +8,7 @@ import { HeaderMobile } from "@/components/dashboard/HeaderMobile";
 import { MainContent } from "@/components/dashboard/MainContent";
 import { SidebarDesktop } from "@/components/dashboard/SidebarDesktop";
 import { SidebarMobile } from "@/components/dashboard/SidebarMobile";
-import { adminNavSections, auditorNavSections, getMemberNavSections, masterNavSections, operatorNavSections, staffNavSections, walletNavSections, type H2HRole } from "@/components/dashboard/nav";
+import { adminNavSections, analystNavSections, auditorNavSections, getMemberNavSections, masterNavSections, operatorNavSections, staffNavSections, walletNavSections, type H2HRole } from "@/components/dashboard/nav";
 
 type AppRole = "admin" | "staff" | "auditor" | "member" | "agent_member" | "master_member" | "operator_trx" | "operator_wallet" | "user" | "agent" | "master" | "marketing" | "analis";
 
@@ -26,10 +26,7 @@ const masterOnlyPrefixes = [
 
 function filterMasterNavForRole(role: AppRole | null) {
   if (role === "analis") {
-    return [
-      { items: [{ href: "/dashboard/master", label: "Dashboard" }] },
-      { title: "Analisa Kredit", items: [{ href: "/dashboard/master/analis", label: "Analis Kredit" }] },
-    ];
+    return analystNavSections;
   }
   if (role === "master") return masterNavSections;
   return masterNavSections
@@ -44,7 +41,7 @@ function targetPathByRole(role: AppRole): string {
   if (role === "admin" || role === "staff") return "/dashboard/admin";
   if (role === "auditor") return "/dashboard/auditor";
   if (role === "member" || role === "agent_member" || role === "master_member") return "/dashboard/member";
-  if (role === "analis") return "/dashboard/master";
+  if (role === "analis") return "/dashboard/master/analis";
   if (role === "master" || role === "marketing") return "/dashboard/master";
   if (role === "operator_trx") return "/dashboard/operator";
   if (role === "operator_wallet") return "/dashboard/wallet";

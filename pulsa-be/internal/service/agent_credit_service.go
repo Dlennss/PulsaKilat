@@ -204,7 +204,7 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 		return nil, errors.New("status pengajuan belum bisa diverifikasi marketing")
 	}
 	switch decision {
-	case "approve", "approved", "setujui":
+	case "approve", "approved", "setujui", "forward_to_analysis", "kirim_analis":
 		if !reviewState.TermsAccepted {
 			return nil, errors.New("agent wajib menyetujui syarat dan ketentuan sebelum dikirim ke analis")
 		}
@@ -237,7 +237,7 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 		return nil, errors.New("pengajuan belum masuk tahap analis")
 	}
 	if !reviewState.MasterVerified {
-		return nil, errors.New("master wajib verifikasi dan tanda tangan sebelum analis ACC")
+		return nil, errors.New("marketing wajib verifikasi dan tanda tangan sebelum analis ACC")
 	}
 	riskLevel = normalizeRiskLevel(riskLevel)
 	switch decision {
@@ -287,20 +287,20 @@ func (s *AgentCreditService) decideAsMaster(ctx context.Context, masterID, appli
 				return nil, errors.New("foto KTP, foto toko, selfie pegang KTP, dan foto bersama marketing wajib lengkap")
 			}
 			if !strings.HasPrefix(signatureData, "data:image/") {
-				return nil, errors.New("tanda tangan master wajib diisi")
+				return nil, errors.New("tanda tangan marketing wajib diisi")
 			}
-			return s.repo.MasterReviewApplication(ctx, repository.AgentCreditDecisionInput{
+			return s.repo.MarketingReviewApplication(ctx, repository.AgentCreditDecisionInput{
 				ID:             applicationID,
-				MasterID:       masterID,
+				MarketingID:    masterID,
 				Status:         "analysis_review",
-				MarketingNote:  fallbackNote(note, "Master sudah verifikasi data agent dan dokumen, lalu dikirim ke analis."),
-				Recommendation: "master_verified",
+				MarketingNote:  fallbackNote(note, "Marketing sudah verifikasi data agent dan dokumen, lalu dikirim ke analis."),
+				Recommendation: "marketing_verified",
 				ApprovedAmount: 0,
 			}, signatureData)
 		case "reject", "rejected", "tolak":
-			return nil, errors.New("master tidak bisa menolak pengajuan agent; keputusan tolak ada di analis")
+			return nil, errors.New("marketing tidak bisa menolak pengajuan agent; keputusan tolak ada di analis")
 		default:
-			return nil, errors.New("master wajib tanda tangan dan kirim ke analis")
+			return nil, errors.New("marketing wajib tanda tangan dan kirim ke analis")
 		}
 	}
 	return nil, errors.New("keputusan akhir pinjaman ada di analis")

@@ -14,12 +14,12 @@ const kilatLevels = [
     bg: "from-emerald-50 via-white to-lime-100",
     accent: "bg-emerald-600",
     text: "text-emerald-700",
-    desc: "Level awal untuk agent baru yang baru bergabung. Cocok untuk mengenalkan sistem dan mulai membangun riwayat transaksi.",
+    desc: "Level awal untuk agent baru. Limit dasar Rp 500.000 dan menjadi titik awal membangun riwayat pembayaran.",
     benefits: [
       ["Limit sampai Rp 500.000", "Agent baru mulai dari limit dasar PulsaKilat", WalletCards],
-      ["Ajukan mulai Rp 100.000", "Nominal bisa dipilih bertahap sesuai kebutuhan", CheckCircle2],
+      ["3 pengajuan lunas untuk naik", "Setelah 3 pinjaman lunas tepat waktu, agent naik ke Kilat Plus", CheckCircle2],
       ["Bayar tepat waktu", "Riwayat lunas tanpa telat menjadi syarat naik level", BadgeCheck],
-      ["Target naik level Rp 1.000.000", "Total pinjaman lunas tepat waktu harus menyentuh target ini", TrendingUp],
+      ["Target berikutnya Rp 1.000.000", "Limit berikutnya terbuka setelah pembayaran konsisten", TrendingUp],
     ],
   },
   {
@@ -30,44 +30,12 @@ const kilatLevels = [
     bg: "from-sky-50 via-white to-blue-100",
     accent: "bg-blue-600",
     text: "text-blue-700",
-    desc: "Diberikan kepada agent yang sudah aktif bertransaksi dan memiliki riwayat pembayaran yang baik.",
+    desc: "Level untuk agent yang sudah menyelesaikan 3 pengajuan tepat waktu. Limit naik menjadi Rp 1.000.000.",
     benefits: [
-      ["Limit sampai Rp 1.000.000", "Terbuka setelah progress pembayaran bagus", WalletCards],
-      ["Syarat total lunas Rp 1.000.000", "Boleh dari beberapa pinjaman kecil sampai akumulasi tercapai", CheckCircle2],
+      ["Limit sampai Rp 1.000.000", "Terbuka setelah 3 pinjaman lunas tepat waktu", WalletCards],
+      ["5 pengajuan lunas untuk maksimal", "Setelah total 5 pinjaman lunas tepat waktu, agent naik ke Kilat Elite", CheckCircle2],
       ["Tidak pernah jatuh tempo", "Pembayaran telat lebih dari 3 hari perlu perbaikan akun", BadgeCheck],
-      ["Target berikutnya Rp 1.500.000", "Lunasi pinjaman lagi sampai total menyentuh target Pro", TrendingUp],
-    ],
-  },
-  {
-    code: "pro",
-    name: "Kilat Pro",
-    short: "Pro",
-    image: "/agent-levels/kilat-pro-badge.png",
-    bg: "from-amber-50 via-white to-yellow-100",
-    accent: "bg-yellow-500",
-    text: "text-yellow-700",
-    desc: "Untuk agent berpengalaman dengan volume transaksi tinggi. Mendapat limit lebih besar dan prioritas layanan.",
-    benefits: [
-      ["Limit sampai Rp 1.500.000", "Limit naik setelah total lunas tepat waktu cukup", WalletCards],
-      ["Syarat total lunas Rp 1.500.000", "Nominal pinjaman fleksibel, yang dihitung total lunasnya", CheckCircle2],
-      ["Akun tetap sehat", "Riwayat telat membuat agent perlu memperbaiki performa dulu", BadgeCheck],
-      ["Target berikutnya Rp 2.000.000", "Akumulasi pinjaman lunas membuka limit maksimal", TrendingUp],
-    ],
-  },
-  {
-    code: "max",
-    name: "Kilat Max",
-    short: "Max",
-    image: "/agent-levels/kilat-max-badge.png",
-    bg: "from-orange-50 via-white to-amber-100",
-    accent: "bg-orange-600",
-    text: "text-orange-700",
-    desc: "Level premium untuk agent dengan performa sangat baik. Memiliki limit tinggi dan proses persetujuan lebih cepat.",
-    benefits: [
-      ["Limit sampai Rp 2.000.000", "Ini batas maksimal nominal pinjaman saldo agent", WalletCards],
-      ["Syarat total lunas Rp 2.000.000", "Progress dihitung dari pinjaman yang sudah lunas tepat waktu", CheckCircle2],
-      ["Prioritas pengecekan", "Agent dengan riwayat bagus lebih mudah dievaluasi", BadgeCheck],
-      ["Jaga performa", "Pertahankan pembayaran lancar agar tetap di level tinggi", TrendingUp],
+      ["Target berikutnya Rp 2.000.000", "Limit maksimal aktif setelah 5 pengajuan lunas", TrendingUp],
     ],
   },
   {
@@ -78,11 +46,11 @@ const kilatLevels = [
     bg: "from-purple-50 via-white to-yellow-100",
     accent: "bg-purple-600",
     text: "text-purple-700",
-    desc: "Level tertinggi di PulsaKilat untuk agent terbaik dengan loyalitas, omzet, dan reputasi yang sangat baik.",
+    desc: "Level tertinggi PulsaKilat setelah agent menyelesaikan 5 pengajuan tepat waktu. Limit maksimal Rp 2.000.000.",
     benefits: [
-      ["Limit tetap Rp 2.000.000", "Elite adalah status tertinggi, bukan tambahan limit di atas batas maksimal", WalletCards],
-      ["Syarat total lunas Rp 2.500.000", "Diberikan untuk agent yang terus menjaga pembayaran lancar", CheckCircle2],
-      ["Reputasi terbaik", "Level ini menandai agent paling stabil dan terpercaya", BadgeCheck],
+      ["Limit maksimal Rp 2.000.000", "Elite adalah batas tertinggi pinjaman saldo agent", WalletCards],
+      ["Syarat 5 pengajuan lunas", "Semua dihitung dari pinjaman yang selesai tepat waktu", CheckCircle2],
+      ["Akun paling sehat", "Level ini menandai agent yang stabil dan disiplin membayar", BadgeCheck],
       ["Layanan prioritas", "Cocok untuk agent dengan loyalitas dan omzet kuat", TrendingUp],
     ],
   },
@@ -93,7 +61,8 @@ function clampLevel(index: number) {
 }
 
 export function UserAgentLevelPageContent({ initialLevelCode = "start" }: { initialLevelCode?: string }) {
-  const initialIndex = Math.max(0, kilatLevels.findIndex((level) => level.code === initialLevelCode));
+  const normalizedInitialLevel = ["pro", "max"].includes(initialLevelCode) ? "elite" : initialLevelCode;
+  const initialIndex = Math.max(0, kilatLevels.findIndex((level) => level.code === normalizedInitialLevel));
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const touchStartX = useRef<number | null>(null);
   const activeLevel = kilatLevels[activeIndex];
@@ -150,7 +119,7 @@ export function UserAgentLevelPageContent({ initialLevelCode = "start" }: { init
           </div>
         </div>
 
-        <div className="relative z-10 grid grid-cols-5 gap-1 text-center">
+        <div className="relative z-10 grid grid-cols-3 gap-1 text-center">
           {kilatLevels.map((level, index) => (
             <button key={level.name} type="button" onClick={() => setLevel(index)} className={index === activeIndex ? "text-sm font-black text-slate-800" : "text-sm font-semibold text-slate-500"}>
               {level.short}
@@ -160,7 +129,7 @@ export function UserAgentLevelPageContent({ initialLevelCode = "start" }: { init
 
         <div className="relative z-10 mt-4 px-5">
           <div className="absolute left-10 right-10 top-5 h-1 rounded-full bg-slate-300/70" />
-          <div className="relative grid grid-cols-5">
+          <div className="relative grid grid-cols-3">
             {kilatLevels.map((level, index) => (
               <button key={level.name} type="button" onClick={() => setLevel(index)} className="grid place-items-center">
                 <span className={index === activeIndex ? "relative grid h-14 w-14 place-items-center rounded-full bg-white shadow-[0_10px_26px_rgba(15,23,42,0.18)] ring-4 ring-white" : "relative grid h-9 w-9 place-items-center rounded-full bg-white/70 opacity-80"}>
@@ -202,7 +171,7 @@ export function UserAgentLevelPageContent({ initialLevelCode = "start" }: { init
             <ShieldCheck className="h-8 w-8 shrink-0" strokeWidth={2.5} />
             <div>
               <p className="text-sm font-black">Naik Level Bertahap</p>
-              <p className="mt-1 text-[11px] font-semibold leading-5 text-[#047857]/75">Level naik dari total pinjaman yang sudah lunas tepat waktu: Rp 1.000.000, Rp 1.500.000, lalu Rp 2.000.000.</p>
+              <p className="mt-1 text-[11px] font-semibold leading-5 text-[#047857]/75">Level naik dari jumlah pengajuan yang sudah lunas tepat waktu: 3 kali menjadi Plus, 5 kali menjadi Elite.</p>
             </div>
           </div>
         </section>

@@ -33,7 +33,7 @@ export default function InputPinjamanManualPage() {
                   <ShieldCheck className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-sm font-black text-slate-950">Data masuk ke antrian Master</p>
+                  <p className="text-sm font-black text-slate-950">Data masuk ke antrian Marketing</p>
                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
                     Setelah dibuat, pengajuan manual akan tampil di menu Data Pinjaman untuk proses review dan ACC.
                   </p>

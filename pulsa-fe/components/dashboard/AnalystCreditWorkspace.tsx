@@ -1,0 +1,621 @@
+import {
+  Archive,
+  BadgeCheck,
+  ClipboardList,
+  FileSearch,
+  FileCheck2,
+  type LucideIcon,
+  MessageSquareText,
+  ReceiptText,
+  ShieldAlert,
+  ShieldCheck,
+  WalletCards,
+  XCircle,
+} from "lucide-react";
+import { getAgentCreditApplications, type AgentCreditApplication } from "@/lib/api.auth";
+import { attachAgentCreditPaymentsFallback } from "@/lib/agent-credit-payment-fallback.server";
+import { getAppServerSession } from "@/lib/server-auth";
+import { MasterAgentCreditApplicationList } from "@/components/dashboard/MasterAgentCreditApplicationList";
+
+type SessionShape = {
+  backendToken?: string;
+};
+
+export type AnalystCreditWorkspaceView =
+  | "decision"
+  | "queue"
+  | "accepted"
+  | "repayment"
+  | "proof"
+  | "rejected"
+  | "archive";
+
+const viewConfig = {
+  decision: {
+    eyebrow: "Analisis Kredit",
+    title: "Keputusan Akhir Kredit Agent",
+    desc: "Periksa data lapangan, dokumen, tanda tangan marketing, lalu beri keputusan akhir.",
+    listTitle: "Data Siap Diputuskan",
+    emptyTitle: "Belum ada data untuk diputuskan",
+    emptyDescription: "Data akan muncul setelah marketing tanda tangan dan mengirim pengajuan ke analis.",
+    icon: ShieldCheck,
+    showActions: true,
+  },
+  queue: {
+    eyebrow: "Antrean Analisis",
+    title: "Antrean Pengajuan",
+    desc: "Urutan pengajuan yang menunggu pengecekan dokumen, risiko, dan keputusan analis.",
+    listTitle: "Antrean Siap Analisis",
+    emptyTitle: "Antrean masih kosong",
+    emptyDescription: "Belum ada pengajuan baru dari marketing.",
+    icon: ClipboardList,
+    showActions: true,
+  },
+  accepted: {
+    eyebrow: "Kredit Diterima",
+    title: "Kredit yang Sudah Diterima",
+    desc: "Daftar pinjaman yang sudah disetujui analis dan bisa dipantau statusnya.",
+    listTitle: "Daftar Kredit Diterima",
+    emptyTitle: "Belum ada kredit diterima",
+    emptyDescription: "Pinjaman yang disetujui analis akan tampil di sini.",
+    icon: BadgeCheck,
+    showActions: false,
+  },
+  repayment: {
+    eyebrow: "Monitor Pelunasan",
+    title: "Pantau Pelunasan Agent",
+    desc: "Lihat pinjaman aktif, sisa tagihan, jatuh tempo, dan pembayaran yang masuk.",
+    listTitle: "Pinjaman Aktif",
+    emptyTitle: "Belum ada kredit berjalan",
+    emptyDescription: "Pinjaman aktif yang belum lunas akan tampil di sini.",
+    icon: WalletCards,
+    showActions: false,
+  },
+  proof: {
+    eyebrow: "Bukti Pelunasan",
+    title: "Bukti Transfer Pembayaran",
+    desc: "Kumpulan pembayaran yang sudah tercatat beserta bukti transfer agent.",
+    listTitle: "Pembayaran dengan Bukti",
+    emptyTitle: "Belum ada bukti pelunasan",
+    emptyDescription: "Bukti transfer dari agent akan tampil setelah pembayaran dikirim.",
+    icon: FileCheck2,
+    showActions: false,
+  },
+  rejected: {
+    eyebrow: "Penolakan & Catatan",
+    title: "Data Ditolak dan Catatan Risiko",
+    desc: "Pengajuan yang perlu diperbaiki agent atau tidak layak dicairkan.",
+    listTitle: "Daftar Penolakan",
+    emptyTitle: "Belum ada data ditolak",
+    emptyDescription: "Keputusan tolak dari analis akan masuk ke daftar ini.",
+    icon: XCircle,
+    showActions: false,
+  },
+  archive: {
+    eyebrow: "Arsip Keputusan",
+    title: "Arsip Semua Keputusan",
+    desc: "Riwayat keputusan analis untuk audit, pengecekan ulang, dan monitoring kredit.",
+    listTitle: "Arsip Keputusan Analis",
+    emptyTitle: "Arsip masih kosong",
+    emptyDescription: "Data yang sudah diputuskan analis akan disimpan di sini.",
+    icon: Archive,
+    showActions: false,
+  },
+} satisfies Record<AnalystCreditWorkspaceView, {
+  eyebrow: string;
+  title: string;
+  desc: string;
+  listTitle: string;
+  emptyTitle: string;
+  emptyDescription: string;
+  icon: LucideIcon;
+  showActions: boolean;
+}>;
+
+function formatIDR(value: number) {
+  return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
+}
+
+function isRejected(item: AgentCreditApplication) {
+  const status = String(item.status || "").toLowerCase();
+  return status === "rejected" || status.includes("rejected");
+}
+
+function isPaid(item: AgentCreditApplication) {
+  const loanStatus = String(item.loan_status || "").toLowerCase();
+  return loanStatus === "paid" || (item.status === "approved" && Number(item.outstanding_amount || 0) <= 0);
+}
+
+function hasPaymentProof(item: AgentCreditApplication) {
+  return (item.payments || []).some((payment) => {
+    const src = payment.payment_proof?.data_url;
+    return typeof src === "string" && src.startsWith("data:image/");
+  });
+}
+
+function getItemsForView(view: AnalystCreditWorkspaceView, applications: AgentCreditApplication[]) {
+  const analysisItems = applications.filter((item) => item.status === "analysis_review");
+  const approvedItems = applications.filter((item) => item.status === "approved");
+  const activeCredits = approvedItems.filter((item) => !isPaid(item));
+  const proofItems = applications.filter((item) => Number(item.payment_count || 0) > 0 || (item.payments || []).length > 0 || hasPaymentProof(item));
+  const rejectedItems = applications.filter(isRejected);
+  const archiveItems = applications.filter((item) => item.status === "approved" || isRejected(item) || isPaid(item));
+
+  if (view === "accepted") return approvedItems;
+  if (view === "repayment") return activeCredits;
+  if (view === "proof") return proofItems;
+  if (view === "rejected") return rejectedItems;
+  if (view === "archive") return archiveItems;
+  return analysisItems;
+}
+
+function getAgentName(item: AgentCreditApplication) {
+  return item.agent_name || item.applicant_data?.nama_lengkap || item.agent_email || "Agent PulsaKilat";
+}
+
+function getAgentStore(item: AgentCreditApplication) {
+  return item.store_name || item.applicant_data?.nama_toko || item.applicant_data?.alamat_toko || "Retail PulsaKilat";
+}
+
+export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWorkspaceView }) {
+  const config = viewConfig[view];
+  const Icon = config.icon;
+  const session = (await getAppServerSession()) as SessionShape | null;
+  const rawApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const applications = await attachAgentCreditPaymentsFallback(rawApplications);
+  const analysisItems = applications.filter((item) => item.status === "analysis_review");
+  const approvedItems = applications.filter((item) => item.status === "approved");
+  const activeCredits = approvedItems.filter((item) => !isPaid(item));
+  const rejectedItems = applications.filter(isRejected);
+  const items = getItemsForView(view, applications);
+  const nominalApproved = approvedItems.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
+  const decisionReadyItems = analysisItems.filter((item) => Number(item.recommended_amount || item.requested_amount || 0) > 0);
+  const proofItems = applications.filter((item) => Number(item.payment_count || 0) > 0 || (item.payments || []).length > 0 || hasPaymentProof(item));
+  const priorityReviewItems = analysisItems.slice(0, 3);
+  const activePriorityItems = activeCredits.slice(0, 3);
+  const paidCredits = approvedItems.filter(isPaid);
+  const totalPaidAmount = approvedItems.reduce((total, item) => {
+    const paymentsTotal = (item.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+    return total + Number(item.paid_amount || paymentsTotal || 0);
+  }, 0);
+  const totalOutstandingAmount = activeCredits.reduce((total, item) => total + Number(item.outstanding_amount || item.approved_amount || 0), 0);
+
+  const stats = [
+    { label: view === "decision" ? "Berkas Masuk" : "Perlu Keputusan", value: String(analysisItems.length), hint: "Dikirim marketing", icon: ShieldCheck, tone: "from-emerald-500 to-lime-400" },
+    { label: "Kredit Diterima", value: String(approvedItems.length), hint: formatIDR(nominalApproved), icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
+    { label: "Belum Lunas", value: String(activeCredits.length), hint: "Masih dipantau", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
+    { label: "Ditolak", value: String(rejectedItems.length), hint: "Perlu catatan", icon: ShieldAlert, tone: "from-rose-500 to-orange-500" },
+  ];
+
+  const decisionCards = [
+    { label: "Berkas Masuk", value: analysisItems.length, hint: "Menunggu pemeriksaan akhir", icon: FileSearch },
+    { label: "Siap Keputusan", value: decisionReadyItems.length, hint: "Nominal dan dokumen siap dicek", icon: ShieldCheck },
+    { label: "Bukti Bayar", value: proofItems.length, hint: "Pembayaran agent tercatat", icon: ReceiptText },
+    { label: "Catatan Risiko", value: rejectedItems.length, hint: "Data yang perlu evaluasi ulang", icon: MessageSquareText },
+  ];
+  const queueCards = [
+    { label: "Masuk Antrean", value: analysisItems.length, hint: "Dikirim dari marketing", icon: ClipboardList },
+    { label: "Siap Dicek", value: decisionReadyItems.length, hint: "Nominal dan berkas tersedia", icon: FileSearch },
+    { label: "Sudah Diterima", value: approvedItems.length, hint: "Keputusan analis selesai", icon: BadgeCheck },
+    { label: "Perlu Catatan", value: rejectedItems.length, hint: "Ditolak atau perlu revisi", icon: MessageSquareText },
+  ];
+  const acceptedCards = [
+    { label: "Total Diterima", value: approvedItems.length, hint: "Semua kredit yang disetujui", icon: BadgeCheck },
+    { label: "Aktif Dipantau", value: activeCredits.length, hint: "Belum lunas dan berjalan", icon: WalletCards },
+    { label: "Sudah Lunas", value: paidCredits.length, hint: "Pembayaran selesai", icon: ShieldCheck },
+    { label: "Perlu Lengkap", value: approvedItems.filter((item) => !item.loan_due_date && !isPaid(item)).length, hint: "Butuh jatuh tempo/catatan", icon: MessageSquareText },
+  ];
+  const repaymentCards = [
+    { label: "Kredit Aktif", value: activeCredits.length, hint: "Menunggu pelunasan", icon: WalletCards },
+    { label: "Sudah Lunas", value: paidCredits.length, hint: "Pembayaran selesai", icon: ShieldCheck },
+    { label: "Total Dilunasi", value: formatIDR(totalPaidAmount), hint: "Pembayaran tercatat", icon: ReceiptText },
+    { label: "Saldo Tertagih", value: formatIDR(totalOutstandingAmount), hint: "Perlu dipantau", icon: ShieldAlert },
+  ];
+
+  return (
+    <main className="-m-2 min-h-screen bg-[#eef7f2] p-3 text-slate-950 sm:p-5 lg:p-7">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+        {view === "decision" ? (
+          <div className="rounded-[26px] border border-emerald-100 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Analisis Kredit</p>
+            <h1 className="mt-2 text-2xl font-black tracking-normal text-slate-950 sm:text-3xl">Keputusan Akhir Kredit Agent</h1>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
+              Analis menjadi pintu akhir. Cek data agent, dokumen, tanda tangan marketing, riwayat pembayaran, lalu putuskan diterima atau ditolak.
+            </p>
+          </div>
+        ) : null}
+        <div className="overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+          <div className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_88%_6%,rgba(190,242,100,0.52),transparent_28%),linear-gradient(135deg,#052e26_0%,#047857_56%,#31c653_115%)] px-5 py-6 text-white sm:px-7 lg:px-9 lg:py-8">
+            <div className="absolute -right-14 -top-20 h-56 w-56 rounded-full border border-white/20 bg-white/10" />
+            {view === "decision" ? <div className="absolute bottom-0 right-28 h-32 w-32 rounded-full border border-white/15 bg-white/8" /> : null}
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/12 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-lime-100">
+                  <Icon className="h-3.5 w-3.5" />
+                  {config.eyebrow}
+                </p>
+                <h1 className="text-3xl font-black tracking-normal sm:text-4xl">{config.title}</h1>
+                <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-emerald-50/90 sm:text-base">{config.desc}</p>
+              </div>
+              <div className="rounded-3xl border border-white/20 bg-white/12 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-emerald-700 shadow-lg">
+                    <Icon className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-100">{view === "decision" ? "Ruang Keputusan" : "Panel Analis"}</p>
+                    <p className="text-xl font-black">{view === "decision" ? "Final Kredit" : "PulsaKilat"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-5 p-4 sm:p-6 lg:p-7">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {stats.map((item) => {
+                const StatIcon = item.icon;
+                return (
+                  <div key={item.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold text-slate-500">{item.label}</p>
+                        <p className="mt-1 text-2xl font-black text-slate-950">{item.value}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</p>
+                      </div>
+                      <div className={`grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br ${item.tone} text-white shadow-lg`}>
+                        <StatIcon className="h-6 w-6" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {view === "decision" ? (
+              <div className="overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f2fff8_62%,#e4f8ee_100%)] p-4 shadow-[0_16px_36px_rgba(6,78,59,0.06)] sm:p-5">
+                <div className="relative">
+                  <div className="absolute -right-16 -top-20 hidden h-44 w-44 rounded-full bg-emerald-100/70 sm:block" />
+                  <div className="relative">
+                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Meja Keputusan Analis</p>
+                    <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Kontrol Kelayakan & Keputusan Akhir</h2>
+                    <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+                      Semua pengajuan di sini sudah melewati pendampingan marketing. Periksa identitas, dokumen inti, selfie pertemuan, tanda tangan, nominal, dan catatan lapangan sebelum memberi keputusan.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {decisionCards.map((card) => {
+                    const CardIcon = card.icon;
+                    return (
+                      <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)]">
+                        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                          <CardIcon className="h-5 w-5" />
+                        </div>
+                        <p className="mt-4 text-xs font-black text-slate-500">{card.label}</p>
+                        <p className="mt-1 text-2xl font-black text-slate-950">{card.value}</p>
+                        <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">{card.hint}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6">
+                  <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Berkas Prioritas</p>
+                    <p className="text-xs font-semibold text-slate-400">Periksa yang paling siap lebih dulu.</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-base font-black text-slate-950">Menunggu keputusan analis</h3>
+                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{priorityReviewItems.length} data</span>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {priorityReviewItems.length ? (
+                          priorityReviewItems.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-black text-slate-950">{getAgentName(item)}</p>
+                                <p className="truncate text-xs font-semibold text-slate-500">{getAgentStore(item)}</p>
+                              </div>
+                              <p className="shrink-0 text-sm font-black text-emerald-700">{formatIDR(Number(item.requested_amount || item.recommended_amount || 0))}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-400">Belum ada pengajuan yang perlu diputuskan.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-base font-black text-slate-950">Kredit aktif dipantau</h3>
+                        <span className="rounded-full bg-lime-50 px-3 py-1 text-xs font-black text-lime-700">{activePriorityItems.length} aktif</span>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {activePriorityItems.length ? (
+                          activePriorityItems.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-black text-slate-950">{getAgentName(item)}</p>
+                                <p className="truncate text-xs font-semibold text-slate-500">Sisa tagihan</p>
+                              </div>
+                              <p className="shrink-0 text-sm font-black text-emerald-700">{formatIDR(Number(item.outstanding_amount || item.approved_amount || 0))}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-400">Belum ada kredit aktif yang perlu dipantau.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : view === "queue" ? (
+              <div className="space-y-4">
+                <div className="relative overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f5fff9_68%,#e6fbef_100%)] p-5 shadow-[0_16px_36px_rgba(6,78,59,0.06)]">
+                  <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-lime-100/70" />
+                  <div className="relative">
+                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Antrean Berkas</p>
+                    <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Berkas Siap Dianalisis</h2>
+                    <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+                      Cek antrean dari marketing: data agent, dokumen KTP, foto toko, selfie bersama marketing, tanda tangan, nominal kredit, dan catatan lapangan.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-[26px] border border-emerald-100 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                      <ClipboardList className="h-7 w-7" />
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-700">Fokus Analisis</p>
+                      <h3 className="text-xl font-black text-slate-950">{analysisItems.length} pengajuan perlu ditangani</h3>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                        Mulai dari pengajuan yang paling lengkap. Setelah dicek, buka detail dan beri keputusan akhir melalui tombol setuju atau tolak.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {queueCards.map((card) => {
+                    const CardIcon = card.icon;
+                    return (
+                      <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-black text-slate-500">{card.label}</p>
+                            <p className="mt-1 text-2xl font-black text-slate-950">{card.value}</p>
+                            <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">{card.hint}</p>
+                          </div>
+                          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                            <CardIcon className="h-5 w-5" />
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="rounded-[28px] border border-slate-200 bg-white p-4">
+                  <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Prioritas Antrean</p>
+                      <h3 className="mt-1 text-lg font-black text-slate-950">Pengajuan paling baru dari marketing</h3>
+                    </div>
+                    <span className="w-fit rounded-full bg-emerald-800 px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-white">Analis</span>
+                  </div>
+                  <div className="space-y-2">
+                    {priorityReviewItems.length ? (
+                      priorityReviewItems.map((item) => (
+                        <div key={item.id} className="flex flex-col gap-3 rounded-3xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">KSA-{item.id}</p>
+                            <p className="mt-1 truncate text-base font-black text-slate-950">{getAgentName(item)}</p>
+                            <p className="mt-1 truncate text-xs font-semibold text-slate-500">{getAgentStore(item)}</p>
+                            <p className="mt-3 text-xs font-bold text-slate-500">Menunggu keputusan analis</p>
+                          </div>
+                          <p className="shrink-0 text-lg font-black text-emerald-700">{formatIDR(Number(item.requested_amount || item.recommended_amount || 0))}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-400">Belum ada antrean dari marketing.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : view === "accepted" ? (
+              <div className="space-y-4">
+                <div className="relative overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f5fff9_66%,#e9fbef_100%)] p-5 shadow-[0_16px_36px_rgba(6,78,59,0.06)]">
+                  <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-emerald-100/80" />
+                  <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Kredit Aktif</p>
+                      <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Agent dengan Kredit Diterima</h2>
+                      <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+                        Hanya menampilkan pengajuan yang sudah diterima analis. Dari sini analis bisa memantau kredit berjalan, agent yang sudah lunas, dan nominal kredit yang aktif.
+                      </p>
+                    </div>
+                    <span className="relative inline-flex w-fit items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
+                      <BadgeCheck className="h-5 w-5" />
+                      {approvedItems.length} data diterima
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-[28px] border border-emerald-100 bg-slate-50 p-4 sm:p-5">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Direktori Peminjam</p>
+                      <h3 className="mt-1 text-2xl font-black tracking-normal text-slate-950">Data peminjam diterima</h3>
+                      <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+                        Data review dan ditolak tidak ditampilkan di sini. Fokus halaman ini hanya pinjaman yang sudah diterima, aktif, atau lunas.
+                      </p>
+                    </div>
+                    <span className="w-fit rounded-2xl bg-white px-4 py-3 text-center text-sm font-black text-emerald-700 shadow-sm">
+                      {approvedItems.length}
+                      <span className="block text-[11px] font-bold text-slate-400">Diterima</span>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {acceptedCards.map((card) => {
+                      const CardIcon = card.icon;
+                      return (
+                        <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-black text-slate-500">{card.label}</p>
+                              <p className="mt-1 text-2xl font-black text-slate-950">{card.value}</p>
+                              <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">{card.hint}</p>
+                            </div>
+                            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                              <CardIcon className="h-5 w-5" />
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-5 rounded-[26px] border border-slate-200 bg-white p-4">
+                    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">Peminjam Aktif</p>
+                        <h4 className="mt-1 text-lg font-black text-slate-950">Daftar agent yang sudah diterima</h4>
+                      </div>
+                      <div className="flex w-fit gap-2">
+                        <span className="rounded-full bg-emerald-800 px-3 py-1.5 text-xs font-black text-white">Semua</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600">Disetujui</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600">Lunas</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {approvedItems.length ? (
+                        approvedItems.slice(0, 5).map((item) => (
+                          <div key={item.id} className="flex flex-col gap-3 rounded-3xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="truncate text-base font-black text-slate-950">{getAgentName(item)}</p>
+                              <p className="mt-1 truncate text-xs font-semibold text-slate-500">{getAgentStore(item)}</p>
+                              <p className="mt-2 text-xs font-bold text-emerald-700">{isPaid(item) ? "Sudah lunas" : "Kredit aktif dipantau"}</p>
+                            </div>
+                            <div className="text-left sm:text-right">
+                              <p className="text-lg font-black text-emerald-700">{formatIDR(Number(item.approved_amount || item.requested_amount || 0))}</p>
+                              <p className="mt-1 text-xs font-semibold text-slate-400">Sisa {formatIDR(Number(item.outstanding_amount || 0))}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-400">Belum ada kredit yang diterima.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : view === "repayment" ? (
+              <div className="space-y-4">
+                <div className="relative overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f7fff9_66%,#e8fbef_100%)] p-5 shadow-[0_16px_36px_rgba(6,78,59,0.06)]">
+                  <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-lime-100/80" />
+                  <div className="relative">
+                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Pelunasan Kredit</p>
+                    <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Monitor Pelunasan Penuh</h2>
+                    <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+                      Pantau pembayaran agent, bukti transfer, status lunas, sisa tagihan, dan hak refill setelah pinjaman selesai dibayar.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-[28px] border border-emerald-100 bg-slate-50 p-4 sm:p-5">
+                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                      <ReceiptText className="h-7 w-7" />
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Monitor Saldo Kredit</p>
+                      <h3 className="text-2xl font-black tracking-normal text-slate-950">Pelunasan Kredit Agent</h3>
+                      <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+                        Setiap kredit dibayar satu kali penuh. Buka detail untuk melihat nominal kredit, sisa tagihan, tanggal jatuh tempo, dan bukti transfer pembayaran.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {repaymentCards.map((card) => {
+                      const CardIcon = card.icon;
+                      return (
+                        <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-black text-slate-500">{card.label}</p>
+                              <p className="mt-1 text-2xl font-black text-slate-950">{card.value}</p>
+                              <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">{card.hint}</p>
+                            </div>
+                            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                              <CardIcon className="h-5 w-5" />
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-5 space-y-2">
+                    {activeCredits.length ? (
+                      activeCredits.slice(0, 6).map((item) => (
+                        <div key={item.id} className="flex flex-col gap-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-black text-slate-950">{getAgentName(item)}</p>
+                            <p className="mt-1 truncate text-xs font-semibold text-slate-500">{getAgentStore(item)}</p>
+                            <p className="mt-2 text-xs font-bold text-amber-700">Menunggu pelunasan penuh</p>
+                          </div>
+                          <div className="text-left sm:text-right">
+                            <p className="text-lg font-black text-emerald-700">{formatIDR(Number(item.outstanding_amount || item.approved_amount || 0))}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-400">
+                              Kredit {formatIDR(Number(item.approved_amount || item.requested_amount || 0))}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-400">Belum ada kredit aktif yang menunggu pelunasan.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+                    <ClipboardList className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-slate-950">Analis menjadi keputusan akhir kredit.</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                      Data yang masuk ke panel ini sudah dibantu marketing. Analis cukup cek kelayakan, lalu setujui atau tolak.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <MasterAgentCreditApplicationList
+              applications={items}
+              mode="analyst"
+              showActions={config.showActions}
+              enableReportActions={view === "archive"}
+              eyebrow={config.eyebrow}
+              title={config.listTitle}
+              emptyTitle={config.emptyTitle}
+              emptyDescription={config.emptyDescription}
+            />
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}

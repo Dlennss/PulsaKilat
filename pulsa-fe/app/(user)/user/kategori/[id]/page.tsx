@@ -17,18 +17,20 @@ type SessionShape = {
 };
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 const UNIVERSAL_SERVICE_BY_CATEGORY_ID: Record<string, string> = {
   "18": "hp-pascabayar",
+  "hp-pascabayar": "hp-pascabayar",
+  "esim-roaming": "esim-roaming",
 };
 
 export default async function UserKategoriPage({ params }: PageProps) {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
   const backendToken = session?.backendToken;
 
-  const [{ id }] = await Promise.all([params]);
+  const { id } = await params;
   const universalService = UNIVERSAL_SERVICE_BY_CATEGORY_ID[String(id)];
   if (universalService) {
     return (

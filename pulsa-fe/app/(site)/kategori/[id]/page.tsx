@@ -11,6 +11,7 @@ import { GuestPulsaQuickOrder } from "@/components/guest/GuestPulsaQuickOrder";
 import { redirect } from "next/navigation";
 import { getGuestCategoryPathById } from "@/lib/category-routes";
 import { buildBreadcrumbJsonLd, buildCollectionJsonLd, buildPageMetadata } from "@/lib/site-search";
+import { UserUniversalServicePageContent } from "@/components/user/UserUniversalServicePageContent";
 
 type SessionShape = {
   user?: UserSession;
@@ -18,7 +19,13 @@ type SessionShape = {
 };
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
+};
+
+const UNIVERSAL_SERVICE_BY_CATEGORY_ID: Record<string, string> = {
+  "18": "hp-pascabayar",
+  "hp-pascabayar": "hp-pascabayar",
+  "esim-roaming": "esim-roaming",
 };
 
 function findCategory(categories: UserCategoryItem[], id: string) {
@@ -26,7 +33,15 @@ function findCategory(categories: UserCategoryItem[], id: string) {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await Promise.resolve(params);
+  const { id } = await params;
+  const universalService = UNIVERSAL_SERVICE_BY_CATEGORY_ID[String(id)];
+  if (universalService) {
+    return buildPageMetadata({
+      title: `${universalService === "esim-roaming" ? "eSIM & Roaming" : "HP Pascabayar"} | PulsaKilat`,
+      description: "Layanan digital PulsaKilat.",
+      path: `/kategori/${id}`,
+    });
+  }
   const categories = (await getCategories()) as UserCategoryItem[];
   const category = findCategory(categories, id);
   if (!category) {
@@ -47,7 +62,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function GuestKategoriPage({ params }: PageProps) {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
-  const [{ id }] = await Promise.all([params]);
+  const { id } = await params;
+  const universalService = UNIVERSAL_SERVICE_BY_CATEGORY_ID[String(id)];
+  if (universalService) {
+    return (
+      <>
+        <UserUniversalServicePageContent serviceSlug={universalService} />
+        <GuestBottomNav isLoggedIn={!!session?.backendToken} />
+      </>
+    );
+  }
   const categories = (await getCategories()) as UserCategoryItem[];
   const category = findCategory(categories, id);
   const dedicatedPath = getGuestCategoryPathById(String(id));

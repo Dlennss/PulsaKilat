@@ -20,10 +20,8 @@ INSERT INTO public.agent_credit_rank
   (code, name, description, limit_amount, min_on_time_payments, max_late_payments, sort_order)
 VALUES
   ('start', 'Kilat Start', 'Limit awal untuk agent baru.', 500000, 0, 0, 10),
-  ('plus', 'Kilat Plus', 'Naik setelah total pinjaman lunas tepat waktu mencapai Rp 1.000.000.', 1000000, 0, 0, 20),
-  ('pro', 'Kilat Pro', 'Naik setelah total pinjaman lunas tepat waktu mencapai Rp 1.500.000.', 1500000, 0, 0, 30),
-  ('max', 'Kilat Max', 'Limit maksimal setelah total pinjaman lunas tepat waktu mencapai Rp 2.000.000.', 2000000, 0, 0, 40),
-  ('elite', 'Kilat Elite', 'Level prestise untuk agent terbaik. Limit tetap maksimal Rp 2.000.000.', 2000000, 0, 0, 50)
+  ('plus', 'Kilat Plus', 'Naik setelah 3 pinjaman lunas tepat waktu.', 1000000, 3, 0, 20),
+  ('elite', 'Kilat Elite', 'Limit maksimal setelah 5 pinjaman lunas tepat waktu.', 2000000, 5, 0, 30)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,

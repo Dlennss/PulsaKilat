@@ -223,17 +223,32 @@ export const auditorNavSections: NavSection[] = [
 export const masterNavSections: NavSection[] = [
   {
     items: [
-      { href: "/dashboard/master", label: "Dashboard" },
+      { href: "/dashboard/master", label: "Ringkasan Kerja" },
     ],
   },
   {
-    title: "Master",
+    title: "Marketing",
     items: [
-      { href: "/dashboard/master/tambah-agent", label: "Tambah Agent" },
-      { href: "/dashboard/master/akun-agent", label: "Akun Agent" },
-      { href: "/dashboard/master/pinjaman", label: "Data Pinjaman" },
-      { href: "/dashboard/master/input-pinjaman-manual", label: "Input Manual" },
-      { href: "/dashboard/master/riwayat-pinjaman", label: "Riwayat Pinjaman" },
+      { href: "/dashboard/master/tambah-agent", label: "Daftar Agent" },
+      { href: "/dashboard/master/akun-agent", label: "Kelola Agent" },
+      { href: "/dashboard/master/input-pinjaman-manual", label: "Bantu Pengajuan" },
+      { href: "/dashboard/master/pinjaman", label: "Pertemuan & Selfie" },
+      { href: "/dashboard/master/riwayat-pinjaman", label: "Pelunasan Kredit" },
+    ],
+  },
+];
+
+export const analystNavSections: NavSection[] = [
+  {
+    title: "Analisa Kredit",
+    items: [
+      { href: "/dashboard/master/analis", label: "Meja Keputusan" },
+      { href: "/dashboard/master/analis/antrean", label: "Antrean Analisis" },
+      { href: "/dashboard/master/analis/kredit-diterima", label: "Kredit Diterima" },
+      { href: "/dashboard/master/analis/monitor-pelunasan", label: "Monitor Pelunasan" },
+      { href: "/dashboard/master/analis/bukti-pelunasan", label: "Bukti Pelunasan" },
+      { href: "/dashboard/master/analis/penolakan-catatan", label: "Penolakan & Catatan" },
+      { href: "/dashboard/master/analis/arsip-keputusan", label: "Arsip Keputusan" },
     ],
   },
 ];

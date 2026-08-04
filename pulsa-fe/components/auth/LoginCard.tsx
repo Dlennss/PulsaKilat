@@ -55,6 +55,21 @@ function toDashboardByRole(role?: string | null) {
   return "/dashboard/member";
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(fallback);
+      });
+  });
+}
+
 export function LoginCard() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -80,12 +95,14 @@ export function LoginCard() {
         router.replace(toDashboardByRole(typeof claims?.role === "string" ? claims.role : "member"));
         return;
       }
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_source");
 
-      const sess = (await getSession().catch(() => null)) as SessionShape | null;
+      const sess = (await withTimeout(getSession(), 3000, null)) as SessionShape | null;
       const backendToken = (sess?.backendToken || "").trim();
       if (!backendToken) { setAuthChecked(true); return; }
       if (!isJwtValid(backendToken)) {
-        await signOut({ redirect: false }).catch(() => undefined);
+        void withTimeout(signOut({ redirect: false }), 1500, undefined);
         setAuthChecked(true);
         return;
       }

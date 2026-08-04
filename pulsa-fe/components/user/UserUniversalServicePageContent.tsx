@@ -1,15 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   BadgePercent,
+  BookUser,
   BriefcaseBusiness,
   Car,
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronRight,
+  Clock3,
   CircleDollarSign,
   Copy,
   CreditCard,
@@ -17,15 +21,21 @@ import {
   GraduationCap,
   HandHeart,
   HeartPulse,
+  Headphones,
   Home,
   Landmark,
   MonitorPlay,
+  Plane,
   QrCode,
   ReceiptText,
+  Rocket,
+  Search,
   ShieldCheck,
+  Signal,
   Smartphone,
   Sparkles,
   Tv,
+  UserRound,
   WalletCards,
   Waves,
   Wifi,
@@ -50,6 +60,16 @@ type DraftOrder = {
   destination: string;
   provider: string;
   product: string;
+  total: number;
+};
+
+type HpPostpaidBill = {
+  customerName: string;
+  destination: string;
+  provider: string;
+  period: string;
+  nominal: number;
+  adminFee: number;
   total: number;
 };
 
@@ -323,6 +343,91 @@ const defaultService: ServiceMeta = {
   accent: "from-emerald-600 to-lime-500",
 };
 
+const hpPostpaidProviders = [
+  { name: "Telkomsel", logo: "/images/providers/logo_telkomsel.png" },
+  { name: "XL Axiata", logo: "/images/providers/logo_xl.png" },
+  { name: "Indosat", logo: "/images/providers/logo_im3.png" },
+  { name: "3 (Tri)", logo: "/images/providers/logo_tri.png" },
+  { name: "Smartfren", logo: "/images/providers/logo_smartfren.png" },
+  { name: "Biznet", logo: "/images/internet/logo_biznet.png" },
+  { name: "First Media", logo: null },
+  { name: "Home Credit", logo: null },
+];
+
+const esimRegions = ["Semua", "Asia", "Eropa", "Amerika", "Afrika", "Oseania"];
+
+const esimPopularCountries = [
+  { name: "Jepang", code: "JP", region: "Asia", flag: "/images/flags/japan.svg" },
+  { name: "Korea Selatan", code: "KR", region: "Asia", flag: "/images/flags/south-korea.svg" },
+  { name: "Singapura", code: "SG", region: "Asia", flag: "/images/flags/singapore.svg" },
+  { name: "Malaysia", code: "MY", region: "Asia", flag: "/images/flags/malaysia.svg" },
+  { name: "Thailand", code: "TH", region: "Asia", flag: "/images/flags/thailand.svg" },
+  { name: "Lainnya", code: "ALL", region: "Semua", flag: null },
+];
+
+const esimPackages = [
+  {
+    country: "Jepang",
+    code: "JP",
+    region: "Asia",
+    quota: "10 GB",
+    duration: "30 Hari",
+    network: "4G/5G",
+    price: 85000,
+    badge: "Populer",
+  },
+  {
+    country: "Korea Selatan",
+    code: "KR",
+    region: "Asia",
+    quota: "15 GB",
+    duration: "30 Hari",
+    network: "4G/5G",
+    price: 95000,
+    badge: "Populer",
+  },
+  {
+    country: "Singapura",
+    code: "SG",
+    region: "Asia",
+    quota: "8 GB",
+    duration: "30 Hari",
+    network: "4G/5G",
+    price: 65000,
+    badge: "Populer",
+  },
+  {
+    country: "Malaysia",
+    code: "MY",
+    region: "Asia",
+    quota: "12 GB",
+    duration: "30 Hari",
+    network: "4G/5G",
+    price: 75000,
+    badge: "Populer",
+  },
+  {
+    country: "Eropa",
+    code: "EU",
+    region: "Eropa",
+    quota: "20 GB",
+    duration: "30 Hari",
+    network: "4G/5G",
+    price: 145000,
+    badge: "Multi Negara",
+  },
+  {
+    country: "Amerika Serikat",
+    code: "US",
+    region: "Amerika",
+    quota: "10 GB",
+    duration: "15 Hari",
+    network: "4G/5G",
+    price: 125000,
+    badge: "Favorit",
+  },
+];
+
 function formatSlug(slug: string) {
   return slug
     .split("-")
@@ -344,6 +449,20 @@ function formatCurrency(value: number) {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function hpPostpaidBillAmount(destinationValue: string, provider: string) {
+  const digits = destinationValue.replace(/\D/g, "");
+  const digitTotal = digits.split("").reduce((sum, digit) => sum + Number(digit), 0);
+  const providerOffset = provider.length * 250;
+  return 45000 + ((digitTotal * 1250 + providerOffset) % 85000);
+}
+
+function currentBillingPeriod() {
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 }
 
 function toLocalAppOrder(order: DraftOrder): UserAppOrder {
@@ -400,21 +519,34 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
   const [completedOrder, setCompletedOrder] = useState<DraftOrder | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
+  const [saveNumber, setSaveNumber] = useState(true);
+  const [hpBill, setHpBill] = useState<HpPostpaidBill | null>(null);
+  const [esimQuery, setEsimQuery] = useState("");
+  const [selectedEsimRegion, setSelectedEsimRegion] = useState("Semua");
+  const [selectedEsimPackage, setSelectedEsimPackage] = useState(esimPackages[0]);
+  const [esimContact, setEsimContact] = useState("");
 
   const selectedProductIndex = Math.max(0, service.products.indexOf(selectedProduct));
   const subtotal = productPrice(selectedProduct, selectedProductIndex);
   const adminFee = subtotal >= 100000 ? 1500 : 1000;
   const total = subtotal + adminFee;
   const canContinue = destination.trim().length >= 3;
+  const isHpPostpaid = serviceSlug === "hp-pascabayar";
+  const isEsimRoaming = serviceSlug === "esim-roaming";
+  const filteredEsimPackages = esimPackages.filter((item) => {
+    const matchesRegion = selectedEsimRegion === "Semua" || item.region === selectedEsimRegion || item.country === selectedEsimRegion;
+    const matchesSearch = !esimQuery.trim() || item.country.toLowerCase().includes(esimQuery.trim().toLowerCase());
+    return matchesRegion && matchesSearch;
+  });
 
-  async function createOrder() {
-    if (!canContinue || isCreating) return;
+  async function createOrder(override?: Partial<Omit<DraftOrder, "invoiceId">>) {
+    if ((!override && !canContinue) || isCreating) return;
     const orderData = {
-      service: service.title,
-      destination: destination.trim(),
-      provider: selectedProvider,
-      product: selectedProduct,
-      total,
+      service: override?.service || service.title,
+      destination: override?.destination || destination.trim(),
+      provider: override?.provider || selectedProvider,
+      product: override?.product || selectedProduct,
+      total: override?.total || total,
     };
     setIsCreating(true);
     setError("");
@@ -442,6 +574,471 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
     } finally {
       setIsCreating(false);
     }
+  }
+
+  function checkHpPostpaidBill() {
+    if (!canContinue || isCreating) return;
+    const nominal = hpPostpaidBillAmount(destination, selectedProvider);
+    const nextBill = {
+      customerName: "Pelanggan PulsaKilat",
+      destination: destination.trim(),
+      provider: selectedProvider,
+      period: currentBillingPeriod(),
+      nominal,
+      adminFee: 1500,
+      total: nominal + 1500,
+    };
+    setError("");
+    setHpBill(nextBill);
+  }
+
+  function payHpPostpaidBill() {
+    if (!hpBill) return;
+    void createOrder({
+      service: "HP Pascabayar",
+      destination: hpBill.destination,
+      provider: hpBill.provider,
+      product: `Bayar Tagihan ${hpBill.period}`,
+      total: hpBill.total,
+    });
+  }
+
+  function buyEsimPackage() {
+    if (!selectedEsimPackage || isCreating) return;
+    void createOrder({
+      service: "eSIM & Roaming",
+      destination: esimContact.trim() || selectedEsimPackage.country,
+      provider: selectedEsimPackage.country,
+      product: `${selectedEsimPackage.quota} / ${selectedEsimPackage.duration} ${selectedEsimPackage.network}`,
+      total: selectedEsimPackage.price,
+    });
+  }
+
+  if (isEsimRoaming && !completedOrder) {
+    return (
+      <main className="min-h-screen bg-[#f4fbf7] pb-36 text-[#07112e]">
+        <section className="relative overflow-hidden bg-[radial-gradient(circle_at_82%_2%,rgba(255,255,255,0.18),transparent_34%),linear-gradient(145deg,#006f38_0%,#009f4d_55%,#006934_100%)] px-5 pb-20 pt-8 text-white shadow-[0_18px_42px_rgba(0,105,54,0.22)]">
+          <div className="mx-auto flex w-full max-w-md items-center justify-between">
+            <Link href="/user/kategori" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/12">
+              <ArrowLeft className="h-8 w-8" strokeWidth={2.8} />
+            </Link>
+            <h1 className="min-w-0 flex-1 px-3 text-center text-[24px] font-extrabold leading-tight text-white min-[390px]:text-[29px]">
+              eSIM & Roaming
+            </h1>
+            <Link href="/user/transaksi" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/12">
+              <Clock3 className="h-8 w-8" strokeWidth={2.8} />
+            </Link>
+          </div>
+        </section>
+
+        <div className="relative z-10 mx-auto -mt-12 w-full max-w-md space-y-5 px-4">
+          <section className="overflow-hidden rounded-[30px] border border-emerald-100 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.12)]">
+            <div className="relative min-h-[220px] overflow-hidden bg-[radial-gradient(circle_at_78%_42%,rgba(0,122,61,0.16),transparent_28%),linear-gradient(135deg,#f8fffb,#e8f8ee)] px-5 py-6">
+              <div className="pointer-events-none absolute right-6 top-8 hidden h-28 w-44 rounded-full border border-emerald-200/80 min-[380px]:block" />
+              <div className="pointer-events-none absolute right-12 top-14 hidden h-20 w-32 rounded-full border border-emerald-200/70 min-[380px]:block" />
+              <div className="relative z-10 max-w-[210px]">
+                <h2 className="text-[30px] font-extrabold leading-tight text-[#063f2e]">
+                  eSIM Global, Internet di Mana Saja
+                </h2>
+                <p className="mt-4 text-base font-medium leading-relaxed text-slate-700">
+                  Aktifkan eSIM instan, tanpa kartu fisik, praktis & terpercaya.
+                </p>
+              </div>
+              <div className="absolute bottom-5 right-4 grid h-[132px] w-[118px] place-items-center rounded-[28px] border-[7px] border-[#063f2e] bg-white shadow-[0_18px_34px_rgba(6,78,59,0.20)]">
+                <Image src="/service-icons/esim-roaming.png" alt="eSIM" width={72} height={72} className="h-16 w-16 object-contain" />
+                <span className="absolute -right-3 -top-3 grid h-[52px] w-[52px] place-items-center rounded-full bg-[#009f4d] text-white shadow-lg">
+                  <Plane className="h-7 w-7" strokeWidth={2.7} />
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-5 p-4">
+              <div className="flex h-[58px] items-center overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.04)] focus-within:border-[#008a42] focus-within:ring-4 focus-within:ring-emerald-100">
+                <span className="grid h-full w-14 shrink-0 place-items-center text-slate-400">
+                  <Search className="h-7 w-7" strokeWidth={2.3} />
+                </span>
+                <input
+                  value={esimQuery}
+                  onChange={(event) => setEsimQuery(event.target.value)}
+                  placeholder="Cari negara tujuan"
+                  className="min-w-0 flex-1 bg-transparent text-base font-semibold text-[#07112e] outline-none placeholder:text-slate-400"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-[21px] font-extrabold leading-none text-[#07112e]">Negara Populer</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedEsimRegion("Semua");
+                      setEsimQuery("");
+                    }}
+                    className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-sm font-black text-[#007a3d] transition hover:bg-emerald-50"
+                  >
+                    Lihat Semua
+                    <ChevronRight className="h-5 w-5" strokeWidth={2.8} />
+                  </button>
+                </div>
+                <div className="-mx-1 mt-4 flex snap-x gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {esimPopularCountries.map((country) => {
+                    const active = esimQuery === country.name || selectedEsimRegion === country.name;
+                    return (
+                      <button
+                        key={country.name}
+                        type="button"
+                        onClick={() => {
+                          setEsimQuery(country.name === "Lainnya" ? "" : country.name);
+                          setSelectedEsimRegion(country.name === "Lainnya" ? "Semua" : country.region);
+                        }}
+                        className={[
+                          "flex min-h-[126px] w-[92px] shrink-0 snap-start flex-col items-center justify-center rounded-[20px] border bg-white px-2 py-3 text-center shadow-[0_10px_22px_rgba(15,23,42,0.06)] transition min-[420px]:w-[96px]",
+                          active ? "border-[#009f4d] bg-[#f2fff8] ring-2 ring-emerald-100" : "border-slate-200 hover:border-emerald-200",
+                        ].join(" ")}
+                      >
+                        <span className="grid h-[54px] w-[66px] place-items-center overflow-hidden rounded-[16px] bg-[#f8fafc] text-sm font-black text-[#007a3d] shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),0_8px_18px_rgba(15,23,42,0.08)]">
+                          {country.flag ? (
+                            <Image
+                              src={country.flag}
+                              alt={`Bendera ${country.name}`}
+                              width={72}
+                              height={54}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="grid h-11 w-11 grid-cols-2 place-items-center gap-1 rounded-full bg-emerald-50 p-2">
+                              <span className="h-3 w-3 rounded-full bg-[#008a42]" />
+                              <span className="h-3 w-3 rounded-full bg-[#008a42]" />
+                              <span className="h-3 w-3 rounded-full bg-[#008a42]" />
+                              <span className="h-3 w-3 rounded-full bg-[#008a42]" />
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-3 line-clamp-2 min-h-[30px] text-[12px] font-bold leading-tight text-[#07112e]">{country.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto rounded-[20px] border border-slate-200 bg-white p-1.5">
+                {esimRegions.map((region) => {
+                  const active = selectedEsimRegion === region && !esimQuery;
+                  return (
+                    <button
+                      key={region}
+                      type="button"
+                      onClick={() => {
+                        setSelectedEsimRegion(region);
+                        setEsimQuery("");
+                      }}
+                      className={[
+                        "h-10 shrink-0 rounded-[15px] px-5 text-sm font-black transition",
+                        active ? "bg-[linear-gradient(135deg,#009f4d,#007a3d)] text-white shadow-[0_8px_16px_rgba(0,122,61,0.18)]" : "text-[#07112e] hover:bg-emerald-50",
+                      ].join(" ")}
+                    >
+                      {region}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-extrabold text-[#07112e]">Paket eSIM</h3>
+                  <button type="button" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-[#07112e]">
+                    Terpopuler
+                  </button>
+                </div>
+
+                <div className="mt-3 space-y-3">
+                  {filteredEsimPackages.map((pkg) => {
+                    const active = selectedEsimPackage.country === pkg.country;
+                    return (
+                      <button
+                        key={pkg.country}
+                        type="button"
+                        onClick={() => setSelectedEsimPackage(pkg)}
+                        className={[
+                          "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[22px] border bg-white p-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition max-[360px]:grid-cols-1",
+                          active ? "border-[#009f4d] ring-2 ring-emerald-100" : "border-slate-200 hover:border-emerald-200",
+                        ].join(" ")}
+                      >
+                        <span className="min-w-0">
+                          <span className="flex items-center gap-2">
+                            <span className="rounded-xl bg-emerald-50 px-2.5 py-1 text-xs font-black text-[#007a3d]">{pkg.code}</span>
+                            <span className="block text-lg font-extrabold leading-tight text-[#07112e]">{pkg.country}</span>
+                          </span>
+                          <span className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-[#07112e]">
+                            <span className="inline-flex items-center gap-1"><Wifi className="h-4 w-4 text-[#008a42]" />{pkg.quota}</span>
+                            <span className="inline-flex items-center gap-1"><CalendarDays className="h-4 w-4 text-[#008a42]" />{pkg.duration}</span>
+                            <span className="inline-flex items-center gap-1"><Signal className="h-4 w-4 text-[#008a42]" />{pkg.network}</span>
+                          </span>
+                          <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black text-[#007a3d]">{pkg.badge}</span>
+                        </span>
+                        <span className="text-right max-[360px]:flex max-[360px]:items-center max-[360px]:justify-between">
+                          <span className="block text-xs font-semibold text-slate-500">Mulai dari</span>
+                          <span className="block text-xl font-extrabold text-[#007a3d]">{formatCurrency(pkg.price)}</span>
+                          <ChevronRight className="ml-auto mt-2 h-7 w-7 text-[#007a3d] max-[360px]:mt-0" strokeWidth={2.8} />
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {filteredEsimPackages.length === 0 ? (
+                    <div className="rounded-[22px] border border-dashed border-emerald-200 bg-[#f7fffb] px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                      Paket untuk negara ini belum tersedia.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <section className="rounded-[24px] border border-emerald-100 bg-[linear-gradient(135deg,#f4fff8,#ffffff)] p-4 shadow-[0_12px_26px_rgba(0,122,61,0.08)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#008a42]">Checkout eSIM</p>
+                    <h3 className="mt-1 text-xl font-extrabold text-[#07112e]">{selectedEsimPackage.country}</h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      {selectedEsimPackage.quota} / {selectedEsimPackage.duration} / {selectedEsimPackage.network}
+                    </p>
+                  </div>
+                  <span className="text-right text-xl font-extrabold text-[#007a3d]">{formatCurrency(selectedEsimPackage.price)}</span>
+                </div>
+                <div className="mt-4 flex h-[56px] items-center overflow-hidden rounded-[18px] border border-slate-200 bg-white focus-within:border-[#008a42] focus-within:ring-4 focus-within:ring-emerald-100">
+                  <span className="grid h-full w-[52px] shrink-0 place-items-center text-[#008a42]">
+                    <Smartphone className="h-6 w-6" strokeWidth={2.5} />
+                  </span>
+                  <input
+                    value={esimContact}
+                    onChange={(event) => setEsimContact(event.target.value)}
+                    placeholder="Email atau WhatsApp penerima"
+                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-[#07112e] outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={isCreating}
+                  onClick={buyEsimPackage}
+                  className="mt-4 flex h-[58px] w-full items-center justify-center gap-2 rounded-[18px] bg-[linear-gradient(135deg,#052e26,#008a42,#65c82f)] text-base font-extrabold text-white shadow-[0_16px_28px_rgba(0,122,61,0.24)] disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  <Rocket className="h-5 w-5" strokeWidth={2.5} />
+                  {isCreating ? "MEMPROSES..." : "BELI PAKET eSIM"}
+                </button>
+              </section>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-2 gap-2 rounded-[24px] border border-emerald-100 bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)] min-[390px]:grid-cols-4">
+            {[
+              ["Instan", "Aktif setelah pembelian", Rocket],
+              ["Aman", "Transaksi terlindungi", ShieldCheck],
+              ["Global", "Tersedia banyak negara", Plane],
+              ["24/7", "Bantuan kapan saja", Headphones],
+            ].map(([title, desc, BenefitIcon]) => (
+              <div key={title as string} className="flex items-center gap-2 rounded-[18px] bg-[#f4fff8] p-2 min-[390px]:block min-[390px]:text-center">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#008a42] text-white min-[390px]:mx-auto">
+                  <BenefitIcon className="h-5 w-5" strokeWidth={2.5} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-black text-[#007a3d]">{title as string}</span>
+                  <span className="mt-0.5 block text-[11px] font-medium leading-snug text-[#07112e]">{desc as string}</span>
+                </span>
+              </div>
+            ))}
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (isHpPostpaid && !completedOrder) {
+    return (
+      <main className="min-h-screen bg-[#f3fbf7] pb-36 text-[#070d26]">
+        <section className="relative overflow-hidden rounded-b-[42px] bg-[radial-gradient(circle_at_82%_8%,rgba(255,255,255,0.18),transparent_34%),linear-gradient(145deg,#00763b_0%,#00a650_54%,#007a3d_100%)] px-5 pb-20 pt-8 text-white shadow-[0_18px_40px_rgba(0,105,54,0.24)]">
+          <div className="mx-auto flex w-full max-w-md items-center justify-between">
+            <Link href="/user/kategori" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/12">
+              <ArrowLeft className="h-8 w-8" strokeWidth={2.8} />
+            </Link>
+            <h1 className="min-w-0 flex-1 px-2 text-center text-[23px] font-extrabold leading-tight tracking-normal text-white min-[390px]:text-[29px]">
+              HP Pascabayar
+            </h1>
+            <Link href="/user/transaksi" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/12">
+              <Clock3 className="h-8 w-8" strokeWidth={2.8} />
+            </Link>
+          </div>
+        </section>
+
+        <div className="relative z-10 mx-auto -mt-9 w-full max-w-md space-y-5 px-4">
+          <section className="rounded-[30px] border border-emerald-100/80 bg-white p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.12)]">
+            <div className="grid min-h-[118px] grid-cols-[76px_minmax(0,1fr)] items-center gap-4 rounded-[24px] border border-slate-100 bg-white px-3.5 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
+              <span className="relative grid h-[76px] w-[76px] place-items-center rounded-full bg-[linear-gradient(145deg,#18c866,#00783d)] text-white shadow-[inset_0_1px_12px_rgba(255,255,255,0.22),0_12px_24px_rgba(0,126,65,0.18)]">
+                <ReceiptText className="h-11 w-11" strokeWidth={3} />
+                <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-[3px] border-white bg-white text-[#008a42] shadow-[0_8px_18px_rgba(15,23,42,0.14)]">
+                  <span className="text-xl font-black leading-none">!</span>
+                </span>
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-[20px] font-extrabold leading-tight text-[#070d26] min-[390px]:text-2xl">HP Pascabayar</h2>
+                <p className="mt-2 text-[13px] font-medium leading-relaxed text-[#646979] min-[390px]:text-[15px]">
+                  Bayar tagihan pascabayar lebih mudah dan cepat
+                </p>
+              </div>
+            </div>
+
+            <h3 className="mt-7 text-[22px] font-extrabold text-[#07112e]">Provider</h3>
+            <div className="mt-4 grid grid-cols-4 gap-2.5">
+              {hpPostpaidProviders.map((provider) => {
+                const active = selectedProvider === provider.name || selectedProvider === `${provider.name} Halo`;
+                return (
+                  <button
+                    key={provider.name}
+                    type="button"
+                    onClick={() => {
+                      setSelectedProvider(provider.name);
+                      setHpBill(null);
+                    }}
+                    className={[
+                      "flex min-h-[100px] min-w-0 flex-col items-center justify-center rounded-[16px] border bg-white px-1.5 py-3 text-center shadow-[0_8px_18px_rgba(15,23,42,0.05)] transition",
+                      active ? "border-[#009f4d] bg-[#fbfffd] ring-2 ring-emerald-100" : "border-slate-200 hover:border-emerald-300",
+                    ].join(" ")}
+                  >
+                    <span className="grid h-10 w-full place-items-center overflow-hidden">
+                      {provider.logo ? (
+                        <Image
+                          src={provider.logo}
+                          alt={provider.name}
+                          width={68}
+                          height={34}
+                          className="max-h-8 w-auto object-contain"
+                        />
+                      ) : (
+                        <span className={provider.name === "First Media" ? "text-center text-base font-black leading-none text-[#2474b9]" : "text-center text-base font-black leading-none text-[#e1272f]"}>
+                          {provider.name === "First Media" ? "FiRST" : "HOME"}
+                          <span className="block text-[10px]">{provider.name === "First Media" ? "MEDIA" : "CREDIT"}</span>
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-3 line-clamp-2 text-[11px] font-bold leading-tight text-[#070d26] min-[390px]:text-xs">{provider.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <h3 className="mt-7 text-[22px] font-extrabold text-[#07112e]">Nomor Pelanggan</h3>
+            <div className="mt-4 flex h-[60px] items-center overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.04)] focus-within:border-[#008a42] focus-within:ring-4 focus-within:ring-emerald-100">
+              <span className="grid h-full w-[52px] shrink-0 place-items-center text-slate-400">
+                <UserRound className="h-7 w-7" strokeWidth={2.2} />
+              </span>
+              <input
+                value={destination}
+                onChange={(event) => {
+                  setDestination(event.target.value);
+                  setHpBill(null);
+                }}
+                inputMode="numeric"
+                placeholder="Masukkan nomor pelanggan"
+                className="min-w-0 flex-1 bg-transparent px-1 text-base font-semibold text-[#070d26] outline-none placeholder:text-slate-400"
+              />
+              <span className="grid h-full w-[52px] shrink-0 place-items-center text-[#008a42]">
+                <BookUser className="h-7 w-7" strokeWidth={2.4} />
+              </span>
+            </div>
+
+            <div className="mt-5 flex items-center justify-between">
+              <p className="text-lg font-extrabold text-[#07112e]">Simpan Nomor</p>
+              <button
+                type="button"
+                aria-pressed={saveNumber}
+                onClick={() => setSaveNumber((value) => !value)}
+                className={[
+                  "relative h-9 w-[72px] rounded-full border transition",
+                  saveNumber ? "border-[#008a42] bg-[#009f4d]" : "border-slate-300 bg-slate-200",
+                ].join(" ")}
+              >
+                <span
+                  className={[
+                    "absolute top-1 h-7 w-7 rounded-full bg-white shadow-[0_4px_10px_rgba(15,23,42,0.18)] transition",
+                    saveNumber ? "right-1" : "left-1",
+                  ].join(" ")}
+                />
+              </button>
+            </div>
+
+            {error ? (
+              <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</p>
+            ) : null}
+
+            <button
+              type="button"
+              disabled={!canContinue || isCreating}
+              onClick={checkHpPostpaidBill}
+              className="mt-6 flex h-[60px] w-full items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,#00a650,#007a3d)] text-lg font-extrabold tracking-wide text-white shadow-[0_14px_26px_rgba(0,122,61,0.22)] transition hover:brightness-105 disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+            >
+              {isCreating ? "MEMERIKSA..." : "CEK TAGIHAN"}
+            </button>
+          </section>
+
+          {hpBill ? (
+            <section className="rounded-[30px] border border-emerald-100/80 bg-white p-4 shadow-[0_16px_36px_rgba(15,23,42,0.10)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#008a42]">Detail Tagihan</p>
+                  <h3 className="mt-1 text-xl font-extrabold text-[#07112e]">{hpBill.provider}</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">{hpBill.period}</p>
+                </div>
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#008a42]">
+                  <ReceiptText className="h-6 w-6" strokeWidth={2.5} />
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {[
+                  ["Nama pelanggan", hpBill.customerName],
+                  ["Nomor pelanggan", hpBill.destination],
+                  ["Nominal tagihan", formatCurrency(hpBill.nominal)],
+                  ["Biaya admin", formatCurrency(hpBill.adminFee)],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-3 rounded-2xl bg-[#f4fbf7] px-4 py-3">
+                    <span className="text-xs font-bold text-slate-500">{label}</span>
+                    <span className="max-w-[170px] truncate text-right text-sm font-black text-[#07112e]">{value}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between rounded-[20px] bg-[linear-gradient(135deg,#ecfdf5,#f7fee7)] px-4 py-4">
+                  <span className="text-sm font-black text-[#07112e]">Total bayar</span>
+                  <span className="text-xl font-extrabold text-[#008a42]">{formatCurrency(hpBill.total)}</span>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-extrabold text-[#07112e]">Metode Pembayaran</p>
+                <button
+                  type="button"
+                  className="mt-3 flex w-full items-center gap-3 rounded-[20px] border-2 border-[#00a650] bg-[#f4fff9] px-4 py-3 text-left shadow-[0_10px_20px_rgba(0,122,61,0.08)]"
+                >
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#008a42] text-white">
+                    <WalletCards className="h-5 w-5" strokeWidth={2.5} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-black text-[#07112e]">Saldo PulsaKilat</span>
+                    <span className="mt-0.5 block text-xs font-semibold text-slate-500">Bayar langsung dari saldo akun</span>
+                  </span>
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-[#008a42]" strokeWidth={2.6} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                disabled={isCreating}
+                onClick={payHpPostpaidBill}
+                className="mt-5 flex h-[58px] w-full items-center justify-center rounded-[18px] bg-[linear-gradient(135deg,#052e26,#008a42,#65c82f)] text-base font-extrabold text-white shadow-[0_16px_28px_rgba(0,122,61,0.24)] disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500"
+              >
+                {isCreating ? "MEMPROSES..." : "BAYAR SEKARANG"}
+              </button>
+            </section>
+          ) : null}
+
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -618,7 +1215,7 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
               type="button"
               disabled={!canContinue || isCreating}
               className="flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_34px_rgba(4,120,87,0.22)] transition hover:brightness-105 disabled:bg-none disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
-              onClick={createOrder}
+              onClick={() => createOrder()}
             >
               {isCreating ? "Menyimpan..." : "Buat Transaksi"}
               <ChevronRight className="h-4 w-4" strokeWidth={2.6} />

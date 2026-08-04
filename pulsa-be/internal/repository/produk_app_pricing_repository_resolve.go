@@ -118,12 +118,13 @@ JOIN public.produk p ON p.id = a.produk_id
 JOIN public.kategori k ON k.id = p.kategori_id
 WHERE a.produk_id = $1
   AND a.aktif = true
-  AND LOWER(TRIM(a.provider)) IN ('yuscom', 'gemilang')
+  AND LOWER(TRIM(a.provider)) IN ('yuscom', 'gemilang', 'pulsa24jam')
 ORDER BY
   a.harga ASC,
   CASE LOWER(TRIM(a.provider))
     WHEN 'yuscom' THEN 0
     WHEN 'gemilang' THEN 1
+    WHEN 'pulsa24jam' THEN 2
     ELSE 99
   END ASC,
   a.id DESC

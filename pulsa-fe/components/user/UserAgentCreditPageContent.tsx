@@ -2,16 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   BadgeCheck,
   Camera,
   Check,
   ChevronRight,
   FileText,
+  HandCoins,
   Home,
+  Landmark,
+  Loader2,
   PenLine,
+  QrCode,
   RotateCcw,
   SearchCheck,
   Store,
@@ -325,7 +331,7 @@ function getApplicationNotice(application?: AgentCreditApplication) {
     case "marketing_review":
       return {
         title: "Sedang dicek",
-        desc: "Master sedang mengecek data dan tanda tangan agent.",
+        desc: "Marketing sedang mengecek data dan tanda tangan agent.",
         className: "border-amber-200 bg-amber-50 text-amber-700",
         icon: SearchCheck,
       };
@@ -339,21 +345,21 @@ function getApplicationNotice(application?: AgentCreditApplication) {
     case "analysis_review":
       return {
         title: "Sedang dianalisa",
-        desc: "Master sudah verifikasi. Analis sedang mengecek risiko dan nominal aman.",
+        desc: "Marketing sudah verifikasi. Analis sedang mengecek risiko dan nominal aman.",
         className: "border-sky-200 bg-sky-50 text-sky-700",
         icon: SearchCheck,
       };
     case "master_review":
       return {
         title: "Sedang diproses",
-        desc: "Master sedang menentukan keputusan akhir.",
+        desc: "Marketing sedang menyiapkan data sebelum dikirim ke analis.",
         className: "border-sky-200 bg-sky-50 text-sky-700",
         icon: SearchCheck,
       };
     case "submitted":
       return {
         title: "Pengajuan dikirim",
-        desc: "Menunggu master mengecek pengajuan agent.",
+        desc: "Menunggu marketing mengecek pengajuan agent.",
         className: "border-amber-200 bg-amber-50 text-amber-700",
         icon: SearchCheck,
       };
@@ -362,23 +368,19 @@ function getApplicationNotice(application?: AgentCreditApplication) {
   }
 }
 
+function isRejectedStatus(status?: string) {
+  return status === "rejected" || status === "analysis_rejected" || status === "master_rejected" || status === "legacy_rejected";
+}
+
+function isPaidStatus(application: AgentCreditApplication) {
+  return String(application.loan_status || "").toLowerCase() === "paid" || Number(application.outstanding_amount || 0) <= 0;
+}
+
 function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
 const defaultCreditAmount = 500000;
-
-function creditAmountOptions(limitAmount: number) {
-  const limit = Math.max(0, Number(limitAmount || 0));
-  const options: number[] = [];
-  for (let amount = 100000; amount <= limit; amount += 50000) {
-    options.push(amount);
-  }
-  if (limit >= 100000 && !options.includes(limit)) {
-    options.push(limit);
-  }
-  return options;
-}
 
 const levelBadgeByCode: Record<string, string> = {
   start: "/agent-levels/kilat-start-badge.png",
@@ -393,16 +395,24 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
   const [signatureReady, setSignatureReady] = useState(false);
   const [signatureData, setSignatureData] = useState("");
   const [latestApplication, setLatestApplication] = useState<AgentCreditApplication | undefined>(initialApplications[0]);
-  const [selectedRequestedAmount, setSelectedRequestedAmount] = useState(defaultCreditAmount);
-  const [amountPickerOpen, setAmountPickerOpen] = useState(false);
+  const [applications, setApplications] = useState(initialApplications);
+  const [activeCreditTab, setActiveCreditTab] = useState<"list" | "new" | "status">(initialApplications.length ? "list" : "new");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"transfer" | "qris" | "offline">("transfer");
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [paymentProofName, setPaymentProofName] = useState("");
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+  const [paymentSuccess, setPaymentSuccess] = useState("");
+  const router = useRouter();
   const notice = getApplicationNotice(latestApplication);
   const NoticeIcon = notice?.icon;
   const isPendingStatus = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review" || latestApplication?.status === "analysis_review" || latestApplication?.status === "master_review" || latestApplication?.status === "ready_to_disburse";
   const unsignedPendingApplication = Boolean(isPendingStatus && latestApplication && !latestApplication.has_agent_signature);
   const hasOpenApplication = Boolean(isPendingStatus && !unsignedPendingApplication);
-  const isPaidOff = latestApplication?.status === "approved" && (String(latestApplication.loan_status || "").toLowerCase() === "paid" || Number(latestApplication.outstanding_amount || 0) <= 0);
+  const isPaidOff = latestApplication?.status === "approved" && String(latestApplication.loan_status || "").toLowerCase() === "paid";
   const isApproved = latestApplication?.status === "approved" && !isPaidOff;
   const canReapply = latestApplication?.status === "rejected" || latestApplication?.status === "analysis_rejected" || latestApplication?.status === "master_rejected";
   const canRefill = Boolean(isPaidOff);
@@ -411,21 +421,126 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
   const creditLevelImage = levelBadgeByCode[creditLevelCode] || levelBadgeByCode.start;
   const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
   const creditLimitAmount = Number(latestApplication?.credit_limit_amount || defaultCreditAmount);
-  const amountOptions = creditAmountOptions(creditLimitAmount);
-  const requestedAmount = amountOptions.includes(selectedRequestedAmount) ? selectedRequestedAmount : amountOptions[amountOptions.length - 1] || creditLimitAmount;
-  const totalPaidAmount = initialApplications.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
-  const totalActiveCredit = initialApplications.reduce((sum, item) => sum + Math.max(0, Number(item.outstanding_amount || 0)), 0);
+  const requestedAmount = defaultCreditAmount;
+  const totalPaidAmount = applications.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
+  const totalActiveCredit = applications.reduce((sum, item) => sum + Math.max(0, Number(item.outstanding_amount || 0)), 0);
+  const totalAvailableCredit = applications.reduce((sum, item) => sum + Math.max(0, Number(item.credit_available_amount || 0)), 0);
   const currentOutstanding = Math.max(0, Number(latestApplication?.outstanding_amount || 0));
+  const currentAvailableCredit = Math.max(
+    0,
+    Number(latestApplication?.credit_available_amount ?? Math.max(creditLimitAmount - currentOutstanding, 0)),
+  );
   const applicantDefaults = latestApplication?.applicant_data || {};
   const applicantText = (key: string, fallback = "") => {
     const value = applicantDefaults[key];
     return typeof value === "string" && value.trim() ? value.trim() : fallback;
   };
+  const totalApplications = applications.length;
+  const pendingApplications = applications.filter((item) => (
+    item.status === "submitted" ||
+    item.status === "marketing_review" ||
+    item.status === "analysis_review" ||
+    item.status === "master_review" ||
+    item.status === "ready_to_disburse"
+  )).length;
+  const acceptedApplications = applications.filter((item) => item.status === "approved").length;
+  const rejectedApplications = applications.filter((item) => isRejectedStatus(item.status)).length;
+  const listApplications = applications.length ? applications : [];
+  const statusLabel = (item: AgentCreditApplication) => {
+    if (item.status === "approved") return isPaidStatus(item) ? "Lunas" : "Diterima";
+    if (isRejectedStatus(item.status)) return "Ditolak";
+    return "Menunggu";
+  };
+  const statusClassName = (item: AgentCreditApplication) => {
+    if (item.status === "approved") return "bg-emerald-100 text-emerald-800";
+    if (isRejectedStatus(item.status)) return "bg-rose-100 text-rose-700";
+    return "bg-amber-100 text-amber-800";
+  };
+  const statusAmount = Number(latestApplication?.approved_amount || latestApplication?.requested_amount || requestedAmount || 0);
+  const statusOutstanding = Math.max(0, Number(latestApplication?.outstanding_amount ?? 0));
+  const statusIsApproved = latestApplication?.status === "approved";
+  const statusIsPaid = statusIsApproved && latestApplication ? isPaidStatus(latestApplication) : false;
+  const statusIsRejected = isRejectedStatus(latestApplication?.status);
+  const statusIsWaiting = Boolean(latestApplication && !statusIsApproved && !statusIsRejected);
+  const statusPaymentDue = statusIsPaid ? 0 : statusOutstanding;
+  const statusApplicationCode = latestApplication?.id ? `KSA-${String(latestApplication.id).padStart(8, "0")}` : "KSA-PENDING";
+  const statusHeadline = statusIsRejected
+    ? "Pengajuan perlu diperbaiki"
+    : statusIsWaiting
+      ? "Pengajuan sedang diproses"
+      : statusIsPaid
+        ? "Tagihan kredit sudah lunas"
+        : "Limit kredit agent sudah aktif";
+  const statusBandLabel = statusIsRejected ? "DITOLAK" : statusIsWaiting ? "MENUNGGU" : statusIsPaid ? "LUNAS" : "DITERIMA";
+  const statusBandSubcopy = statusIsRejected
+    ? "Lihat catatan dan ajukan ulang"
+    : statusIsWaiting
+      ? "Menunggu keputusan tim PulsaKilat"
+      : statusIsPaid
+        ? "Tidak ada tagihan berjalan"
+        : "Diterima tim verifikasi";
+  const statusSteps = statusIsRejected
+    ? ["Formulir agent diterima", "Dokumen sudah diperiksa", "Ditemukan data yang perlu diperbaiki", "Keputusan analis"]
+    : ["Formulir agent diterima", "Validasi foto KTP, toko, dan selfie", "Pengecekan tanda tangan online", "Keputusan analis"];
+  const paymentMethods = [
+    {
+      id: "transfer" as const,
+      title: "Transfer Bank",
+      desc: "BCA - 1234567890 a.n. PulsaKilat",
+      icon: Landmark,
+    },
+    {
+      id: "qris" as const,
+      title: "QRIS / Barcode",
+      desc: "Nominal otomatis sesuai pelunasan",
+      icon: QrCode,
+    },
+    {
+      id: "offline" as const,
+      title: "Penagihan Offline",
+      desc: "Marketing datang dan menerima pelunasan langsung",
+      icon: HandCoins,
+    },
+  ];
+  const selectedPayment = paymentMethods.find((method) => method.id === selectedPaymentMethod) || paymentMethods[0];
 
-  useEffect(() => {
-    const options = creditAmountOptions(creditLimitAmount);
-    setSelectedRequestedAmount(options[options.length - 1] || creditLimitAmount);
-  }, [creditLimitAmount]);
+  async function handleCreditPaymentConfirmation() {
+    if (!latestApplication || !latestApplication.id || statusPaymentDue <= 0 || paymentSubmitting) return;
+    if (!paymentProofFile) {
+      setPaymentError("Bukti transfer wajib diupload");
+      return;
+    }
+
+    setPaymentSubmitting(true);
+    setPaymentError("");
+    setPaymentSuccess("");
+    try {
+      const paymentProof = await readStoredImage(paymentProofFile);
+      const response = await fetch("/api/agent-credit/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          application_id: latestApplication.id,
+          amount: statusPaymentDue,
+          payment_method: selectedPaymentMethod,
+          note: `Pelunasan saldo kredit agent via ${selectedPayment.title}`,
+          payment_proof: paymentProof,
+        }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; item?: AgentCreditApplication };
+      if (!response.ok || !body.ok) {
+        throw new Error(body.error || "Konfirmasi pembayaran gagal diproses");
+      }
+      setPaymentProofFile(null);
+      setPaymentProofName("");
+      setPaymentSuccess("Pembayaran terkirim. Tim PulsaKilat akan memverifikasi bukti pelunasan.");
+      router.refresh();
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : "Konfirmasi pembayaran gagal diproses");
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -480,7 +595,15 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
       if (!response.ok || !body.ok) {
         throw new Error(body.error || "Pengajuan gagal dikirim");
       }
-      if (body.item) setLatestApplication(body.item);
+      if (body.item) {
+        setLatestApplication(body.item);
+        setApplications((current) => {
+          const nextItem = body.item as AgentCreditApplication;
+          const exists = current.some((item) => item.id === nextItem.id);
+          return exists ? current.map((item) => (item.id === nextItem.id ? nextItem : item)) : [nextItem, ...current];
+        });
+        setActiveCreditTab("list");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pengajuan gagal dikirim");
     } finally {
@@ -517,6 +640,267 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
       </section>
 
       <div className="-mt-4 space-y-4 px-3">
+        <section className="overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-[0_20px_48px_rgba(6,78,59,0.12)]">
+          <div className="flex items-center gap-3 border-b border-emerald-50 p-4">
+            <span className="relative h-16 w-16 shrink-0 rounded-[22px] bg-emerald-50 p-2 ring-1 ring-emerald-100">
+              <Image src={creditLevelImage} alt={creditLevelName} fill sizes="64px" className="object-contain p-1" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-black text-slate-950">{name || "Agent PulsaKilat"}</p>
+              <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
+                {acceptedApplications} pengajuan diterima • Limit aktif {formatIDR(creditLimitAmount)}
+              </p>
+            </div>
+            <span className="rounded-full bg-emerald-950 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">
+              {levelSubtitle}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 p-4 min-[380px]:grid-cols-2">
+            <div className="rounded-[24px] bg-[linear-gradient(135deg,#047857,#16a34a,#84cc16)] p-4 text-white shadow-[0_18px_34px_rgba(4,120,87,0.22)]">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/75">Saldo kredit tersedia</p>
+              <p className="mt-2 text-2xl font-black">{formatIDR(currentAvailableCredit || totalAvailableCredit)}</p>
+              <p className="mt-2 text-[10px] font-semibold leading-4 text-white/80">Terpakai {formatIDR(currentOutstanding)} dari limit aktif.</p>
+            </div>
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Tagihan terpakai</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(currentOutstanding)}</p>
+              <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">Wajib bayar lunas saat jatuh tempo.</p>
+            </div>
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Limit kredit</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(creditLimitAmount)}</p>
+              <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">Plafon aktif setelah disetujui master.</p>
+            </div>
+          </div>
+
+          <div className="mx-4 mb-4 h-2 rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-[linear-gradient(90deg,#047857,#84cc16)]"
+              style={{ width: `${Math.min(100, Math.round((currentOutstanding / Math.max(creditLimitAmount, 1)) * 100))}%` }}
+            />
+          </div>
+        </section>
+
+        <section className="grid grid-cols-2 gap-2 rounded-[24px] border border-emerald-100 bg-emerald-50 p-2 shadow-[0_14px_30px_rgba(6,78,59,0.08)]">
+          <button
+            type="button"
+            onClick={() => setActiveCreditTab("list")}
+            className={activeCreditTab === "list"
+              ? "flex min-h-14 items-center gap-3 rounded-[20px] bg-white px-3 text-left text-[#047857] shadow-[0_12px_22px_rgba(6,78,59,0.10)]"
+              : "flex min-h-14 items-center gap-3 rounded-[20px] px-3 text-left text-slate-500"}
+          >
+            <FileText className="h-5 w-5 shrink-0" strokeWidth={2.4} />
+            <span className="min-w-0">
+              <span className="block truncate text-xs font-black">Semua Peminjam</span>
+              <span className="block truncate text-[10px] font-semibold">{totalApplications} pengajuan tersimpan</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveCreditTab("new")}
+            className={activeCreditTab === "new"
+              ? "flex min-h-14 items-center gap-3 rounded-[20px] bg-white px-3 text-left text-[#047857] shadow-[0_12px_22px_rgba(6,78,59,0.10)]"
+              : "flex min-h-14 items-center gap-3 rounded-[20px] px-3 text-left text-slate-500"}
+          >
+            <UserRound className="h-5 w-5 shrink-0" strokeWidth={2.4} />
+            <span className="min-w-0">
+              <span className="block truncate text-xs font-black">Daftar Baru</span>
+              <span className="block truncate text-[10px] font-semibold">Tambah orang yang ingin meminjam</span>
+            </span>
+          </button>
+        </section>
+
+        {activeCreditTab === "list" ? (
+          <section className="rounded-[26px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#047857]">Data Pengajuan Agent</p>
+            <h2 className="mt-1 text-xl font-black leading-6 text-slate-950">Orang yang didaftarkan</h2>
+            <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
+              Semua pengajuan tersimpan rapi di sini. Pilih salah satu untuk melihat status dan detail pengajuan.
+            </p>
+
+            <div className="mt-4 grid grid-cols-4 overflow-hidden rounded-[22px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)]">
+              {[
+                ["Total", totalApplications],
+                ["Menunggu", pendingApplications],
+                ["Diterima", acceptedApplications],
+                ["Ditolak", rejectedApplications],
+              ].map(([label, value]) => (
+                <div key={label} className="border-r border-emerald-100 px-2 py-3 text-center last:border-r-0">
+                  <p className="text-lg font-black text-slate-950">{value}</p>
+                  <p className="mt-1 text-[9px] font-black text-slate-500">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-slate-400">
+              <SearchCheck className="h-4 w-4 shrink-0" strokeWidth={2.4} />
+              <span className="truncate text-xs font-semibold">Cari nama, toko, nomor, atau ID...</span>
+            </div>
+
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {["Semua", "Menunggu", "Diterima", "Ditolak"].map((filter, index) => (
+                <span
+                  key={filter}
+                  className={index === 0
+                    ? "shrink-0 rounded-full border border-[#047857] bg-white px-3 py-2 text-[10px] font-black text-[#047857]"
+                    : "shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-500"}
+                >
+                  {filter}
+                </span>
+              ))}
+            </div>
+
+            <p className="mt-2 text-[10px] font-semibold text-slate-500">
+              Menampilkan {listApplications.length} dari {totalApplications} pengajuan
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {listApplications.length ? (
+                listApplications.map((item, index) => {
+                  const data = item.applicant_data || {};
+                  const agentName = String(data.agent_name || data.nama_lengkap || `Agent PulsaKilat ${index + 1}`);
+                  const storeName = String(data.store_name || data.nama_toko || "Pengajuan kredit saldo");
+                  return (
+                    <div key={item.id || index} className="flex items-center gap-3 rounded-[22px] border border-emerald-100 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
+                        <FileText className="h-5 w-5" strokeWidth={2.4} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black text-slate-950">{agentName}</p>
+                        <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-500">{storeName}</p>
+                        <p className="mt-1 text-xs font-black text-[#047857]">{formatIDR(Number(item.approved_amount || item.requested_amount || 0))}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${statusClassName(item)}`}>
+                          {statusLabel(item)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLatestApplication(item);
+                            setActiveCreditTab("status");
+                          }}
+                          className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-2 text-[10px] font-black text-[#047857]"
+                        >
+                          Lihat Status
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-[24px] border border-dashed border-emerald-200 bg-emerald-50/40 px-4 py-10 text-center">
+                  <UserRound className="mx-auto h-9 w-9 text-[#047857]" strokeWidth={2.2} />
+                  <p className="mt-3 text-sm font-black text-slate-950">Belum ada pengajuan</p>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-500">Mulai dari tab Daftar Baru untuk membuat pengajuan kredit saldo.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : activeCreditTab === "status" && latestApplication ? (
+          <section className="space-y-4">
+            <div className="relative overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4_0%,#ffffff_72%)] p-5 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
+              <div className="pointer-events-none absolute -right-14 -top-14 h-32 w-32 rounded-full bg-sky-100/70" />
+              <div className="relative flex items-start justify-between gap-3">
+                <span className={statusIsRejected ? "grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-rose-100" : "grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-[#047857] ring-1 ring-emerald-200"}>
+                  {statusIsRejected ? <XCircle className="h-7 w-7" strokeWidth={2.5} /> : <BadgeCheck className="h-7 w-7" strokeWidth={2.5} />}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveCreditTab("list")}
+                  className="rounded-full border border-emerald-100 bg-white px-3 py-2 text-[10px] font-black text-[#047857] shadow-[0_10px_22px_rgba(6,78,59,0.08)]"
+                >
+                  Kembali
+                </button>
+              </div>
+
+              <p className={statusIsRejected ? "relative mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-rose-600" : "relative mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-[#047857]"}>
+                {statusIsRejected ? "Pengajuan Ditolak" : statusIsPaid ? "Kredit Lunas" : statusIsWaiting ? "Menunggu Proses" : "Pengajuan Disetujui"}
+              </p>
+              <h2 className="relative mt-1 text-2xl font-black leading-7 text-slate-950">{statusHeadline}</h2>
+              <p className="relative mt-2 text-[11px] font-semibold leading-5 text-slate-500">
+                {statusIsRejected
+                  ? "Data belum bisa diproses. Perbaiki catatan dari analis lalu ajukan kembali."
+                  : statusIsWaiting
+                    ? "Pengajuan sudah tercatat dan sedang diproses oleh tim PulsaKilat. Status akan berubah setelah keputusan selesai."
+                    : "Nominal yang diterima masuk ke saldo kredit agent. Saldo ini terpisah dari saldo transaksi biasa dan pelunasannya dilakukan sekaligus."}
+              </p>
+
+              <div className="relative mt-5 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
+                <span className="min-w-0 truncate text-xs font-black text-slate-600">{statusApplicationCode}</span>
+                <span className="shrink-0 text-sm font-black text-[#047857]">{formatIDR(statusAmount)}</span>
+              </div>
+
+              <div className={statusIsRejected ? "relative mt-4 rounded-[24px] bg-[linear-gradient(135deg,#be123c,#fb7185)] p-5 text-white shadow-[0_18px_34px_rgba(225,29,72,0.20)]" : statusIsWaiting ? "relative mt-4 rounded-[24px] bg-[linear-gradient(135deg,#b45309,#f59e0b)] p-5 text-white shadow-[0_18px_34px_rgba(245,158,11,0.20)]" : "relative mt-4 rounded-[24px] bg-[linear-gradient(135deg,#047857,#16a34a,#22c55e)] p-5 text-white shadow-[0_18px_34px_rgba(4,120,87,0.22)]"}>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/15 ring-1 ring-white/20">
+                    {statusIsRejected ? <XCircle className="h-5 w-5" strokeWidth={2.5} /> : <BadgeCheck className="h-5 w-5" strokeWidth={2.5} />}
+                  </span>
+                  <div>
+                    <p className="text-3xl font-black tracking-tight">{statusBandLabel}</p>
+                    <p className="mt-1 text-[10px] font-semibold text-white/80">{statusBandSubcopy}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative mt-4 h-1.5 rounded-full bg-[linear-gradient(90deg,#6d5dfc_0%,#0ea5e9_48%,#10b981_100%)]" />
+
+              <div className="relative mt-4 space-y-3">
+                {statusSteps.map((step) => (
+                  <div key={step} className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-[#047857] bg-white text-[#047857]">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                    <p className="text-[11px] font-black leading-4 text-slate-800">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {!statusIsRejected && !statusIsWaiting ? (
+              <div className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
+                    <FileText className="h-6 w-6" strokeWidth={2.4} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-black text-slate-950">Pelunasan Tagihan Kredit</h3>
+                    <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-500">
+                      Bayar tagihan kredit terpakai satu kali penuh melalui Bank/QRIS, atau minta marketing membantu penagihan langsung ke lokasi.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-2xl bg-[linear-gradient(135deg,#064e3b,#047857,#16a34a)] px-4 py-3 text-white">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-black">Tagihan kredit terpakai</span>
+                    <span className="text-lg font-black">{formatIDR(statusPaymentDue)}</span>
+                  </div>
+                </div>
+                <div className="mt-3 rounded-[22px] border border-slate-200 bg-[#fbfffd] p-4">
+                  <p className="text-xs font-black text-slate-950">Pelunasan Tagihan Kredit</p>
+                  <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-500">
+                    Setelah lunas, saldo kredit tersedia kembali penuh sesuai limit.
+                  </p>
+                  <p className="mt-3 text-lg font-black text-[#047857]">{formatIDR(statusPaymentDue)}</p>
+                  <button
+                    type="button"
+                    disabled={statusPaymentDue <= 0}
+                    onClick={() => {
+                      setPaymentModalOpen(true);
+                      setPaymentError("");
+                      setPaymentSuccess("");
+                    }}
+                    className="mt-3 h-11 w-full rounded-2xl bg-[linear-gradient(135deg,#047857,#16a34a)] text-xs font-black text-white shadow-[0_12px_24px_rgba(4,120,87,0.18)] disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500"
+                  >
+                    {statusPaymentDue <= 0 ? "Tidak Ada Tagihan" : "Bayar Sekarang"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+        ) : (
+          <>
         <section className="rounded-[26px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
           <div className="mb-4 flex items-start gap-3">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
@@ -540,38 +924,8 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Nominal Kredit Saldo</p>
               <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(requestedAmount)}</p>
               <p className="mt-1 text-[10px] font-semibold text-slate-400">
-                Pilih nominal yang sudah ditentukan, maksimal {formatIDR(creditLimitAmount)}.
+                Nominal kredit saldo sudah tetap dan tidak bisa diubah.
               </p>
-              <button
-                type="button"
-                onClick={() => setAmountPickerOpen((value) => !value)}
-                className="mt-3 flex h-11 w-full items-center justify-between rounded-2xl border border-emerald-200 bg-white px-3 text-left text-xs font-black text-[#047857] shadow-[0_8px_18px_rgba(6,78,59,0.05)] transition hover:border-emerald-400"
-              >
-                <span>{amountPickerOpen ? "Tutup pilihan nominal" : "Buka pilihan nominal"}</span>
-                <ChevronRight className={amountPickerOpen ? "h-4 w-4 rotate-90 transition" : "h-4 w-4 transition"} strokeWidth={2.6} />
-              </button>
-              {amountPickerOpen ? (
-                <div className="mt-3 grid max-h-56 grid-cols-2 gap-2 overflow-y-auto rounded-2xl border border-emerald-100 bg-white/70 p-2 min-[380px]:grid-cols-3">
-                  {amountOptions.map((amount) => {
-                    const selected = requestedAmount === amount;
-                    return (
-                      <button
-                        key={amount}
-                        type="button"
-                        onClick={() => {
-                          setSelectedRequestedAmount(amount);
-                          setAmountPickerOpen(false);
-                        }}
-                        className={selected
-                          ? "rounded-2xl border border-emerald-500 bg-emerald-950 px-3 py-2 text-xs font-black text-white shadow-[0_10px_22px_rgba(6,78,59,0.18)]"
-                          : "rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-[#047857] transition hover:border-emerald-400 hover:bg-emerald-100"}
-                      >
-                        {formatIDR(amount)}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
               <input type="hidden" name="requested_amount" value={requestedAmount} />
             </div>
           </div>
@@ -632,16 +986,16 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
               <p className="mt-1 text-base font-black text-slate-950">{formatIDR(requestedAmount)}</p>
             </div>
             <div className="rounded-2xl bg-sky-50 px-3 py-3 ring-1 ring-sky-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-sky-700">Kredit Berjalan</p>
-              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(totalActiveCredit || currentOutstanding)}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-sky-700">Kredit Tersedia</p>
+              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(totalAvailableCredit || currentAvailableCredit)}</p>
             </div>
             <div className="rounded-2xl bg-lime-50 px-3 py-3 ring-1 ring-lime-100">
               <p className="text-[9px] font-black uppercase tracking-[0.12em] text-lime-700">Sudah Lunas</p>
               <p className="mt-1 text-base font-black text-slate-950">{formatIDR(totalPaidAmount)}</p>
             </div>
             <div className="rounded-2xl bg-amber-50 px-3 py-3 ring-1 ring-amber-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">Refill</p>
-              <p className="mt-1 text-sm font-black text-slate-950">{canRefill ? "Bisa diajukan" : totalActiveCredit > 0 ? "Lunasi dulu" : "Siap diajukan"}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">Tagihan</p>
+              <p className="mt-1 text-sm font-black text-slate-950">{totalActiveCredit > 0 ? "Wajib lunas" : "Bersih"}</p>
             </div>
           </div>
         </section>
@@ -660,7 +1014,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
             <li>1. Pinjaman saldo hanya digunakan untuk kebutuhan transaksi operasional di PulsaKilat.</li>
             <li>2. Semua data, foto dokumen, selfie memegang KTP, selfie dengan marketing, dan tanda tangan wajib benar serta dapat dipertanggungjawabkan.</li>
             <li>3. Pembayaran atau pelunasan wajib disertai bukti transfer yang valid.</li>
-            <li>4. Agent hanya bisa mengajukan refill setelah pinjaman sebelumnya lunas dan tidak ada pembayaran yang bermasalah.</li>
+            <li>4. Agent wajib melunasi tagihan kredit terpakai secara penuh sesuai jadwal jatuh tempo.</li>
             <li>5. Jika pembayaran terlambat lebih dari 3 hari, akun perlu evaluasi/perbaikan sebelum bisa naik limit atau mengajukan refill.</li>
             <li>6. PulsaKilat berhak menolak, menunda, atau mengevaluasi ulang pengajuan jika data/bukti tidak sesuai.</li>
           </ol>
@@ -669,7 +1023,7 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
               {agreed ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
             </span>
             <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="sr-only" />
-            <span className="text-[11px] font-black leading-4 text-slate-950">Saya sudah membaca, memahami, dan menyetujui syarat & ketentuan pinjaman saldo PulsaKilat.</span>
+            <span className="text-[11px] font-black leading-4 text-slate-950">Saya sudah membaca, memahami, dan menyetujui syarat & ketentuan kredit saldo PulsaKilat.</span>
           </label>
         </section>
 
@@ -752,7 +1106,116 @@ export function UserAgentCreditPageContent({ name, email, phone, initialApplicat
         </button>
 
         <p className="pb-2 text-center text-[10px] font-semibold text-[#047857]">Dokumen hanya digunakan untuk verifikasi pengajuan agent PulsaKilat.</p>
+          </>
+        )}
       </div>
+
+      {paymentModalOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/64 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-[520px] rounded-[26px] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.34)] sm:p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#047857]">Pelunasan Kredit</p>
+                <h3 className="mt-1 text-xl font-black leading-6 text-slate-950">Pelunasan Tagihan Kredit</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentModalOpen(false)}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                aria-label="Tutup pelunasan kredit"
+              >
+                <XCircle className="h-5 w-5" strokeWidth={2.3} />
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-[22px] bg-[linear-gradient(135deg,#064e3b,#047857,#16a34a)] p-4 text-white shadow-[0_16px_34px_rgba(4,120,87,0.20)]">
+              <p className="text-[10px] font-semibold text-white/80">Total yang harus dibayar</p>
+              <p className="mt-2 text-3xl font-black tracking-tight">{formatIDR(statusPaymentDue)}</p>
+              <p className="mt-2 text-[10px] font-semibold text-white/78">Nominal penuh sesuai kredit yang sudah terpakai</p>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {paymentMethods.map((method) => {
+                const MethodIcon = method.icon;
+                const selected = method.id === selectedPaymentMethod;
+                return (
+                  <button
+                    key={method.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPaymentMethod(method.id);
+                      setPaymentError("");
+                    }}
+                    className={selected
+                      ? "flex min-h-[58px] w-full items-center gap-3 rounded-[18px] border border-[#047857] bg-emerald-50 px-3 text-left shadow-[0_10px_22px_rgba(4,120,87,0.08)]"
+                      : "flex min-h-[58px] w-full items-center gap-3 rounded-[18px] border border-slate-200 bg-white px-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40"}
+                  >
+                    <span className={selected ? "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#047857]" : "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]"}>
+                      <MethodIcon className="h-5 w-5" strokeWidth={2.4} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-black text-slate-800">{method.title}</span>
+                      <span className="mt-1 block truncate text-[10px] font-semibold text-slate-400">{method.desc}</span>
+                    </span>
+                    {selected ? <Check className="h-4 w-4 shrink-0 text-[#047857]" strokeWidth={3} /> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            <label className="mt-3 flex min-h-[54px] cursor-pointer items-center gap-3 rounded-[18px] border border-dashed border-emerald-200 bg-emerald-50/30 px-3 transition hover:bg-emerald-50">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-[#047857]">
+                <Upload className="h-5 w-5" strokeWidth={2.4} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-black text-slate-800">Bukti transfer wajib</span>
+                <span className="mt-1 block truncate text-[10px] font-semibold text-slate-400">{paymentProofName || "Unggah foto/screenshot bukti pembayaran"}</span>
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  setPaymentProofFile(file);
+                  setPaymentProofName(file?.name || "");
+                  setPaymentError("");
+                }}
+              />
+            </label>
+
+            {paymentError ? (
+              <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-[11px] font-black text-rose-600">
+                {paymentError}
+              </div>
+            ) : null}
+            {paymentSuccess ? (
+              <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-[11px] font-black text-[#047857]">
+                {paymentSuccess}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              disabled={paymentSubmitting || statusPaymentDue <= 0}
+              onClick={handleCreditPaymentConfirmation}
+              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-[linear-gradient(135deg,#047857,#16a34a,#84cc16)] text-xs font-black text-white shadow-[0_14px_28px_rgba(4,120,87,0.18)] transition disabled:opacity-60"
+            >
+              {paymentSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.6} />
+                  Memproses Pembayaran
+                </>
+              ) : (
+                <>
+                  Konfirmasi Pembayaran
+                  <ArrowRight className="h-4 w-4" strokeWidth={2.6} />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }
