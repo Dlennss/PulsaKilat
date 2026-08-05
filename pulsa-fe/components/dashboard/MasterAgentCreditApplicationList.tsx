@@ -485,7 +485,7 @@ export function MasterAgentCreditApplicationList({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="w-full bg-transparent outline-none placeholder:text-slate-400"
-            placeholder="Cari nama agent, toko, WA, NIK, atau ID pengajuan"
+            placeholder="Cari nama agent"
           />
         </label>
         <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 xl:pb-0">
