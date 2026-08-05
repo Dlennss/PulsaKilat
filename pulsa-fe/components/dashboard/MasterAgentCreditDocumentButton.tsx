@@ -95,10 +95,10 @@ export function MasterAgentCreditDocumentButton({
   }
 
   const previewModal = open ? (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-sm">
-      <section className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_28px_80px_rgba(15,23,42,0.35)]">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/65 p-0 backdrop-blur-sm sm:items-center sm:p-3">
+      <section className="flex max-h-[100svh] w-full max-w-4xl flex-col overflow-hidden rounded-t-[24px] bg-white shadow-[0_28px_80px_rgba(15,23,42,0.35)] sm:max-h-[92vh] sm:rounded-[28px]">
+        <div className="flex min-w-0 items-center gap-2 border-b border-slate-100 px-3 py-3 sm:gap-3 sm:px-4">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 sm:h-11 sm:w-11">
             <FileText className="h-5 w-5" strokeWidth={2.4} />
           </div>
           <div className="min-w-0 flex-1">
@@ -108,21 +108,21 @@ export function MasterAgentCreditDocumentButton({
           <button
             type="button"
             onClick={downloadPDF}
-            className="inline-flex h-10 items-center gap-2 rounded-2xl bg-emerald-600 px-3 text-xs font-black text-white transition hover:bg-emerald-700"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl bg-emerald-600 px-2.5 text-[11px] font-black text-white transition hover:bg-emerald-700 sm:gap-2 sm:px-3 sm:text-xs"
           >
             <Download className="h-4 w-4" strokeWidth={2.5} />
-            Download
+            <span className="hidden min-[390px]:inline">Download</span>
           </button>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
             aria-label="Tutup preview"
           >
             <X className="h-4 w-4" strokeWidth={2.6} />
           </button>
         </div>
-        <div className="max-h-[78vh] overflow-y-auto bg-slate-100 p-3 sm:p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100 p-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-5">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
             {readyDocuments.map((doc, index) => (
               <figure
@@ -132,7 +132,7 @@ export function MasterAgentCreditDocumentButton({
                 <figcaption className="border-b border-slate-100 px-4 py-3 text-xs font-black text-slate-700">
                   {doc.label}
                 </figcaption>
-                <div className="relative min-h-[320px] bg-slate-50 sm:min-h-[460px]">
+                <div className="relative h-[min(62svh,520px)] min-h-[260px] bg-slate-50 sm:min-h-[460px]">
                   <Image
                     src={doc.src}
                     alt={`${doc.label} ${agentName}`}

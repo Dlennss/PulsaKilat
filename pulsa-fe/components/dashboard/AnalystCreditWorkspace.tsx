@@ -213,8 +213,8 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   ];
 
   return (
-    <main className="-m-2 min-h-screen bg-[#eef7f2] p-3 text-slate-950 sm:p-5 lg:p-7">
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+    <main className="min-h-screen overflow-x-hidden bg-[#eef7f2] p-0 text-slate-950 sm:p-5 lg:p-7">
+      <section className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-3 sm:gap-5">
         {view === "decision" ? (
           <div className="rounded-[26px] border border-emerald-100 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
             <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Analisis Kredit</p>
@@ -224,8 +224,8 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
             </p>
           </div>
         ) : null}
-        <div className="overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-          <div className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_88%_6%,rgba(190,242,100,0.52),transparent_28%),linear-gradient(135deg,#052e26_0%,#047857_56%,#31c653_115%)] px-5 py-6 text-white sm:px-7 lg:px-9 lg:py-8">
+        <div className="min-w-0 overflow-hidden border border-emerald-100 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)] sm:rounded-[28px]">
+          <div className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_88%_6%,rgba(190,242,100,0.52),transparent_28%),linear-gradient(135deg,#052e26_0%,#047857_56%,#31c653_115%)] px-4 py-5 text-white sm:px-7 lg:px-9 lg:py-8">
             <div className="absolute -right-14 -top-20 h-56 w-56 rounded-full border border-white/20 bg-white/10" />
             {view === "decision" ? <div className="absolute bottom-0 right-28 h-32 w-32 rounded-full border border-white/15 bg-white/8" /> : null}
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -251,7 +251,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
             </div>
           </div>
 
-          <div className="space-y-5 p-4 sm:p-6 lg:p-7">
+          <div className="min-w-0 space-y-4 p-2 sm:space-y-5 sm:p-6 lg:p-7">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {stats.map((item) => {
                 const StatIcon = item.icon;

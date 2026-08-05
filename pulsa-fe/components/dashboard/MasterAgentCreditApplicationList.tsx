@@ -462,7 +462,7 @@ export function MasterAgentCreditApplicationList({
   }
 
   return (
-    <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:p-5">
+    <section className="min-w-0 rounded-[22px] border border-slate-200 bg-white p-2 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:rounded-[28px] sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">{eyebrow || (showActions ? "Meja Review" : "Arsip Kredit")}</p>
@@ -478,7 +478,7 @@ export function MasterAgentCreditApplicationList({
         </span>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 xl:flex-row xl:items-center">
+      <div className="mt-4 flex min-w-0 flex-col gap-3 sm:mt-5 xl:flex-row xl:items-center">
         <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-500 focus-within:border-emerald-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-100">
           <Search className="h-4 w-4" />
           <input
@@ -555,7 +555,7 @@ export function MasterAgentCreditApplicationList({
         </div>
       ) : null}
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-4 min-w-0 space-y-3 sm:mt-5">
         {filteredApplications.length ? (
           filteredApplications.map((item) => {
             const agentName = getApplicantText(item, "agent_name", item.member_name || "Agent");
@@ -599,7 +599,7 @@ export function MasterAgentCreditApplicationList({
                   ? "Agent belum mencentang persetujuan syarat & ketentuan."
                   : "Agent belum tanda tangan persetujuan.";
             return (
-              <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)]">
+              <article key={item.id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)] sm:p-3">
                 <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-950 text-xs font-black text-lime-300">
@@ -647,8 +647,8 @@ export function MasterAgentCreditApplicationList({
                 ) : null}
 
                 {openId === item.id ? (
-                  <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3">
-                    <div className="grid gap-3 text-[11px] font-semibold text-slate-500 lg:grid-cols-2">
+                  <div className="mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-2 sm:p-3">
+                    <div className="grid min-w-0 gap-2 text-[11px] font-semibold text-slate-500 sm:gap-3 lg:grid-cols-2">
                       <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
                         <p className="font-black text-slate-950">Status Pinjaman</p>
                         <p className="mt-1 break-words leading-5">{getDisplayStatus(item)}</p>
@@ -682,9 +682,9 @@ export function MasterAgentCreditApplicationList({
                         </div>
                       ) : null}
                     </div>
-                    <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                    <div className="mt-3 grid min-w-0 gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                       <MasterAgentCreditDocumentButton agentName={agentName} documents={docs} />
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex min-w-0 flex-wrap gap-2">
                         {docs.map((doc) => (
                           <span
                             key={doc.label}
@@ -695,7 +695,7 @@ export function MasterAgentCreditApplicationList({
                         ))}
                       </div>
                     </div>
-                    <div className="mt-3 rounded-2xl border border-emerald-100 bg-white p-3">
+                    <div className="mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-white p-2 sm:p-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-black text-slate-950">Riwayat Pembayaran</p>
