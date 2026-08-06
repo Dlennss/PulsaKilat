@@ -13,7 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { getAgentCreditApplications, type AgentCreditApplication } from "@/lib/api.auth";
-import { attachAgentCreditPaymentsFallback } from "@/lib/agent-credit-payment-fallback.server";
+import { attachAgentCreditPaymentsFallback, getAgentCreditApplicationsDatabaseFallback } from "@/lib/agent-credit-payment-fallback.server";
 import { getAppServerSession } from "@/lib/server-auth";
 import { MasterAgentCreditApplicationList } from "@/components/dashboard/MasterAgentCreditApplicationList";
 
@@ -32,20 +32,20 @@ export type AnalystCreditWorkspaceView =
 
 const viewConfig = {
   decision: {
-    eyebrow: "Analisis Kredit",
+    eyebrow: "Operator Kredit",
     title: "Keputusan Akhir Kredit Agent",
     desc: "Periksa data lapangan, dokumen, tanda tangan marketing, lalu beri keputusan akhir.",
     listTitle: "Data Siap Diputuskan",
     emptyTitle: "Belum ada data untuk diputuskan",
-    emptyDescription: "Data akan muncul setelah marketing tanda tangan dan mengirim pengajuan ke analis.",
+    emptyDescription: "Data akan muncul setelah marketing tanda tangan dan mengirim pengajuan ke operator.",
     icon: ShieldCheck,
     showActions: true,
   },
   queue: {
-    eyebrow: "Antrean Analisis",
+    eyebrow: "Antrean Operator",
     title: "Antrean Pengajuan",
-    desc: "Urutan pengajuan yang menunggu pengecekan dokumen, risiko, dan keputusan analis.",
-    listTitle: "Antrean Siap Analisis",
+    desc: "Urutan pengajuan yang menunggu pengecekan dokumen, risiko, dan keputusan operator.",
+    listTitle: "Antrean Siap Dicek",
     emptyTitle: "Antrean masih kosong",
     emptyDescription: "Belum ada pengajuan baru dari marketing.",
     icon: ClipboardList,
@@ -54,10 +54,10 @@ const viewConfig = {
   accepted: {
     eyebrow: "Kredit Diterima",
     title: "Kredit yang Sudah Diterima",
-    desc: "Daftar pinjaman yang sudah disetujui analis dan bisa dipantau statusnya.",
+    desc: "Daftar pinjaman yang sudah disetujui operator dan bisa dipantau statusnya.",
     listTitle: "Daftar Kredit Diterima",
     emptyTitle: "Belum ada kredit diterima",
-    emptyDescription: "Pinjaman yang disetujui analis akan tampil di sini.",
+    emptyDescription: "Pinjaman yang disetujui operator akan tampil di sini.",
     icon: BadgeCheck,
     showActions: false,
   },
@@ -87,17 +87,17 @@ const viewConfig = {
     desc: "Pengajuan yang perlu diperbaiki agent atau tidak layak dicairkan.",
     listTitle: "Daftar Penolakan",
     emptyTitle: "Belum ada data ditolak",
-    emptyDescription: "Keputusan tolak dari analis akan masuk ke daftar ini.",
+    emptyDescription: "Keputusan tolak dari operator akan masuk ke daftar ini.",
     icon: XCircle,
     showActions: false,
   },
   archive: {
     eyebrow: "Arsip Keputusan",
     title: "Arsip Semua Keputusan",
-    desc: "Riwayat keputusan analis untuk audit, pengecekan ulang, dan monitoring kredit.",
-    listTitle: "Arsip Keputusan Analis",
+    desc: "Riwayat keputusan operator untuk audit, pengecekan ulang, dan monitoring kredit.",
+    listTitle: "Arsip Keputusan Operator",
     emptyTitle: "Arsip masih kosong",
-    emptyDescription: "Data yang sudah diputuskan analis akan disimpan di sini.",
+    emptyDescription: "Data yang sudah diputuskan operator akan disimpan di sini.",
     icon: Archive,
     showActions: false,
   },
@@ -123,7 +123,7 @@ function isRejected(item: AgentCreditApplication) {
 
 function isPaid(item: AgentCreditApplication) {
   const loanStatus = String(item.loan_status || "").toLowerCase();
-  return loanStatus === "paid" || (item.status === "approved" && Number(item.outstanding_amount || 0) <= 0);
+  return loanStatus === "paid";
 }
 
 function hasPaymentProof(item: AgentCreditApplication) {
@@ -137,12 +137,13 @@ function getItemsForView(view: AnalystCreditWorkspaceView, applications: AgentCr
   const analysisItems = applications.filter((item) => item.status === "analysis_review");
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
+  const usedCredits = activeCredits.filter((item) => Number(item.outstanding_amount || 0) > 0);
   const proofItems = applications.filter((item) => Number(item.payment_count || 0) > 0 || (item.payments || []).length > 0 || hasPaymentProof(item));
   const rejectedItems = applications.filter(isRejected);
   const archiveItems = applications.filter((item) => item.status === "approved" || isRejected(item) || isPaid(item));
 
   if (view === "accepted") return approvedItems;
-  if (view === "repayment") return activeCredits;
+  if (view === "repayment") return usedCredits;
   if (view === "proof") return proofItems;
   if (view === "rejected") return rejectedItems;
   if (view === "archive") return archiveItems;
@@ -150,22 +151,30 @@ function getItemsForView(view: AnalystCreditWorkspaceView, applications: AgentCr
 }
 
 function getAgentName(item: AgentCreditApplication) {
-  return item.agent_name || item.applicant_data?.nama_lengkap || item.agent_email || "Agent PulsaKilat";
+  const applicantName = item.applicant_data?.nama_lengkap;
+  return item.agent_name || (typeof applicantName === "string" && applicantName.trim() ? applicantName : "") || item.agent_email || "Agent PulsaKilat";
 }
 
 function getAgentStore(item: AgentCreditApplication) {
-  return item.store_name || item.applicant_data?.nama_toko || item.applicant_data?.alamat_toko || "Retail PulsaKilat";
+  const storeName = item.applicant_data?.nama_toko;
+  const storeAddress = item.applicant_data?.alamat_toko;
+  return item.store_name ||
+    (typeof storeName === "string" && storeName.trim() ? storeName : "") ||
+    (typeof storeAddress === "string" && storeAddress.trim() ? storeAddress : "") ||
+    "Retail PulsaKilat";
 }
 
 export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWorkspaceView }) {
   const config = viewConfig[view];
   const Icon = config.icon;
   const session = (await getAppServerSession()) as SessionShape | null;
-  const rawApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const backendApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const rawApplications = backendApplications.length ? backendApplications : await getAgentCreditApplicationsDatabaseFallback();
   const applications = await attachAgentCreditPaymentsFallback(rawApplications);
   const analysisItems = applications.filter((item) => item.status === "analysis_review");
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
+  const usedCredits = activeCredits.filter((item) => Number(item.outstanding_amount || 0) > 0);
   const rejectedItems = applications.filter(isRejected);
   const items = getItemsForView(view, applications);
   const nominalApproved = approvedItems.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
@@ -173,17 +182,18 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const proofItems = applications.filter((item) => Number(item.payment_count || 0) > 0 || (item.payments || []).length > 0 || hasPaymentProof(item));
   const priorityReviewItems = analysisItems.slice(0, 3);
   const activePriorityItems = activeCredits.slice(0, 3);
+  const usedPriorityItems = usedCredits.slice(0, 3);
   const paidCredits = approvedItems.filter(isPaid);
   const totalPaidAmount = approvedItems.reduce((total, item) => {
     const paymentsTotal = (item.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
     return total + Number(item.paid_amount || paymentsTotal || 0);
   }, 0);
-  const totalOutstandingAmount = activeCredits.reduce((total, item) => total + Number(item.outstanding_amount || item.approved_amount || 0), 0);
+  const totalOutstandingAmount = activeCredits.reduce((total, item) => total + Number(item.outstanding_amount || 0), 0);
 
   const stats = [
     { label: view === "decision" ? "Berkas Masuk" : "Perlu Keputusan", value: String(analysisItems.length), hint: "Dikirim marketing", icon: ShieldCheck, tone: "from-emerald-500 to-lime-400" },
     { label: "Kredit Diterima", value: String(approvedItems.length), hint: formatIDR(nominalApproved), icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
-    { label: "Belum Lunas", value: String(activeCredits.length), hint: "Masih dipantau", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
+    { label: "Tagihan Aktif", value: String(usedCredits.length), hint: activeCredits.length - usedCredits.length ? `${activeCredits.length - usedCredits.length} limit belum dipakai` : "Masih dipantau", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
     { label: "Ditolak", value: String(rejectedItems.length), hint: "Perlu catatan", icon: ShieldAlert, tone: "from-rose-500 to-orange-500" },
   ];
 
@@ -196,17 +206,17 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const queueCards = [
     { label: "Masuk Antrean", value: analysisItems.length, hint: "Dikirim dari marketing", icon: ClipboardList },
     { label: "Siap Dicek", value: decisionReadyItems.length, hint: "Nominal dan berkas tersedia", icon: FileSearch },
-    { label: "Sudah Diterima", value: approvedItems.length, hint: "Keputusan analis selesai", icon: BadgeCheck },
+    { label: "Sudah Diterima", value: approvedItems.length, hint: "Keputusan operator selesai", icon: BadgeCheck },
     { label: "Perlu Catatan", value: rejectedItems.length, hint: "Ditolak atau perlu revisi", icon: MessageSquareText },
   ];
   const acceptedCards = [
     { label: "Total Diterima", value: approvedItems.length, hint: "Semua kredit yang disetujui", icon: BadgeCheck },
-    { label: "Aktif Dipantau", value: activeCredits.length, hint: "Belum lunas dan berjalan", icon: WalletCards },
+    { label: "Limit Aktif", value: activeCredits.length, hint: usedCredits.length ? `${usedCredits.length} sudah terpakai` : "Belum ada tagihan", icon: WalletCards },
     { label: "Sudah Lunas", value: paidCredits.length, hint: "Pembayaran selesai", icon: ShieldCheck },
     { label: "Perlu Lengkap", value: approvedItems.filter((item) => !item.loan_due_date && !isPaid(item)).length, hint: "Butuh jatuh tempo/catatan", icon: MessageSquareText },
   ];
   const repaymentCards = [
-    { label: "Kredit Aktif", value: activeCredits.length, hint: "Menunggu pelunasan", icon: WalletCards },
+    { label: "Tagihan Aktif", value: usedCredits.length, hint: "Kredit yang sudah terpakai", icon: WalletCards },
     { label: "Sudah Lunas", value: paidCredits.length, hint: "Pembayaran selesai", icon: ShieldCheck },
     { label: "Total Dilunasi", value: formatIDR(totalPaidAmount), hint: "Pembayaran tercatat", icon: ReceiptText },
     { label: "Saldo Tertagih", value: formatIDR(totalOutstandingAmount), hint: "Perlu dipantau", icon: ShieldAlert },
@@ -217,10 +227,10 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
       <section className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-3 sm:gap-5">
         {view === "decision" ? (
           <div className="rounded-[26px] border border-emerald-100 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
-            <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Analisis Kredit</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Operator Kredit</p>
             <h1 className="mt-2 text-2xl font-black tracking-normal text-slate-950 sm:text-3xl">Keputusan Akhir Kredit Agent</h1>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-              Analis menjadi pintu akhir. Cek data agent, dokumen, tanda tangan marketing, riwayat pembayaran, lalu putuskan diterima atau ditolak.
+              Operator menjadi pintu akhir. Cek data agent, dokumen, tanda tangan marketing, riwayat pembayaran, lalu putuskan diterima atau ditolak.
             </p>
           </div>
         ) : null}
@@ -243,7 +253,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                     <Icon className="h-7 w-7" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-100">{view === "decision" ? "Ruang Keputusan" : "Panel Analis"}</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-100">{view === "decision" ? "Ruang Keputusan" : "Panel Operator"}</p>
                     <p className="text-xl font-black">{view === "decision" ? "Final Kredit" : "PulsaKilat"}</p>
                   </div>
                 </div>
@@ -277,7 +287,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                 <div className="relative">
                   <div className="absolute -right-16 -top-20 hidden h-44 w-44 rounded-full bg-emerald-100/70 sm:block" />
                   <div className="relative">
-                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Meja Keputusan Analis</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Meja Keputusan Operator</p>
                     <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Kontrol Kelayakan & Keputusan Akhir</h2>
                     <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
                       Semua pengajuan di sini sudah melewati pendampingan marketing. Periksa identitas, dokumen inti, selfie pertemuan, tanda tangan, nominal, dan catatan lapangan sebelum memberi keputusan.
@@ -309,7 +319,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     <div className="rounded-3xl border border-slate-200 bg-white p-4">
                       <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-base font-black text-slate-950">Menunggu keputusan analis</h3>
+                        <h3 className="text-base font-black text-slate-950">Menunggu keputusan operator</h3>
                         <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{priorityReviewItems.length} data</span>
                       </div>
                       <div className="mt-4 space-y-2">
@@ -336,15 +346,18 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                       </div>
                       <div className="mt-4 space-y-2">
                         {activePriorityItems.length ? (
-                          activePriorityItems.map((item) => (
+                          activePriorityItems.map((item) => {
+                            const outstanding = Number(item.outstanding_amount || 0);
+                            return (
                             <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-black text-slate-950">{getAgentName(item)}</p>
-                                <p className="truncate text-xs font-semibold text-slate-500">Sisa tagihan</p>
+                                <p className="truncate text-xs font-semibold text-slate-500">{outstanding > 0 ? "Sisa tagihan" : "Limit belum dipakai"}</p>
                               </div>
-                              <p className="shrink-0 text-sm font-black text-emerald-700">{formatIDR(Number(item.outstanding_amount || item.approved_amount || 0))}</p>
+                              <p className="shrink-0 text-sm font-black text-emerald-700">{formatIDR(outstanding)}</p>
                             </div>
-                          ))
+                          );
+                          })
                         ) : (
                           <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-400">Belum ada kredit aktif yang perlu dipantau.</div>
                         )}
@@ -359,7 +372,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                   <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-lime-100/70" />
                   <div className="relative">
                     <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Antrean Berkas</p>
-                    <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Berkas Siap Dianalisis</h2>
+                    <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Berkas Siap Dicek Operator</h2>
                     <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
                       Cek antrean dari marketing: data agent, dokumen KTP, foto toko, selfie bersama marketing, tanda tangan, nominal kredit, dan catatan lapangan.
                     </p>
@@ -372,7 +385,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                       <ClipboardList className="h-7 w-7" />
                     </span>
                     <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-700">Fokus Analisis</p>
+                      <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-700">Fokus Operator</p>
                       <h3 className="text-xl font-black text-slate-950">{analysisItems.length} pengajuan perlu ditangani</h3>
                       <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
                         Mulai dari pengajuan yang paling lengkap. Setelah dicek, buka detail dan beri keputusan akhir melalui tombol setuju atau tolak.
@@ -407,7 +420,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                       <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Prioritas Antrean</p>
                       <h3 className="mt-1 text-lg font-black text-slate-950">Pengajuan paling baru dari marketing</h3>
                     </div>
-                    <span className="w-fit rounded-full bg-emerald-800 px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-white">Analis</span>
+                    <span className="w-fit rounded-full bg-emerald-800 px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-white">Operator</span>
                   </div>
                   <div className="space-y-2">
                     {priorityReviewItems.length ? (
@@ -417,7 +430,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                             <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">KSA-{item.id}</p>
                             <p className="mt-1 truncate text-base font-black text-slate-950">{getAgentName(item)}</p>
                             <p className="mt-1 truncate text-xs font-semibold text-slate-500">{getAgentStore(item)}</p>
-                            <p className="mt-3 text-xs font-bold text-slate-500">Menunggu keputusan analis</p>
+                            <p className="mt-3 text-xs font-bold text-slate-500">Menunggu keputusan operator</p>
                           </div>
                           <p className="shrink-0 text-lg font-black text-emerald-700">{formatIDR(Number(item.requested_amount || item.recommended_amount || 0))}</p>
                         </div>
@@ -437,7 +450,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                       <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Kredit Aktif</p>
                       <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Agent dengan Kredit Diterima</h2>
                       <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                        Hanya menampilkan pengajuan yang sudah diterima analis. Dari sini analis bisa memantau kredit berjalan, agent yang sudah lunas, dan nominal kredit yang aktif.
+                        Hanya menampilkan pengajuan yang sudah diterima operator. Dari sini operator bisa memantau kredit berjalan, agent yang sudah lunas, dan nominal kredit yang aktif.
                       </p>
                     </div>
                     <span className="relative inline-flex w-fit items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
@@ -502,7 +515,9 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                             <div className="min-w-0">
                               <p className="truncate text-base font-black text-slate-950">{getAgentName(item)}</p>
                               <p className="mt-1 truncate text-xs font-semibold text-slate-500">{getAgentStore(item)}</p>
-                              <p className="mt-2 text-xs font-bold text-emerald-700">{isPaid(item) ? "Sudah lunas" : "Kredit aktif dipantau"}</p>
+                            <p className="mt-2 text-xs font-bold text-emerald-700">
+                              {isPaid(item) ? "Sudah lunas" : Number(item.outstanding_amount || 0) > 0 ? "Kredit aktif dipantau" : "Limit aktif belum dipakai"}
+                            </p>
                             </div>
                             <div className="text-left sm:text-right">
                               <p className="text-lg font-black text-emerald-700">{formatIDR(Number(item.approved_amount || item.requested_amount || 0))}</p>
@@ -565,8 +580,8 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                   </div>
 
                   <div className="mt-5 space-y-2">
-                    {activeCredits.length ? (
-                      activeCredits.slice(0, 6).map((item) => (
+                    {usedPriorityItems.length ? (
+                      usedPriorityItems.slice(0, 6).map((item) => (
                         <div key={item.id} className="flex flex-col gap-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
                             <p className="truncate text-base font-black text-slate-950">{getAgentName(item)}</p>
@@ -574,7 +589,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                             <p className="mt-2 text-xs font-bold text-amber-700">Menunggu pelunasan penuh</p>
                           </div>
                           <div className="text-left sm:text-right">
-                            <p className="text-lg font-black text-emerald-700">{formatIDR(Number(item.outstanding_amount || item.approved_amount || 0))}</p>
+                            <p className="text-lg font-black text-emerald-700">{formatIDR(Number(item.outstanding_amount || 0))}</p>
                             <p className="mt-1 text-xs font-semibold text-slate-400">
                               Kredit {formatIDR(Number(item.approved_amount || item.requested_amount || 0))}
                             </p>
@@ -582,7 +597,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                         </div>
                       ))
                     ) : (
-                      <div className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-400">Belum ada kredit aktif yang menunggu pelunasan.</div>
+                      <div className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-400">Belum ada tagihan kredit yang menunggu pelunasan.</div>
                     )}
                   </div>
                 </div>
@@ -594,9 +609,9 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                     <ClipboardList className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-sm font-black text-slate-950">Analis menjadi keputusan akhir kredit.</p>
+                    <p className="text-sm font-black text-slate-950">Operator menjadi keputusan akhir kredit.</p>
                     <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                      Data yang masuk ke panel ini sudah dibantu marketing. Analis cukup cek kelayakan, lalu setujui atau tolak.
+                      Data yang masuk ke panel ini sudah dibantu marketing. Operator cukup cek kelayakan, lalu setujui atau tolak.
                     </p>
                   </div>
                 </div>

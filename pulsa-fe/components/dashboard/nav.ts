@@ -129,6 +129,7 @@ export const adminNavSections: NavSection[] = [
     title: "Akun & Komisi",
     items: [
       { href: "/dashboard/admin/master/members", label: "Akun & Jaringan" },
+      { href: "/dashboard/admin/kredit/pengajuan", label: "Pengajuan Kredit" },
       { href: "/dashboard/admin/komisi/pengaturan", label: "Pengaturan Komisi" },
       { href: "/dashboard/admin/komisi/downline", label: "Komisi Downline" },
     ],
@@ -233,6 +234,7 @@ export const masterNavSections: NavSection[] = [
       { href: "/dashboard/master/akun-agent", label: "Kelola Agent" },
       { href: "/dashboard/master/input-pinjaman-manual", label: "Bantu Pengajuan" },
       { href: "/dashboard/master/pinjaman", label: "Pertemuan & Selfie" },
+      { href: "/dashboard/master/profil-agent", label: "Profil Agent" },
       { href: "/dashboard/master/riwayat-pinjaman", label: "Pelunasan Kredit" },
     ],
   },
@@ -240,15 +242,16 @@ export const masterNavSections: NavSection[] = [
 
 export const analystNavSections: NavSection[] = [
   {
-    title: "Analisa Kredit",
+    title: "Operator Kredit",
     items: [
-      { href: "/dashboard/master/analis", label: "Meja Keputusan" },
-      { href: "/dashboard/master/analis/antrean", label: "Antrean Analisis" },
-      { href: "/dashboard/master/analis/kredit-diterima", label: "Kredit Diterima" },
-      { href: "/dashboard/master/analis/monitor-pelunasan", label: "Monitor Pelunasan" },
-      { href: "/dashboard/master/analis/bukti-pelunasan", label: "Bukti Pelunasan" },
-      { href: "/dashboard/master/analis/penolakan-catatan", label: "Penolakan & Catatan" },
-      { href: "/dashboard/master/analis/arsip-keputusan", label: "Arsip Keputusan" },
+      { href: "/dashboard/master/operator", label: "Meja Keputusan" },
+      { href: "/dashboard/master/operator/antrean", label: "Antrean Operator" },
+      { href: "/dashboard/master/operator/kenaikan-limit", label: "Kenaikan Limit" },
+      { href: "/dashboard/master/operator/kredit-diterima", label: "Kredit Diterima" },
+      { href: "/dashboard/master/operator/monitor-pelunasan", label: "Monitor Pelunasan" },
+      { href: "/dashboard/master/operator/bukti-pelunasan", label: "Bukti Pelunasan" },
+      { href: "/dashboard/master/operator/penolakan-catatan", label: "Penolakan & Catatan" },
+      { href: "/dashboard/master/operator/arsip-keputusan", label: "Arsip Keputusan" },
     ],
   },
 ];

@@ -31,8 +31,8 @@ export default async function MasterDashboardPage() {
   const inAnalysis = applications.filter((item) => item.status === "analysis_review").length;
   const approved = applications.filter((item) => item.status === "approved").length;
   const paidOff = applications.filter((item) => item.loan_status === "paid" || item.status === "paid").length;
-  const activeCredit = applications.filter((item) => item.status === "approved" && Number(item.outstanding_amount || item.approved_amount || 0) > 0);
-  const activeLimit = activeCredit.reduce((total, item) => total + Number(item.outstanding_amount || item.approved_amount || 0), 0);
+  const activeCredit = applications.filter((item) => item.status === "approved" && String(item.loan_status || "").toLowerCase() !== "paid");
+  const activeLimit = activeCredit.reduce((total, item) => total + Number(item.outstanding_amount || 0), 0);
   const needsSelfie = applications.filter(
     (item) => (item.status === "submitted" || item.status === "marketing_review") && !hasDocument(item, "selfie_marketing")
   );
@@ -47,9 +47,9 @@ export default async function MasterDashboardPage() {
   ];
   const workCards = [
     { label: "Perlu Pendampingan", value: String(needsSelfie.length), hint: "Selfie bersama agent belum ada", icon: Camera },
-    { label: "Siap Dianalisis", value: String(inAnalysis), hint: "Data dan pertemuan sudah lengkap", icon: FileSignature },
+    { label: "Siap Dicek Operator", value: String(inAnalysis), hint: "Data dan pertemuan sudah lengkap", icon: FileSignature },
     { label: "Tagihan Offline", value: String(offlineBills.length), hint: "Perlu dikunjungi marketing", icon: WalletCards },
-    { label: "Kredit Aktif", value: String(activeCredit.length), hint: "Sudah diterima, belum lunas", icon: BadgeCheck },
+    { label: "Limit Aktif", value: String(activeCredit.length), hint: activeLimit > 0 ? "Ada tagihan terpakai" : "Belum ada tagihan", icon: BadgeCheck },
   ];
   const closestSelfie = needsSelfie.slice(0, 2);
   const closestAnalysis = readyForAnalysis.slice(0, 2);
@@ -67,7 +67,7 @@ export default async function MasterDashboardPage() {
               </p>
               <h1 className="max-w-2xl text-3xl font-black leading-tight sm:text-4xl">Monitoring Kredit Agent</h1>
               <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-[#dcfce7]">
-                Semua pengajuan tersusun dari yang terbaru. Marketing cek data agent, tanda tangan, selfie lapangan, lalu kirim ke analis untuk keputusan akhir.
+                Semua pengajuan tersusun dari yang terbaru. Marketing cek data agent, tanda tangan, selfie lapangan, lalu kirim ke operator untuk keputusan akhir.
               </p>
             </div>
             <div className="grid h-20 w-20 shrink-0 place-items-center rounded-[26px] border border-white/20 bg-white/18 text-white shadow-lg backdrop-blur">
@@ -104,7 +104,7 @@ export default async function MasterDashboardPage() {
               <div>
                 <h2 className="text-2xl font-black text-slate-950">Kerjakan yang paling penting</h2>
                 <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                  Daftarkan agent, bantu pengajuan, ambil selfie pertemuan, lalu pantau pelunasan. Keputusan kredit tetap dilakukan analis.
+                  Daftarkan agent, bantu pengajuan, ambil selfie pertemuan, lalu pantau pelunasan. Keputusan kredit tetap dilakukan operator.
                 </p>
               </div>
               <Link
@@ -167,7 +167,7 @@ export default async function MasterDashboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-600">Kirim Lanjutan</p>
-                    <h3 className="mt-2 text-lg font-black text-slate-950">Siap diperiksa analis</h3>
+                    <h3 className="mt-2 text-lg font-black text-slate-950">Siap diperiksa operator</h3>
                   </div>
                   <FileSignature className="h-5 w-5 text-emerald-700" />
                 </div>
@@ -176,7 +176,7 @@ export default async function MasterDashboardPage() {
                     closestAnalysis.map((item) => (
                       <Link
                         key={item.id}
-                        href="/dashboard/master/analis"
+                        href="/dashboard/master/operator"
                         className="flex items-center justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-[#063f32] transition hover:bg-emerald-100"
                       >
                         <span className="min-w-0">
@@ -190,7 +190,7 @@ export default async function MasterDashboardPage() {
                     ))
                   ) : (
                     <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-500">
-                      Belum ada pengajuan yang siap dianalisis.
+                      Belum ada pengajuan yang siap dicek operator.
                     </div>
                   )}
                 </div>

@@ -113,7 +113,7 @@ function readStoredPaymentProof(file: File | null): Promise<StoredPaymentProof |
 export function UserCreditBillPayLaterContent({ bills }: Props) {
   const router = useRouter();
   const activeBills = bills.filter((item) => Number(item.outstanding_amount || 0) > 0);
-  const paidBills = bills.filter((item) => Number(item.outstanding_amount || 0) <= 0);
+  const paidBills = bills.filter((item) => String(item.loan_status || "").toLowerCase() === "paid");
   const selectedDefault = activeBills[0]?.id || bills[0]?.id || 0;
   const [selectedBillId, setSelectedBillId] = useState(selectedDefault);
   const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0].id);
@@ -134,7 +134,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
   const approved = selectedBill ? Number(selectedBill.approved_amount || selectedBill.requested_amount || 0) : 0;
   const paid = selectedBill ? getPaidAmount(selectedBill) : 0;
   const usageProgress = approved > 0 ? Math.min(100, Math.round((selectedOutstanding / approved) * 100)) : 0;
-  const isPaid = selectedBill ? selectedOutstanding <= 0 : false;
+  const isPaid = selectedBill ? String(selectedBill.loan_status || "").toLowerCase() === "paid" : false;
   const paymentAmount = selectedBill ? selectedOutstanding : 0;
   const method = paymentMethods.find((item) => item.id === selectedMethod) || paymentMethods[0];
   const MethodIcon = method.icon;
@@ -268,6 +268,8 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
             <div className="space-y-2">
               {displayedBills.length ? displayedBills.map((item) => {
                 const outstanding = Number(item.outstanding_amount || 0);
+                const loanStatus = String(item.loan_status || "").toLowerCase();
+                const itemPaid = loanStatus === "paid";
                 const labels = getApplicantLabel(item);
                 const selected = item.id === selectedBillId;
                 return (
@@ -289,8 +291,8 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                       </span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-2">
-                      <span className={outstanding <= 0 ? "rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-black text-emerald-700" : "rounded-full bg-amber-100 px-2.5 py-1 text-[9px] font-black text-amber-700"}>
-                        {outstanding <= 0 ? "Lunas" : "Belum Lunas"}
+                      <span className={itemPaid ? "rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-black text-emerald-700" : outstanding > 0 ? "rounded-full bg-amber-100 px-2.5 py-1 text-[9px] font-black text-amber-700" : "rounded-full bg-lime-100 px-2.5 py-1 text-[9px] font-black text-emerald-700"}>
+                        {itemPaid ? "Lunas" : outstanding > 0 ? "Belum Lunas" : "Belum Dipakai"}
                       </span>
                       {outstanding > 0 ? (
                         <button type="button" onClick={() => selectBill(item.id, true)} className="rounded-full bg-[#047857] px-3 py-2 text-[10px] font-black text-white">
@@ -480,7 +482,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
               <ReceiptText className="h-8 w-8" />
             </div>
             <h2 className="mt-4 text-base font-black text-slate-950">Belum ada tagihan</h2>
-            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Tagihan akan muncul setelah pengajuan kredit disetujui analis.</p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Tagihan akan muncul setelah pengajuan kredit disetujui operator.</p>
           </div>
         </section>
       )}

@@ -13,7 +13,7 @@ type Props = {
   analystRecommendation?: string;
   analystRecommendedAmount?: number;
   status: string;
-  mode?: "marketing" | "master" | "analyst";
+  mode?: "marketing" | "master" | "analyst" | "admin";
   canApprove?: boolean;
   approveBlockReason?: string;
 };
@@ -162,16 +162,17 @@ export function MasterAgentCreditDecisionControls({
   const [riskScore, setRiskScore] = useState("50");
   const isFinal = status === "approved" || status === "rejected" || status === "analysis_rejected" || status === "master_rejected";
   const isMarketingReview = (mode === "marketing" || mode === "master") && (status === "submitted" || status === "marketing_review");
-  const canAct = isMarketingReview || (mode === "analyst" && status === "analysis_review") || isFinal;
+  const isAdminReview = mode === "admin" && ["submitted", "marketing_review", "analysis_review", "master_review", "ready_to_disburse"].includes(status);
+  const canAct = isMarketingReview || isAdminReview || (mode === "analyst" && status === "analysis_review") || isFinal;
   const needsReviewerSignature = isMarketingReview;
-  const approveLabel = isMarketingReview ? "Kirim ke Analis" : mode === "analyst" ? "Setujui Pengajuan" : "Kirim ke Analis";
+  const approveLabel = isMarketingReview ? "Kirim ke Operator" : mode === "analyst" || mode === "admin" ? "Setujui Pengajuan" : "Kirim ke Operator";
   const rejectLabel = "Tolak";
 
   async function decide(decision: DecisionAction) {
     if (busy) return;
     const isPositiveDecision = decision === "approved" || decision === "forward_to_analysis";
     if (isPositiveDecision && !canApprove) {
-      setError(approveBlockReason || "Data agent wajib lengkap sebelum dikirim ke analis");
+      setError(approveBlockReason || "Data agent wajib lengkap sebelum dikirim ke operator");
       return;
     }
     if (needsReviewerSignature && !signatureData.startsWith("data:image/")) {
@@ -180,13 +181,13 @@ export function MasterAgentCreditDecisionControls({
     }
     const parsedAmount = Number(amount.replace(/[^\d]/g, ""));
     const defaultNote = isPositiveDecision
-        ? mode === "analyst"
-          ? "Analisa risiko disetujui. Pinjaman saldo agent aktif."
+        ? mode === "analyst" || mode === "admin"
+          ? "Pemeriksaan risiko disetujui. Pinjaman saldo agent aktif."
           : mode === "marketing"
-            ? "Marketing sudah cek data lapangan dan dokumen, lalu dikirim ke analis."
+            ? "Marketing sudah cek data lapangan dan dokumen, lalu dikirim ke operator."
             : isMarketingReview
-              ? "Marketing sudah cek data lapangan dan dokumen, lalu dikirim ke analis."
-            : "Data agent sesuai dan dikirim ke analis."
+              ? "Marketing sudah cek data lapangan dan dokumen, lalu dikirim ke operator."
+            : "Data agent sesuai dan dikirim ke operator."
         : "Data agent belum sesuai.";
     const apiDecision = isMarketingReview && decision === "forward_to_analysis" ? "kirim_analis" : decision;
     setBusy(decision);
@@ -205,8 +206,8 @@ export function MasterAgentCreditDecisionControls({
           note: note.trim() || defaultNote,
           reviewer_mode: mode,
           signature_data: needsReviewerSignature ? signatureData : "",
-          risk_level: mode === "analyst" ? riskLevel : undefined,
-          risk_score: mode === "analyst" ? Number(riskScore || 0) : undefined,
+          risk_level: mode === "analyst" || mode === "admin" ? riskLevel : undefined,
+          risk_score: mode === "analyst" || mode === "admin" ? Number(riskScore || 0) : undefined,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as ApiBody;
@@ -230,7 +231,7 @@ export function MasterAgentCreditDecisionControls({
             {status === "approved" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
           </span>
           <span className="min-w-0 flex-1">
-          <span className="block text-sm font-black">{status === "approved" ? "Disetujui Analis" : "Ditolak Analis"}</span>
+          <span className="block text-sm font-black">{status === "approved" ? "Disetujui Operator" : "Ditolak Operator"}</span>
           <span className="mt-0.5 block truncate text-[10px] font-bold opacity-70">
               {status === "approved" ? "Limit agent sudah aktif dan bisa dipantau." : "Agent akan melihat pemberitahuan dan bisa memperbaiki data."}
             </span>
@@ -280,7 +281,7 @@ export function MasterAgentCreditDecisionControls({
             className="mt-1 min-h-10 w-full resize-none bg-transparent text-xs font-bold leading-5 text-slate-700 outline-none placeholder:text-slate-400"
           />
         </label>
-        {mode === "analyst" ? (
+        {mode === "analyst" || mode === "admin" ? (
           <div className="grid gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_8px_18px_rgba(15,23,42,0.035)] min-[420px]:grid-cols-2 xl:col-span-2">
             <label className="block">
               <span className="block text-[9px] font-black uppercase tracking-[0.08em] text-emerald-600">Level Risiko</span>
@@ -317,7 +318,7 @@ export function MasterAgentCreditDecisionControls({
             {busy === "approved" || busy === "forward_to_analysis" ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
             <span className="truncate">{busy === "approved" || busy === "forward_to_analysis" ? "Proses" : approveLabel}</span>
           </button>
-          {mode === "analyst" ? (
+          {mode === "analyst" || mode === "admin" ? (
             <button
               type="button"
               onClick={() => decide("rejected")}
@@ -342,7 +343,7 @@ export function MasterAgentCreditDecisionControls({
           Batal edit
         </button>
       ) : null}
-      {!canApprove ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-center text-[10px] font-black text-amber-700">{approveBlockReason || "Data agent wajib lengkap sebelum dikirim ke analis."}</p> : null}
+      {!canApprove ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-center text-[10px] font-black text-amber-700">{approveBlockReason || "Data agent wajib lengkap sebelum dikirim ke operator."}</p> : null}
       {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
     </div>
   );

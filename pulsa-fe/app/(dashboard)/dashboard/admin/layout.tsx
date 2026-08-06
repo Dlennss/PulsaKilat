@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
 
 export default function DashboardAdminLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <div className="admin-dashboard-surface">{children}</div>;
 }

@@ -14,10 +14,11 @@ export default async function RegisterPage() {
     const role = (session.user?.role || "").toLowerCase();
     if (role === "admin" || role === "staff") redirect("/dashboard/admin");
     if (role === "member" || role === "agent_member" || role === "master_member") redirect("/dashboard/member");
-    if (role === "analis" || role === "analyst") redirect("/dashboard/master");
+    if (role === "analis" || role === "analyst") redirect("/dashboard/master/operator");
     if (role === "master" || role === "marketing") redirect("/dashboard/master");
     if (role === "operator_trx") redirect("/dashboard/operator");
     if (role === "operator_wallet") redirect("/dashboard/wallet");
+    if (role === "user" || role === "agent") redirect("/user");
     redirect("/user");
   }
 

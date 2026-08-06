@@ -1,5 +1,5 @@
-import { AnalystCreditWorkspace } from "@/components/dashboard/AnalystCreditWorkspace";
+import { redirect } from "next/navigation";
 
 export default function AnalystPaymentProofPage() {
-  return <AnalystCreditWorkspace view="proof" />;
+  redirect("/dashboard/master/operator/bukti-pelunasan");
 }

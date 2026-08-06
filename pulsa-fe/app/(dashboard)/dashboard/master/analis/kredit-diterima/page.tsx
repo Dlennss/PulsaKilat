@@ -1,5 +1,5 @@
-import { AnalystCreditWorkspace } from "@/components/dashboard/AnalystCreditWorkspace";
+import { redirect } from "next/navigation";
 
 export default function AnalystAcceptedCreditPage() {
-  return <AnalystCreditWorkspace view="accepted" />;
+  redirect("/dashboard/master/operator/kredit-diterima");
 }

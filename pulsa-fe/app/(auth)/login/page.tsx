@@ -9,7 +9,7 @@ type SessionShape = { backendToken?: string; user?: { role?: string } };
 function toPathByRole(role?: string | null) {
   const r = (role || "").toLowerCase();
   if (r === "admin" || r === "staff") return "/dashboard/admin";
-  if (r === "analis" || r === "analyst") return "/dashboard/master";
+  if (r === "analis" || r === "analyst") return "/dashboard/master/operator";
   if (r === "master") return "/dashboard/master";
   if (r === "user" || r === "agent") return "/user";
   if (r === "operator_trx") return "/dashboard/operator";

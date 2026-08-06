@@ -27,7 +27,13 @@ export default async function UserSaldoKreditAgentPage() {
 
   return (
     <main className="min-h-screen bg-[#eef8f3]">
-      <UserAgentCreditPageContent name={name} email={email} phone={phone} initialApplications={applications} />
+      <UserAgentCreditPageContent
+        name={name}
+        email={email}
+        phone={phone}
+        mainBalance={Number(profile?.saldo || 0)}
+        initialApplications={applications}
+      />
       <UserBottomNav />
     </main>
   );

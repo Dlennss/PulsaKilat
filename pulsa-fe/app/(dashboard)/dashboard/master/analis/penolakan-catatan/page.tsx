@@ -1,5 +1,5 @@
-import { AnalystCreditWorkspace } from "@/components/dashboard/AnalystCreditWorkspace";
+import { redirect } from "next/navigation";
 
 export default function AnalystRejectionNotesPage() {
-  return <AnalystCreditWorkspace view="rejected" />;
+  redirect("/dashboard/master/operator/penolakan-catatan");
 }

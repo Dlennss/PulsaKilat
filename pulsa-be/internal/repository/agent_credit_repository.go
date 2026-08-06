@@ -19,6 +19,7 @@ func NewAgentCreditRepository(db *sql.DB) *AgentCreditRepository {
 type AgentCreditApplicationInput struct {
 	ID              int64
 	MemberID        int64
+	MarketingID     int64
 	RequestedAmount int64
 	ApplicantData   map[string]any
 	DocumentData    map[string]any
@@ -104,6 +105,15 @@ type AgentCreditPayment struct {
 	PaymentProof  map[string]any `json:"payment_proof,omitempty"`
 }
 
+type AgentCreditRank struct {
+	ID          int64  `json:"id"`
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	LimitAmount int64  `json:"limit_amount"`
+	SortOrder   int64  `json:"sort_order"`
+}
+
 type AgentCreditReviewState struct {
 	Status                   string
 	AnalystRecommendation    string
@@ -133,12 +143,12 @@ func (r *AgentCreditRepository) CreateApplication(ctx context.Context, in AgentC
 	var applicantRaw, documentRaw []byte
 	err = r.db.QueryRowContext(ctx, `
 INSERT INTO public.agent_credit_application
-  (member_id, requested_amount, status, applicant_data, document_data, agent_signature_data, agent_signature_at)
+  (member_id, marketing_user_id, requested_amount, status, applicant_data, document_data, agent_signature_data, agent_signature_at)
 VALUES
-  ($1, $2, 'submitted', $3::jsonb, $4::jsonb, NULLIF($5, ''), CASE WHEN NULLIF($5, '') IS NULL THEN NULL ELSE now() END)
+  ($1, NULLIF($2, 0), $3, 'submitted', $4::jsonb, $5::jsonb, NULLIF($6, ''), CASE WHEN NULLIF($6, '') IS NULL THEN NULL ELSE now() END)
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
-`, in.MemberID, in.RequestedAmount, string(applicantJSON), string(documentJSON), in.AgentSignature).Scan(
+`, in.MemberID, in.MarketingID, in.RequestedAmount, string(applicantJSON), string(documentJSON), in.AgentSignature).Scan(
 		&item.ID,
 		&item.MemberID,
 		&item.RequestedAmount,
@@ -159,6 +169,127 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	_ = json.Unmarshal(documentRaw, &item.DocumentData)
 	item.HasAgentSignature = item.AgentSignatureData != ""
 	return &item, nil
+}
+
+func (r *AgentCreditRepository) ListActiveRanks(ctx context.Context) ([]AgentCreditRank, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT id, code, name, COALESCE(description, ''), limit_amount, sort_order
+FROM public.agent_credit_rank
+WHERE active = TRUE
+ORDER BY sort_order ASC, limit_amount ASC
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]AgentCreditRank, 0)
+	for rows.Next() {
+		var item AgentCreditRank
+		if err := rows.Scan(&item.ID, &item.Code, &item.Name, &item.Description, &item.LimitAmount, &item.SortOrder); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (r *AgentCreditRepository) ChangeMemberCreditRank(ctx context.Context, memberID, newRankID, actorID int64, reason string) (*AgentCreditRank, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var newRank AgentCreditRank
+	if err := tx.QueryRowContext(ctx, `
+SELECT id, code, name, COALESCE(description, ''), limit_amount, sort_order
+FROM public.agent_credit_rank
+WHERE id = $1 AND active = TRUE
+`, newRankID).Scan(&newRank.ID, &newRank.Code, &newRank.Name, &newRank.Description, &newRank.LimitAmount, &newRank.SortOrder); err != nil {
+		return nil, err
+	}
+
+	var oldRankID sql.NullInt64
+	_ = tx.QueryRowContext(ctx, `
+SELECT h.new_rank_id
+FROM public.agent_credit_rank_history h
+WHERE h.member_id = $1
+ORDER BY h.created_at DESC, h.id DESC
+LIMIT 1
+`, memberID).Scan(&oldRankID)
+	if !oldRankID.Valid {
+		_ = tx.QueryRowContext(ctx, `SELECT id FROM public.agent_credit_rank WHERE active = TRUE ORDER BY sort_order ASC LIMIT 1`).Scan(&oldRankID)
+	}
+
+	var onTimeCount, lateCount int64
+	_ = tx.QueryRowContext(ctx, `
+SELECT
+  COUNT(*) FILTER (WHERE COALESCE(days_late, 0) <= 0),
+  COUNT(*) FILTER (WHERE COALESCE(days_late, 0) > 0)
+FROM public.agent_credit_payment
+WHERE member_id = $1
+`, memberID).Scan(&onTimeCount, &lateCount)
+
+	if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_rank_history
+  (member_id, old_rank_id, new_rank_id, reason, on_time_payment_count, late_payment_count, created_by)
+VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0))
+`, memberID, oldRankID, newRank.ID, reason, onTimeCount, lateCount, actorID); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+UPDATE public.agent_credit_loan
+SET rank_id = $2,
+    principal_amount = $3,
+    available_amount = GREATEST($3 - outstanding_amount, 0),
+    updated_at = now()
+WHERE member_id = $1
+  AND status IN ('active', 'due', 'overdue', 'suspended')
+`, memberID, newRank.ID, newRank.LimitAmount); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+UPDATE public.agent_credit_application
+SET rank_id = $2,
+    approved_amount = CASE WHEN status = 'approved' THEN $3 ELSE approved_amount END,
+    updated_at = now()
+WHERE id = (
+  SELECT id
+  FROM public.agent_credit_application
+  WHERE member_id = $1
+  ORDER BY created_at DESC, id DESC
+  LIMIT 1
+)
+`, memberID, newRank.ID, newRank.LimitAmount); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &newRank, nil
+}
+
+func (r *AgentCreditRepository) FindOpenEarlyApplicationID(ctx context.Context, memberID int64) (int64, error) {
+	var id int64
+	err := r.db.QueryRowContext(ctx, `
+SELECT id
+FROM public.agent_credit_application
+WHERE member_id = $1
+  AND status IN ('draft', 'submitted', 'marketing_review')
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`, memberID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 func (r *AgentCreditRepository) GetApplicationReviewState(ctx context.Context, applicationID int64) (*AgentCreditReviewState, error) {
@@ -217,7 +348,8 @@ SET
   requested_amount = CASE WHEN $3 > 0 THEN $3 ELSE requested_amount END,
   applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $4::jsonb,
   document_data = COALESCE(document_data, '{}'::jsonb) || $5::jsonb,
-  agent_signature_data = NULLIF($6, ''),
+  marketing_user_id = COALESCE(marketing_user_id, NULLIF($7, 0)),
+  agent_signature_data = CASE WHEN NULLIF($6, '') IS NULL THEN agent_signature_data ELSE $6 END,
   agent_signature_at = CASE WHEN NULLIF($6, '') IS NULL THEN agent_signature_at ELSE now() END,
   status = CASE
     WHEN status IN ('draft', 'marketing_review') THEN 'submitted'
@@ -229,7 +361,7 @@ WHERE id = $1
   AND status IN ('draft', 'submitted', 'marketing_review', 'analysis_review', 'master_review')
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
-`, in.ID, in.MemberID, in.RequestedAmount, string(applicantJSON), string(documentJSON), in.AgentSignature).Scan(
+`, in.ID, in.MemberID, in.RequestedAmount, string(applicantJSON), string(documentJSON), in.AgentSignature, in.MarketingID).Scan(
 		&item.ID,
 		&item.MemberID,
 		&item.RequestedAmount,
@@ -651,6 +783,27 @@ func parseAgentCreditPaymentNote(raw string) (string, map[string]any) {
 	return note, proof
 }
 
+func insertAuditLogTx(ctx context.Context, tx *sql.Tx, actorID int64, actorRole, action, entityType string, entityID any, beforeData, afterData map[string]any, reason string) error {
+	if tx == nil {
+		return nil
+	}
+	beforeJSON, err := json.Marshal(beforeData)
+	if err != nil {
+		return err
+	}
+	afterJSON, err := json.Marshal(afterData)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `
+INSERT INTO public.audit_log
+  (actor_id, actor_role, action, entity_type, entity_id, before_data, after_data, reason)
+VALUES
+  (NULLIF($1, 0), $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8)
+`, actorID, actorRole, action, entityType, fmt.Sprint(entityID), string(beforeJSON), string(afterJSON), reason)
+	return err
+}
+
 func (r *AgentCreditRepository) attachPayments(ctx context.Context, items []AgentCreditApplication) error {
 	if len(items) == 0 {
 		return nil
@@ -723,9 +876,18 @@ func (r *AgentCreditRepository) MarketingReviewApplication(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var oldStatus string
+	_ = tx.QueryRowContext(ctx, `SELECT status FROM public.agent_credit_application WHERE id = $1 FOR UPDATE`, in.ID).Scan(&oldStatus)
+
 	var item AgentCreditApplication
 	var applicantRaw, documentRaw []byte
-	err = r.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 UPDATE public.agent_credit_application
 SET
   status = $2,
@@ -752,6 +914,17 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 		&item.UpdatedAt,
 	)
 	if err != nil {
+		return nil, err
+	}
+	if err := insertAuditLogTx(ctx, tx, in.MarketingID, "marketing", "agent_credit_marketing_review", "agent_credit_application", in.ID, map[string]any{
+		"status": oldStatus,
+	}, map[string]any{
+		"status": in.Status,
+		"note":   in.MarketingNote,
+	}, in.MarketingNote); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
@@ -823,6 +996,9 @@ func (r *AgentCreditRepository) AnalystFinalDecision(ctx context.Context, in Age
 	}
 	defer tx.Rollback()
 
+	var oldStatus string
+	_ = tx.QueryRowContext(ctx, `SELECT status FROM public.agent_credit_application WHERE id = $1 FOR UPDATE`, in.ID).Scan(&oldStatus)
+
 	var item AgentCreditApplication
 	var applicantRaw, documentRaw []byte
 	err = tx.QueryRowContext(ctx, `
@@ -837,7 +1013,8 @@ SET
   analyst_recommended_amount = CASE WHEN $2 IN ('approved', 'ready_to_disburse') THEN $3 ELSE 0 END,
   applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $7::jsonb,
   updated_at = now()
-WHERE id = $1 AND status = 'analysis_review'
+WHERE id = $1
+  AND status IN ('submitted', 'marketing_review', 'analysis_review', 'master_review', 'ready_to_disburse')
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note,
   COALESCE(analyst_note, ''), COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0),
@@ -871,11 +1048,11 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 INSERT INTO public.agent_credit_loan
   (application_id, member_id, principal_amount, outstanding_amount, available_amount, status, approved_at, due_date)
 VALUES
-  ($1, $2, $3, 0, $3, 'active', now(), (now() + interval '1 month')::date)
+  ($1, $2, $3, $3, $3, 'active', now(), (now() + interval '1 month')::date)
 ON CONFLICT (application_id) DO UPDATE SET
   principal_amount = EXCLUDED.principal_amount,
-  outstanding_amount = LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount),
-  available_amount = GREATEST(EXCLUDED.principal_amount - LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount), 0),
+  outstanding_amount = EXCLUDED.principal_amount,
+  available_amount = EXCLUDED.available_amount,
   status = 'active',
   due_date = EXCLUDED.due_date,
   updated_at = now()
@@ -892,6 +1069,15 @@ WHERE application_id = $1 AND status <> 'paid'
 		if err != nil {
 			return nil, err
 		}
+	}
+	if err := insertAuditLogTx(ctx, tx, in.AnalystID, "admin_or_operator", "agent_credit_final_decision", "agent_credit_application", in.ID, map[string]any{
+		"status": oldStatus,
+	}, map[string]any{
+		"status":          in.Status,
+		"approved_amount": in.ApprovedAmount,
+		"recommendation":  in.Recommendation,
+	}, in.AnalystNote); err != nil {
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
@@ -1035,11 +1221,11 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 INSERT INTO public.agent_credit_loan
   (application_id, member_id, principal_amount, outstanding_amount, available_amount, status, approved_at, due_date)
 VALUES
-  ($1, $2, $3, 0, $3, 'active', now(), (now() + interval '1 month')::date)
+  ($1, $2, $3, $3, $3, 'active', now(), (now() + interval '1 month')::date)
 ON CONFLICT (application_id) DO UPDATE SET
   principal_amount = EXCLUDED.principal_amount,
-  outstanding_amount = LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount),
-  available_amount = GREATEST(EXCLUDED.principal_amount - LEAST(public.agent_credit_loan.outstanding_amount, EXCLUDED.principal_amount), 0),
+  outstanding_amount = EXCLUDED.principal_amount,
+  available_amount = EXCLUDED.available_amount,
   status = 'active',
   due_date = EXCLUDED.due_date,
   updated_at = now()
@@ -1136,12 +1322,20 @@ UPDATE public.agent_credit_loan
 SET
   outstanding_amount = GREATEST(outstanding_amount - $2, 0),
   available_amount = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN principal_amount ELSE available_amount END,
-  status = 'active',
+  status = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN 'paid' ELSE status END,
   paid_at = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN now() ELSE paid_at END,
   updated_at = now()
 WHERE id = $1
 `, loanID, amount)
 	if err != nil {
+		return err
+	}
+	if err := insertAuditLogTx(ctx, tx, in.MemberID, "agent", "agent_credit_paid", "agent_credit_loan", loanID, map[string]any{
+		"outstanding_amount": outstanding,
+	}, map[string]any{
+		"paid_amount": amount,
+		"status":      "paid",
+	}, in.Note); err != nil {
 		return err
 	}
 	return tx.Commit()

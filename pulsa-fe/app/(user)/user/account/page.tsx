@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import {
   Bell,
+  BriefcaseBusiness,
   ChevronRight,
   FileText,
   HelpCircle,
@@ -26,6 +27,34 @@ type SessionShape = {
   backendToken?: string;
 };
 
+function normalizeRole(role?: string | null) {
+  const value = String(role || "").trim().toLowerCase();
+  return value === "analyst" ? "analis" : value;
+}
+
+function panelPathByRole(role: string) {
+  if (role === "admin" || role === "staff") return "/dashboard/admin";
+  if (role === "auditor") return "/dashboard/auditor";
+  if (role === "member" || role === "agent_member" || role === "master_member") return "/dashboard/member";
+  if (role === "analis") return "/dashboard/master/operator";
+  if (role === "master" || role === "marketing") return "/dashboard/master";
+  if (role === "operator_trx") return "/dashboard/operator";
+  if (role === "operator_wallet") return "/dashboard/wallet";
+  return "/user";
+}
+
+function panelDescriptionByRole(role: string) {
+  if (role === "admin" || role === "staff") return "Masuk ke panel admin";
+  if (role === "auditor") return "Masuk ke panel audit";
+  if (role === "analis") return "Masuk ke panel operator kredit";
+  if (role === "marketing") return "Masuk ke panel marketing";
+  if (role === "master") return "Masuk ke panel master";
+  if (role === "operator_trx") return "Masuk ke panel transaksi";
+  if (role === "operator_wallet") return "Masuk ke panel wallet";
+  if (role === "member" || role === "agent_member" || role === "master_member") return "Masuk ke panel H2H";
+  return "Masuk ke aplikasi agent";
+}
+
 export default async function UserAccountPage() {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
 
@@ -42,8 +71,9 @@ export default async function UserAccountPage() {
   const username = displayEmail !== "-" ? `@${displayEmail.split("@")[0]}` : "@pulsakilat";
   const initials = getInitials(displayName, displayEmail);
   const profilePhotoURL = profile?.profile_photo_url || user?.image || "";
-  const role = String(profile?.role || user?.role || "").trim().toLowerCase();
+  const role = normalizeRole(profile?.role || user?.role);
   const canManageRetailNetwork = role === "master" || role === "agent";
+  const canOpenWorkPanel = role !== "user" && role !== "agent";
 
   const personalItems = [
     {
@@ -64,6 +94,16 @@ export default async function UserAccountPage() {
   ];
 
   const settingItems = [
+    ...(canOpenWorkPanel
+      ? [
+          {
+            href: panelPathByRole(role),
+            label: "Panel",
+            desc: panelDescriptionByRole(role),
+            icon: BriefcaseBusiness,
+          },
+        ]
+      : []),
     ...(canManageRetailNetwork
       ? [
           {

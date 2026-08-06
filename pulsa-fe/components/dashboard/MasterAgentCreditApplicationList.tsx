@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, Download, Eye, FileDown, FileSignature, Printer, ReceiptText, Search, SlidersHorizontal, X } from "lucide-react";
+import { Camera, CheckCircle2, ChevronDown, Download, Eye, FileDown, FileSignature, Loader2, Printer, ReceiptText, Search, SlidersHorizontal, Store, Upload, UserRound, UsersRound, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 import { MasterAgentCreditDecisionControls } from "@/components/dashboard/MasterAgentCreditDecisionControls";
@@ -43,7 +44,7 @@ function getStatusLabel(status: string) {
     case "marketing_review":
       return "Dicek marketing";
     case "analysis_review":
-      return "Menunggu analis";
+      return "Menunggu operator";
     case "master_review":
       return "Menunggu marketing";
     case "ready_to_disburse":
@@ -95,7 +96,8 @@ function escapeHTML(value: unknown) {
 function getDisplayStatus(item: AgentCreditApplication) {
   if (item.status !== "approved") return getStatusLabel(item.status);
   const loanStatus = String(item.loan_status || "").toLowerCase();
-  if (loanStatus === "paid" || Number(item.outstanding_amount || 0) <= 0) return "Lunas";
+  if (loanStatus === "paid") return "Lunas";
+  if ((loanStatus === "active" || loanStatus === "due") && Number(item.outstanding_amount || 0) <= 0) return "Aktif belum dipakai";
   if (loanStatus === "overdue") return "Telat bayar";
   if (loanStatus === "active") return "Pinjaman aktif";
   return "Disetujui";
@@ -122,8 +124,11 @@ function getStatusClass(status: string) {
 
 function getDisplayStatusClass(item: AgentCreditApplication) {
   const loanStatus = String(item.loan_status || "").toLowerCase();
-  if (item.status === "approved" && (loanStatus === "paid" || Number(item.outstanding_amount || 0) <= 0)) {
+  if (item.status === "approved" && loanStatus === "paid") {
     return "bg-sky-100 text-sky-700";
+  }
+  if (item.status === "approved" && (loanStatus === "active" || loanStatus === "due") && Number(item.outstanding_amount || 0) <= 0) {
+    return "bg-lime-100 text-emerald-700";
   }
   if (item.status === "approved" && loanStatus === "overdue") {
     return "bg-rose-100 text-rose-600";
@@ -143,6 +148,183 @@ function getStoredImageSrc(item: AgentCreditApplication, key: string) {
   if (!value || typeof value !== "object") return "";
   const image = value as { data_url?: unknown };
   return typeof image.data_url === "string" && image.data_url.startsWith("data:image/") ? image.data_url : "";
+}
+
+type StoredSurveyImage = {
+  name: string;
+  type: string;
+  size: number;
+  data_url: string;
+};
+
+function readSurveyImage(file: File | null): Promise<StoredSurveyImage | null> {
+  if (!file) return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Gagal membaca file ${file.name}`));
+    reader.onload = () => {
+      resolve({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data_url: String(reader.result || ""),
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function missingSurveyDocumentLabels(item: AgentCreditApplication) {
+  const documents = [
+    { key: "ktp", label: "Foto KTP" },
+    { key: "store", label: "Foto Toko" },
+    { key: "selfie_ktp", label: "Selfie Pegang KTP" },
+    { key: "selfie_marketing", label: "Foto Bersama Marketing" },
+  ];
+  return documents.filter((doc) => !getStoredImageSrc(item, doc.key)).map((doc) => doc.label);
+}
+
+function SurveyDocumentsCompleteNotice() {
+  return (
+    <div className="rounded-[22px] border border-emerald-100 bg-[linear-gradient(135deg,#ecfdf5,#ffffff)] p-3">
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-[#047857]">
+          <CheckCircle2 className="h-5 w-5" strokeWidth={2.5} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-black text-slate-950">Dokumen Lapangan Lengkap</p>
+          <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-500">Upload disembunyikan. Marketing tinggal tanda tangan lalu kirim ke operator.</p>
+        </div>
+        <span className="hidden rounded-full bg-emerald-100 px-3 py-1 text-[9px] font-black uppercase text-[#047857] sm:inline-flex">
+          4/4
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCreditApplication; onComplete: () => void }) {
+  const router = useRouter();
+  const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const fields = [
+    { key: "ktp", name: "Foto KTP", desc: "KTP asli agent", icon: Upload },
+    { key: "store", name: "Foto Toko", desc: "Tampak depan toko/usaha", icon: Store },
+    { key: "selfie_ktp", name: "Selfie Pegang KTP", desc: "Wajah agent dan KTP terlihat jelas", icon: UserRound },
+    { key: "selfie_marketing", name: "Foto Bersama Marketing", desc: "Agent dan marketing terlihat dalam satu foto", icon: UsersRound },
+  ];
+  const savedCount = fields.filter((field) => Boolean(getStoredImageSrc(item, field.key))).length;
+  const missingFields = fields.filter((field) => !getStoredImageSrc(item, field.key));
+  const selectedMissingCount = missingFields.filter((field) => Boolean(files[field.key])).length;
+  const canSave = missingFields.length > 0 && selectedMissingCount === missingFields.length;
+  const remainingCount = Math.max(0, missingFields.length - selectedMissingCount);
+
+  if (!missingFields.length) return <SurveyDocumentsCompleteNotice />;
+
+  async function saveDocuments() {
+    if (!canSave || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const entries = await Promise.all(missingFields.map(async (field) => [field.key, await readSurveyImage(files[field.key] || null)] as const));
+      const documentData = Object.fromEntries(entries.filter(([, image]) => image));
+      const token = window.localStorage.getItem("auth_token") || "";
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const response = await fetch("/api/agent-credit/applications", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          id: item.id,
+          member_id: item.member_id,
+          requested_amount: item.requested_amount,
+          applicant_data: {
+            survey_documents_by: "marketing",
+            survey_documents_at: new Date().toISOString(),
+          },
+          document_data: documentData,
+        }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; item?: AgentCreditApplication };
+      if (!response.ok || !body.ok) throw new Error(body.error || "Dokumen gagal disimpan");
+      const missingAfterSave = body.item ? missingSurveyDocumentLabels(body.item) : fields.map((field) => field.name);
+      if (missingAfterSave.length) {
+        throw new Error(`${missingAfterSave.join(", ")} belum tersimpan. Upload ulang foto yang masih kosong.`);
+      }
+      setFiles({});
+      onComplete();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Dokumen gagal disimpan");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-[24px] border border-emerald-100 bg-[linear-gradient(135deg,#f8fffb_0%,#ffffff_48%,#ecfdf5_100%)] p-3 shadow-[0_12px_26px_rgba(4,120,87,0.06)]">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100">
+            <Camera className="h-5 w-5" strokeWidth={2.4} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-black text-slate-950">Lengkapi Foto Survey</p>
+            <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-500">Marketing upload foto lapangan. Setelah lengkap, form ini otomatis diringkas.</p>
+          </div>
+        </div>
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-[9px] font-black uppercase text-[#047857]">
+          {savedCount}/4 tersimpan
+        </span>
+      </div>
+      <div className="rounded-[20px] border border-emerald-100 bg-white/80 p-2">
+        <div className="mb-2 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2">
+          <Camera className="h-5 w-5" strokeWidth={2.4} />
+          <div className="min-w-0">
+            <p className="text-xs font-black text-slate-950">Foto yang masih perlu diambil</p>
+            <p className="text-[10px] font-semibold text-slate-500">{missingFields.length} dokumen belum lengkap</p>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+        {missingFields.map((field) => {
+          const Icon = field.icon;
+          const picked = files[field.key];
+          return (
+            <label key={field.key} className={picked ? "flex cursor-pointer items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 transition hover:border-[#047857]" : "flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-3 transition hover:border-[#047857] hover:bg-emerald-50"}>
+              <span className={picked ? "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#047857] ring-1 ring-emerald-100" : "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100"}>
+                <Icon className="h-5 w-5" strokeWidth={2.4} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-black text-slate-950">{field.name}</span>
+                <span className={picked ? "mt-0.5 block truncate text-[10px] font-black text-[#047857]" : "mt-0.5 block truncate text-[10px] font-semibold text-slate-400"}>{picked?.name || field.desc}</span>
+              </span>
+              {picked ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#047857]" strokeWidth={2.6} /> : null}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(event) => setFiles((current) => ({ ...current, [field.key]: event.target.files?.[0] || null }))}
+              />
+            </label>
+          );
+        })}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={saveDocuments}
+        disabled={!canSave || busy}
+        className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#047857,#16a34a)] text-xs font-black text-white shadow-[0_12px_22px_rgba(4,120,87,0.16)] transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+        {busy ? "Menyimpan Dokumen" : canSave ? "Simpan Dokumen Marketing" : `Lengkapi ${remainingCount} foto lagi`}
+      </button>
+      {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
+    </div>
+  );
 }
 
 function getSignatureSrc(item: AgentCreditApplication) {
@@ -191,9 +373,9 @@ function buildReportRows(items: AgentCreditApplication[]) {
       "Kredit Tersedia": available,
       "Sudah Dibayar": paid,
       "Jatuh Tempo": formatDate(item.loan_due_date),
-      "Rekomendasi Analis": item.analyst_recommendation || "-",
+      "Rekomendasi Operator": item.analyst_recommendation || "-",
       "Nominal Rekomendasi": Number(item.analyst_recommended_amount || 0),
-      "Catatan Analis": item.analyst_note || "-",
+      "Catatan Operator": item.analyst_note || "-",
       "Catatan Marketing": item.marketing_note || "-",
     };
   });
@@ -202,7 +384,7 @@ function buildReportRows(items: AgentCreditApplication[]) {
 function summarizeReport(items: AgentCreditApplication[]) {
   const approvedItems = items.filter((item) => item.status === "approved");
   const rejectedItems = items.filter((item) => String(item.status || "").toLowerCase().includes("rejected") || item.status === "rejected");
-  const paidItems = approvedItems.filter((item) => getDisplayStatus(item) === "Lunas");
+  const paidItems = approvedItems.filter((item) => String(item.loan_status || "").toLowerCase() === "paid");
   return {
     total: items.length,
     approved: approvedItems.length,
@@ -245,7 +427,7 @@ type ApplicationFilter = "all" | "review" | "analysis" | "approved" | "rejected"
 const applicationFilters: { key: ApplicationFilter; label: string }[] = [
   { key: "all", label: "Semua" },
   { key: "review", label: "Review" },
-  { key: "analysis", label: "Dikirim Analis" },
+  { key: "analysis", label: "Dikirim Operator" },
   { key: "approved", label: "Disetujui" },
   { key: "rejected", label: "Ditolak" },
   { key: "paid", label: "Lunas" },
@@ -259,7 +441,7 @@ function matchesFilter(item: AgentCreditApplication, filter: ApplicationFilter) 
   if (filter === "analysis") return status === "analysis_review";
   if (filter === "approved") return status === "approved" && loanStatus !== "paid";
   if (filter === "rejected") return status.includes("rejected") || status === "rejected";
-  if (filter === "paid") return loanStatus === "paid" || (status === "approved" && Number(item.outstanding_amount || 0) <= 0);
+  if (filter === "paid") return loanStatus === "paid";
   return true;
 }
 
@@ -274,7 +456,7 @@ export function MasterAgentCreditApplicationList({
   emptyDescription,
 }: {
   applications: AgentCreditApplication[];
-  mode?: "marketing" | "master" | "analyst";
+  mode?: "marketing" | "master" | "analyst" | "admin";
   showActions?: boolean;
   enableReportActions?: boolean;
   eyebrow?: string;
@@ -286,6 +468,7 @@ export function MasterAgentCreditApplicationList({
   const [filter, setFilter] = useState<ApplicationFilter>("all");
   const [openId, setOpenId] = useState<number | null>(null);
   const [previewProof, setPreviewProof] = useState<{ agentName: string; src: string; title: string } | null>(null);
+  const [locallyCompletedDocs, setLocallyCompletedDocs] = useState<Record<number, boolean>>({});
   const trimmedQuery = query.trim().toLowerCase();
   const filteredApplications = useMemo(() => {
     const byFilter = applications.filter((item) => matchesFilter(item, filter));
@@ -297,6 +480,7 @@ export function MasterAgentCreditApplicationList({
   const reportTitle = "Laporan Keputusan Kredit Agent";
   const reportSubtitle = `${filter === "all" ? "Semua status" : applicationFilters.find((item) => item.key === filter)?.label || filter}${trimmedQuery ? ` - pencarian "${query.trim()}"` : ""}`;
   const canExportReport = enableReportActions && filteredApplications.length > 0;
+  const useOperatorTable = mode === "analyst";
 
   async function exportXlsxReport() {
     if (!canExportReport) return;
@@ -312,7 +496,7 @@ export function MasterAgentCreditApplicationList({
       { Metrik: "Filter", Nilai: reportSubtitle },
       {},
     ];
-    await downloadXlsx(`arsip-keputusan-analis-${getReportFileStamp()}.xlsx`, [...summaryRows, ...reportRows], "ArsipKeputusan");
+    await downloadXlsx(`arsip-keputusan-operator-${getReportFileStamp()}.xlsx`, [...summaryRows, ...reportRows], "ArsipKeputusan");
   }
 
   async function exportPdfReport() {
@@ -372,7 +556,7 @@ export function MasterAgentCreditApplicationList({
         formatIDR(Number(row["Tagihan Terpakai"] || 0)),
         formatIDR(Number(row["Kredit Tersedia"] || 0)),
         row["Jatuh Tempo"],
-        row["Catatan Analis"],
+        row["Catatan Operator"],
       ]),
       theme: "grid",
       styles: { fontSize: 8, cellPadding: 5, overflow: "linebreak" },
@@ -380,7 +564,7 @@ export function MasterAgentCreditApplicationList({
       alternateRowStyles: { fillColor: [248, 250, 252] },
       margin: { left: 28, right: 28 },
     });
-    doc.save(`arsip-keputusan-analis-${getReportFileStamp()}.pdf`);
+    doc.save(`arsip-keputusan-operator-${getReportFileStamp()}.pdf`);
   }
 
   function printReport() {
@@ -406,7 +590,7 @@ export function MasterAgentCreditApplicationList({
         <td>${escapeHTML(formatIDR(Number(row["Tagihan Terpakai"] || 0)))}</td>
         <td>${escapeHTML(formatIDR(Number(row["Kredit Tersedia"] || 0)))}</td>
         <td>${escapeHTML(row["Jatuh Tempo"])}</td>
-        <td>${escapeHTML(row["Catatan Analis"])}</td>
+        <td>${escapeHTML(row["Catatan Operator"])}</td>
       </tr>
     `).join("");
     const popup = window.open("", "_blank", "width=1200,height=800");
@@ -468,13 +652,15 @@ export function MasterAgentCreditApplicationList({
           <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">{eyebrow || (showActions ? "Meja Review" : "Arsip Kredit")}</p>
           <h2 className="mt-1 text-xl font-black text-slate-950">{title || (showActions ? "Pengajuan Kredit Terbaru" : "Riwayat Pinjaman Agent")}</h2>
           <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-slate-500">
-            {mode === "analyst"
-              ? "Tugas analis: cek dokumen, catatan marketing, risiko pembayaran, lalu beri keputusan final."
-              : "Tugas marketing: dampingi agent, lengkapi selfie pertemuan, tanda tangan verifikasi, lalu kirim data ke analis."}
+            {mode === "admin"
+              ? "Tugas admin: pantau semua pengajuan, cek dokumen survey, limit, tagihan, lalu approve atau reject manual."
+              : mode === "analyst"
+                ? "Tugas operator: cek dokumen, catatan marketing, risiko pembayaran, lalu beri keputusan final."
+                : "Tugas marketing: dampingi agent, lengkapi selfie pertemuan, tanda tangan verifikasi, lalu kirim data ke operator."}
           </p>
         </div>
         <span className="inline-flex w-fit items-center rounded-full bg-[linear-gradient(135deg,#047857,#8bdc24)] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-[0_12px_28px_rgba(5,122,69,0.18)]">
-          {mode === "analyst" ? "Analis" : "Marketing"}
+          {mode === "admin" ? "Admin" : mode === "analyst" ? "Operator" : "Marketing"}
         </span>
       </div>
 
@@ -555,7 +741,19 @@ export function MasterAgentCreditApplicationList({
         </div>
       ) : null}
 
-      <div className="mt-4 min-w-0 space-y-3 sm:mt-5">
+      {useOperatorTable && filteredApplications.length ? (
+        <div className="mt-4 hidden overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 lg:block">
+          <div className="grid grid-cols-[minmax(220px,1.45fr)_140px_150px_150px_110px] items-center gap-3 border-b border-slate-200 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+            <span>Agent</span>
+            <span>Status</span>
+            <span>Nominal</span>
+            <span>Tanggal Masuk</span>
+            <span className="text-center">Aksi</span>
+          </div>
+        </div>
+      ) : null}
+
+      <div className={useOperatorTable ? "mt-0 min-w-0 space-y-0 lg:overflow-hidden lg:rounded-b-2xl lg:border-x lg:border-b lg:border-slate-200" : "mt-4 min-w-0 space-y-3 sm:mt-5"}>
         {filteredApplications.length ? (
           filteredApplications.map((item) => {
             const agentName = getApplicantText(item, "agent_name", item.member_name || "Agent");
@@ -575,7 +773,8 @@ export function MasterAgentCreditApplicationList({
             const approvedAmount = Number(item.approved_amount || 0);
             const isPending = item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review" || item.status === "ready_to_disburse";
             const termsAccepted = isTruthy(item.applicant_data?.terms_accepted);
-            const docsComplete = docs.every((doc) => Boolean(doc.src));
+            const docsCompleteFromServer = docs.every((doc) => Boolean(doc.src));
+            const docsComplete = docsCompleteFromServer || Boolean(locallyCompletedDocs[item.id]);
             const masterSignature =
               typeof item.applicant_data?.master_signature_data === "string" && item.applicant_data.master_signature_data.startsWith("data:image/")
                 ? item.applicant_data.master_signature_data
@@ -585,6 +784,8 @@ export function MasterAgentCreditApplicationList({
             const canApprove =
               mode === "analyst"
                 ? Boolean(masterSignature && item.status === "analysis_review")
+                : mode === "admin"
+                  ? Boolean(docsComplete && (item.has_agent_signature || signatureSrc) && termsAccepted)
                 : mode === "master"
                     ? Boolean(docsComplete && (item.has_agent_signature || signatureSrc) && termsAccepted)
                   : mode === "marketing"
@@ -593,14 +794,23 @@ export function MasterAgentCreditApplicationList({
             const approveBlockReason =
               mode === "analyst"
                 ? "Marketing belum verifikasi dan tanda tangan."
+                : mode === "admin" && !docsComplete
+                  ? "Dokumen lapangan wajib lengkap sebelum admin approve manual."
                 : (mode === "marketing" || mode === "master") && !docsComplete
-                    ? "Empat dokumen wajib harus lengkap sebelum dikirim ke analis."
+                    ? "Empat dokumen wajib harus lengkap sebelum dikirim ke operator."
                   : !termsAccepted
                   ? "Agent belum mencentang persetujuan syarat & ketentuan."
                   : "Agent belum tanda tangan persetujuan.";
             return (
-              <article key={item.id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)] sm:p-3">
-                <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center">
+              <article
+                key={item.id}
+                className={
+                  useOperatorTable
+                    ? "min-w-0 border-b border-slate-100 bg-white p-3 transition last:border-b-0 hover:bg-emerald-50/30 lg:p-0"
+                    : "min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)] sm:p-3"
+                }
+              >
+                <div className={useOperatorTable ? "grid gap-3 lg:grid-cols-[minmax(220px,1.45fr)_140px_150px_150px_110px] lg:items-center lg:px-4 lg:py-3" : "grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center"}>
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-950 text-xs font-black text-lime-300">
                       {agentName.slice(0, 2).toUpperCase()}
@@ -614,11 +824,19 @@ export function MasterAgentCreditApplicationList({
                       <p className="mt-1 truncate text-[11px] font-bold text-slate-400">WA {wa} · NIK {nik}</p>
                     </div>
                   </div>
-                  <div className="rounded-xl bg-emerald-50 px-3 py-2 text-left lg:text-center">
+                  {useOperatorTable ? (
+                    <div className="hidden lg:block">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getDisplayStatusClass(item)}`}>{getDisplayStatus(item)}</span>
+                    </div>
+                  ) : null}
+                  <div className={useOperatorTable ? "rounded-xl bg-emerald-50 px-3 py-2 text-left lg:bg-transparent lg:px-0 lg:py-0" : "rounded-xl bg-emerald-50 px-3 py-2 text-left lg:text-center"}>
                     <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">{isPending ? "Diajukan" : "Sisa"}</p>
                     <p className="mt-0.5 text-sm font-black text-slate-950">{formatIDR(isPending ? item.requested_amount : outstanding)}</p>
                     {!isPending && approvedAmount ? <p className="mt-0.5 text-[9px] font-bold text-slate-400">Limit {formatIDR(approvedAmount)}</p> : null}
                   </div>
+                  {useOperatorTable ? (
+                    <div className="hidden text-xs font-bold text-slate-500 lg:block">{formatDateTime(item.updated_at)}</div>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setOpenId((current) => (current === item.id ? null : item.id))}
@@ -628,8 +846,18 @@ export function MasterAgentCreditApplicationList({
                     <ChevronDown className={`h-4 w-4 transition ${openId === item.id ? "rotate-180" : ""}`} />
                   </button>
                 </div>
-                {showActions ? (
-                  <div className="mt-3">
+                {showActions && !useOperatorTable ? (
+                  <div className="mt-3 space-y-3">
+                    {(mode === "marketing" || mode === "master") && (item.status === "submitted" || item.status === "marketing_review") ? (
+                      docsComplete ? (
+                        <SurveyDocumentsCompleteNotice />
+                      ) : (
+                        <MarketingSurveyDocumentUploader
+                          item={item}
+                          onComplete={() => setLocallyCompletedDocs((current) => ({ ...current, [item.id]: true }))}
+                        />
+                      )
+                    ) : null}
                     <MasterAgentCreditDecisionControls
                       applicationId={item.id}
                       requestedAmount={item.requested_amount}
@@ -648,6 +876,23 @@ export function MasterAgentCreditApplicationList({
 
                 {openId === item.id ? (
                   <div className="mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-2 sm:p-3">
+                    {showActions && useOperatorTable ? (
+                      <div className="mb-3">
+                        <MasterAgentCreditDecisionControls
+                          applicationId={item.id}
+                          requestedAmount={item.requested_amount}
+                          approvedAmount={item.approved_amount}
+                          marketingNote={item.marketing_note}
+                          analystNote={item.analyst_note}
+                          analystRecommendation={item.analyst_recommendation}
+                          analystRecommendedAmount={item.analyst_recommended_amount}
+                          status={item.status}
+                          mode={mode}
+                          canApprove={canApprove}
+                          approveBlockReason={approveBlockReason}
+                        />
+                      </div>
+                    ) : null}
                     <div className="grid min-w-0 gap-2 text-[11px] font-semibold text-slate-500 sm:gap-3 lg:grid-cols-2">
                       <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
                         <p className="font-black text-slate-950">Status Pinjaman</p>

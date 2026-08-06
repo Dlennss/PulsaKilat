@@ -12,6 +12,9 @@ export type AgentCreditApplication = {
   member_name: string;
   member_email: string;
   member_phone: string;
+  agent_name?: string;
+  agent_email?: string;
+  store_name?: string;
   requested_amount: number;
   approved_amount: number;
   status: string;
@@ -24,6 +27,7 @@ export type AgentCreditApplication = {
   analyst_note?: string;
   analyst_recommendation?: string;
   analyst_recommended_amount?: number;
+  recommended_amount?: number;
   loan_status?: string;
   outstanding_amount?: number;
   credit_available_amount?: number;

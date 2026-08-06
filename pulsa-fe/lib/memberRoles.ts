@@ -130,7 +130,7 @@ export function roleLabel(role: string): string {
     case "marketing":
       return "Marketing";
     case "analis":
-      return "Analis";
+      return "Operator";
     case "operator_trx":
       return "Operator Transaksi";
     case "operator_wallet":

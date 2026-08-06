@@ -113,6 +113,38 @@ func (h *AgentCreditController) MasterDecision(w http.ResponseWriter, r *http.Re
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "item": item})
 }
 
+func (h *AgentCreditController) CreditRanks(w http.ResponseWriter, r *http.Request) {
+	auth, ok := helper.GetAuth(r.Context())
+	if !ok {
+		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	if r.Method == http.MethodGet {
+		items, err := h.svc.ListRanks(r.Context(), auth)
+		if err != nil {
+			helper.WriteJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
+		return
+	}
+	if r.Method != http.MethodPost {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
+		return
+	}
+	var in service.AgentCreditRankChangeInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"})
+		return
+	}
+	item, err := h.svc.ChangeMemberCreditRank(r.Context(), auth, in)
+	if err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "item": item})
+}
+
 func (h *AgentCreditController) PayInstallment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})

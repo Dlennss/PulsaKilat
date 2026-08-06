@@ -36,7 +36,7 @@ export default async function MasterDashboardPage() {
   const stats = [
     { label: "Total Pengajuan", value: String(masterItems.length), hint: "Data masuk marketing", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
     { label: "Perlu Didampingi", value: String(waiting), hint: "Cek dokumen dan selfie", icon: Camera, tone: "from-amber-400 to-orange-500" },
-    { label: "Dikirim Analis", value: String(inAnalysis), hint: "Menunggu keputusan final", icon: ShieldCheck, tone: "from-cyan-500 to-sky-500" },
+    { label: "Dikirim Operator", value: String(inAnalysis), hint: "Menunggu keputusan final", icon: ShieldCheck, tone: "from-cyan-500 to-sky-500" },
     { label: "Disetujui", value: String(approved), hint: "Kredit aktif dipantau", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
   ];
 
@@ -55,7 +55,7 @@ export default async function MasterDashboardPage() {
                 </p>
                 <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Pendampingan lapangan marketing</h1>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-emerald-50/90 sm:text-base">
-                  Lengkapi selfie bersama agent, cek dokumen pengajuan, tanda tangan sebagai marketing, lalu kirim berkas lengkap ke analis.
+                  Lengkapi selfie bersama agent, cek dokumen pengajuan, tanda tangan sebagai marketing, lalu kirim berkas lengkap ke operator.
                 </p>
               </div>
               <div className="rounded-3xl border border-white/20 bg-white/12 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur">

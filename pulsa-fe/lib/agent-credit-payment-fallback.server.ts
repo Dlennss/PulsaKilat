@@ -61,6 +61,65 @@ function parsePaymentNote(payment: AgentCreditPayment) {
   }
 }
 
+export async function getAgentCreditApplicationsDatabaseFallback() {
+  const dsn = databaseUrl();
+  if (!dsn) return [] as AgentCreditApplication[];
+
+  const sql = `
+WITH applications AS (
+  SELECT
+    a.id,
+    a.member_id,
+    COALESCE(m.nama, '') AS member_name,
+    COALESCE(m.email, '') AS member_email,
+    COALESCE(m.phone, '') AS member_phone,
+    a.requested_amount,
+    a.approved_amount,
+    a.status,
+    COALESCE(a.applicant_data, '{}'::jsonb) AS applicant_data,
+    COALESCE(a.document_data, '{}'::jsonb) AS document_data,
+    COALESCE(a.agent_signature_data, '') AS agent_signature_data,
+    (a.agent_signature_data IS NOT NULL AND a.agent_signature_data <> '') AS has_agent_signature,
+    a.agent_signature_at::text AS agent_signature_at,
+    COALESCE(a.marketing_note, '') AS marketing_note,
+    COALESCE(a.analyst_note, '') AS analyst_note,
+    COALESCE(a.analyst_recommendation, '') AS analyst_recommendation,
+    COALESCE(a.analyst_recommended_amount, 0) AS analyst_recommended_amount,
+    COALESCE(l.status, '') AS loan_status,
+    COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
+    COALESCE(l.available_amount, 0) AS credit_available_amount,
+    COALESCE(pay.paid_amount, 0) AS paid_amount,
+    COALESCE(pay.payment_count, 0) AS payment_count,
+    COALESCE(r.code, 'start') AS credit_level_code,
+    COALESCE(r.name, 'Kilat Start') AS credit_level_name,
+    COALESCE(r.limit_amount, 500000) AS credit_limit_amount,
+    l.approved_at::text AS loan_approved_at,
+    l.due_date::text AS loan_due_date,
+    a.created_at::text AS created_at,
+    a.updated_at::text AS updated_at
+  FROM public.agent_credit_application a
+  JOIN public.member m ON m.id = a.member_id
+  LEFT JOIN public.agent_credit_loan l ON l.application_id = a.id
+  LEFT JOIN public.agent_credit_rank r ON r.id = COALESCE(l.rank_id, a.rank_id)
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(SUM(p.amount), 0) AS paid_amount, COUNT(*) AS payment_count
+    FROM public.agent_credit_payment p
+    WHERE p.loan_id = l.id
+  ) pay ON TRUE
+  ORDER BY a.created_at DESC, a.id DESC
+  LIMIT 200
+)
+SELECT COALESCE(json_agg(row_to_json(applications)), '[]'::json)::text FROM applications;
+`;
+
+  try {
+    const stdout = await runPsql(dsn, sql);
+    return JSON.parse(stdout.trim() || "[]") as AgentCreditApplication[];
+  } catch {
+    return [] as AgentCreditApplication[];
+  }
+}
+
 export async function attachAgentCreditPaymentsFallback(applications: AgentCreditApplication[]) {
   if (!applications.length) return applications;
 

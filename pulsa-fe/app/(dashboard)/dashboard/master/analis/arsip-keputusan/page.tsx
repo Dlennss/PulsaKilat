@@ -1,5 +1,5 @@
-import { AnalystCreditWorkspace } from "@/components/dashboard/AnalystCreditWorkspace";
+import { redirect } from "next/navigation";
 
 export default function AnalystDecisionArchivePage() {
-  return <AnalystCreditWorkspace view="archive" />;
+  redirect("/dashboard/master/operator/arsip-keputusan");
 }

@@ -50,9 +50,19 @@ type AgentCreditPaymentInput struct {
 	PaymentProof  map[string]any `json:"payment_proof"`
 }
 
+type AgentCreditRankChangeInput struct {
+	MemberID int64  `json:"member_id"`
+	RankID   int64  `json:"rank_id"`
+	Reason   string `json:"reason"`
+}
+
 func isCreditReviewer(role string) bool {
 	normalized := helper.NormalizeRole(role)
-	return normalized == helper.RoleRetailMaster || normalized == helper.RoleRetailMarketing || normalized == helper.RoleRetailAnalyst
+	return normalized == helper.RoleAdmin ||
+		normalized == helper.RoleStaff ||
+		normalized == helper.RoleRetailMaster ||
+		normalized == helper.RoleRetailMarketing ||
+		normalized == helper.RoleRetailAnalyst
 }
 
 func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditSubmitInput) (*repository.AgentCreditApplication, error) {
@@ -78,11 +88,14 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 			in.TermsAccepted = accepted
 		}
 	}
-	if role == helper.RoleRetailAgent && !in.TermsAccepted {
-		return nil, errors.New("syarat dan ketentuan wajib disetujui")
-	}
-	in.ApplicantData["terms_accepted"] = in.TermsAccepted
-	if in.TermsAccepted {
+	if role == helper.RoleRetailAgent {
+		if !in.TermsAccepted {
+			return nil, errors.New("syarat dan ketentuan wajib disetujui")
+		}
+		in.ApplicantData["terms_accepted"] = in.TermsAccepted
+		in.ApplicantData["terms_version"] = "pulsakilat-agent-credit-2026-07"
+	} else if in.TermsAccepted {
+		in.ApplicantData["terms_accepted"] = true
 		in.ApplicantData["terms_version"] = "pulsakilat-agent-credit-2026-07"
 	}
 	if role == helper.RoleRetailAgent {
@@ -114,22 +127,6 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 		if strings.TrimSpace(in.AgentSignature) == "" {
 			return nil, errors.New("tanda tangan wajib diisi")
 		}
-		if selfie, hasLegacySelfie := in.DocumentData["selfie"]; hasLegacySelfie {
-			if _, ok := in.DocumentData["selfie_ktp"]; !ok {
-				in.DocumentData["selfie_ktp"] = selfie
-			}
-		}
-		requiredDocuments := map[string]string{
-			"ktp":              "foto KTP wajib diupload",
-			"store":            "foto toko wajib diupload",
-			"selfie_ktp":       "foto selfie memegang KTP wajib diupload",
-			"selfie_marketing": "foto selfie dengan marketing wajib diupload",
-		}
-		for key, message := range requiredDocuments {
-			if in.DocumentData[key] == nil {
-				return nil, errors.New(message)
-			}
-		}
 		if in.ID > 0 {
 			return s.repo.CompleteApplicationConsent(ctx, repository.AgentCreditApplicationInput{
 				ID:              in.ID,
@@ -140,10 +137,40 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 				AgentSignature:  strings.TrimSpace(in.AgentSignature),
 			})
 		}
+		existingID, err := s.repo.FindOpenEarlyApplicationID(ctx, targetMemberID)
+		if err != nil {
+			return nil, err
+		}
+		if existingID > 0 {
+			return s.repo.CompleteApplicationConsent(ctx, repository.AgentCreditApplicationInput{
+				ID:              existingID,
+				MemberID:        targetMemberID,
+				RequestedAmount: in.RequestedAmount,
+				ApplicantData:   in.ApplicantData,
+				DocumentData:    in.DocumentData,
+				AgentSignature:  strings.TrimSpace(in.AgentSignature),
+			})
+		}
+	} else if isCreditReviewer(role) && in.ID > 0 {
+		if selfie, hasLegacySelfie := in.DocumentData["selfie"]; hasLegacySelfie {
+			if _, ok := in.DocumentData["selfie_ktp"]; !ok {
+				in.DocumentData["selfie_ktp"] = selfie
+			}
+		}
+		return s.repo.CompleteApplicationConsent(ctx, repository.AgentCreditApplicationInput{
+			ID:              in.ID,
+			MemberID:        targetMemberID,
+			MarketingID:     creditApplicationMarketingID(role, auth.MemberID),
+			RequestedAmount: in.RequestedAmount,
+			ApplicantData:   in.ApplicantData,
+			DocumentData:    in.DocumentData,
+			AgentSignature:  "",
+		})
 	}
 	return s.repo.CreateApplication(ctx, repository.AgentCreditApplicationInput{
 		ID:              in.ID,
 		MemberID:        targetMemberID,
+		MarketingID:     creditApplicationMarketingID(role, auth.MemberID),
 		RequestedAmount: in.RequestedAmount,
 		ApplicantData:   in.ApplicantData,
 		DocumentData:    in.DocumentData,
@@ -164,6 +191,27 @@ func (s *AgentCreditService) ListMyApplications(ctx context.Context, auth helper
 		return nil, errors.New("user only")
 	}
 	return s.repo.ListMemberApplications(ctx, auth.MemberID, 10)
+}
+
+func (s *AgentCreditService) ListRanks(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditRank, error) {
+	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAnalyst {
+		return nil, errors.New("operator kredit only")
+	}
+	return s.repo.ListActiveRanks(ctx)
+}
+
+func (s *AgentCreditService) ChangeMemberCreditRank(ctx context.Context, auth helper.AuthInfo, in AgentCreditRankChangeInput) (*repository.AgentCreditRank, error) {
+	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAnalyst {
+		return nil, errors.New("operator kredit only")
+	}
+	if in.MemberID <= 0 || in.RankID <= 0 {
+		return nil, errors.New("agent dan limit wajib dipilih")
+	}
+	reason := strings.TrimSpace(in.Reason)
+	if reason == "" {
+		return nil, errors.New("catatan keputusan wajib diisi")
+	}
+	return s.repo.ChangeMemberCreditRank(ctx, in.MemberID, in.RankID, auth.MemberID, reason)
 }
 
 func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditDecisionInput) (*repository.AgentCreditApplication, error) {
@@ -188,6 +236,8 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 	}
 
 	switch role {
+	case helper.RoleAdmin, helper.RoleStaff:
+		return s.decideAsAdmin(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount)
 	case helper.RoleRetailMarketing:
 		return s.decideAsMarketing(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData))
 	case helper.RoleRetailAnalyst:
@@ -199,6 +249,51 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 	}
 }
 
+func creditApplicationMarketingID(role string, memberID int64) int64 {
+	if helper.NormalizeRole(role) == helper.RoleRetailMarketing {
+		return memberID
+	}
+	return 0
+}
+
+func (s *AgentCreditService) decideAsAdmin(ctx context.Context, adminID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData, riskLevel string, riskScore int64, approvedAmount, limitAmount int64) (*repository.AgentCreditApplication, error) {
+	if reviewState.Status == "approved" || reviewState.Status == "rejected" {
+		return nil, errors.New("pengajuan sudah memiliki keputusan akhir")
+	}
+	riskLevel = normalizeRiskLevel(riskLevel)
+	switch decision {
+	case "approve", "approved", "setujui":
+		if approvedAmount <= 0 {
+			approvedAmount = limitAmount
+		}
+		if approvedAmount > limitAmount {
+			return nil, fmt.Errorf("nominal disetujui maksimal Rp%d", limitAmount)
+		}
+		if approvedAmount <= 0 {
+			return nil, errors.New("nominal disetujui wajib diisi")
+		}
+		return s.repo.AnalystFinalDecision(ctx, repository.AgentCreditDecisionInput{
+			ID:             applicationID,
+			AnalystID:      adminID,
+			Status:         "approved",
+			ApprovedAmount: approvedAmount,
+			AnalystNote:    fallbackNote(note, "Admin menyetujui pengajuan kredit secara manual."),
+			Recommendation: "approved_by_admin",
+		}, signatureData, riskLevel, riskScore)
+	case "reject", "rejected", "tolak":
+		return s.repo.AnalystFinalDecision(ctx, repository.AgentCreditDecisionInput{
+			ID:             applicationID,
+			AnalystID:      adminID,
+			Status:         "rejected",
+			ApprovedAmount: 0,
+			AnalystNote:    fallbackNote(note, "Ditolak oleh admin."),
+			Recommendation: "rejected_by_admin",
+		}, signatureData, riskLevel, riskScore)
+	default:
+		return nil, errors.New("admin wajib memilih setuju atau tolak")
+	}
+}
+
 func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData string) (*repository.AgentCreditApplication, error) {
 	if reviewState.Status != "submitted" && reviewState.Status != "marketing_review" {
 		return nil, errors.New("status pengajuan belum bisa diverifikasi marketing")
@@ -206,13 +301,26 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 	switch decision {
 	case "approve", "approved", "setujui", "forward_to_analysis", "kirim_analis":
 		if !reviewState.TermsAccepted {
-			return nil, errors.New("agent wajib menyetujui syarat dan ketentuan sebelum dikirim ke analis")
+			return nil, errors.New("agent wajib menyetujui syarat dan ketentuan sebelum dikirim ke operator")
 		}
 		if !reviewState.HasAgentSignature {
-			return nil, errors.New("agent wajib tanda tangan sebelum dikirim ke analis")
+			return nil, errors.New("agent wajib tanda tangan sebelum dikirim ke operator")
 		}
 		if !reviewState.HasKTPDocument || !reviewState.HasStoreDocument || !reviewState.HasSelfieKTPDocument || !reviewState.HasSelfieMarketing {
-			return nil, errors.New("foto KTP, foto toko, selfie pegang KTP, dan foto bersama marketing wajib lengkap")
+			missing := make([]string, 0, 4)
+			if !reviewState.HasKTPDocument {
+				missing = append(missing, "foto KTP")
+			}
+			if !reviewState.HasStoreDocument {
+				missing = append(missing, "foto toko")
+			}
+			if !reviewState.HasSelfieKTPDocument {
+				missing = append(missing, "selfie pegang KTP")
+			}
+			if !reviewState.HasSelfieMarketing {
+				missing = append(missing, "foto bersama marketing")
+			}
+			return nil, fmt.Errorf("%s wajib lengkap sebelum dikirim ke operator", strings.Join(missing, ", "))
 		}
 		if !strings.HasPrefix(signatureData, "data:image/") {
 			return nil, errors.New("tanda tangan marketing wajib diisi")
@@ -226,18 +334,18 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 			ApprovedAmount: 0,
 		}, signatureData)
 	case "reject", "rejected", "tolak":
-		return nil, errors.New("marketing hanya bisa verifikasi dan mengirim pengajuan ke analis")
+		return nil, errors.New("marketing hanya bisa verifikasi dan mengirim pengajuan ke operator")
 	default:
-		return nil, errors.New("marketing wajib memilih verifikasi dan kirim ke analis")
+		return nil, errors.New("marketing wajib memilih verifikasi dan kirim ke operator")
 	}
 }
 
 func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData, riskLevel string, riskScore int64, approvedAmount, limitAmount int64) (*repository.AgentCreditApplication, error) {
 	if reviewState.Status != "analysis_review" {
-		return nil, errors.New("pengajuan belum masuk tahap analis")
+		return nil, errors.New("pengajuan belum masuk tahap operator")
 	}
 	if !reviewState.MasterVerified {
-		return nil, errors.New("marketing wajib verifikasi dan tanda tangan sebelum analis ACC")
+		return nil, errors.New("marketing wajib verifikasi dan tanda tangan sebelum operator ACC")
 	}
 	riskLevel = normalizeRiskLevel(riskLevel)
 	switch decision {
@@ -256,7 +364,7 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 			AnalystID:      analystID,
 			Status:         "approved",
 			ApprovedAmount: approvedAmount,
-			AnalystNote:    fallbackNote(note, "Analis menyetujui risiko dan nominal. Pinjaman saldo aktif."),
+			AnalystNote:    fallbackNote(note, "Operator menyetujui risiko dan nominal. Pinjaman saldo aktif."),
 			Recommendation: "approved",
 		}, signatureData, riskLevel, riskScore)
 	case "reject", "rejected", "tolak":
@@ -265,11 +373,11 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 			AnalystID:      analystID,
 			Status:         "rejected",
 			ApprovedAmount: 0,
-			AnalystNote:    fallbackNote(note, "Ditolak oleh analis."),
+			AnalystNote:    fallbackNote(note, "Ditolak oleh operator."),
 			Recommendation: "rejected",
 		}, signatureData, riskLevel, riskScore)
 	default:
-		return nil, errors.New("analis wajib memilih setuju atau tolak")
+		return nil, errors.New("operator wajib memilih setuju atau tolak")
 	}
 }
 
@@ -278,10 +386,10 @@ func (s *AgentCreditService) decideAsMaster(ctx context.Context, masterID, appli
 		switch decision {
 		case "approve", "approved", "setujui", "forward_to_analysis", "kirim_analis":
 			if !reviewState.TermsAccepted {
-				return nil, errors.New("agent wajib menyetujui syarat dan ketentuan sebelum dikirim ke analis")
+				return nil, errors.New("agent wajib menyetujui syarat dan ketentuan sebelum dikirim ke operator")
 			}
 			if !reviewState.HasAgentSignature {
-				return nil, errors.New("agent wajib tanda tangan sebelum dikirim ke analis")
+				return nil, errors.New("agent wajib tanda tangan sebelum dikirim ke operator")
 			}
 			if !reviewState.HasKTPDocument || !reviewState.HasStoreDocument || !reviewState.HasSelfieKTPDocument || !reviewState.HasSelfieMarketing {
 				return nil, errors.New("foto KTP, foto toko, selfie pegang KTP, dan foto bersama marketing wajib lengkap")
@@ -293,17 +401,17 @@ func (s *AgentCreditService) decideAsMaster(ctx context.Context, masterID, appli
 				ID:             applicationID,
 				MarketingID:    masterID,
 				Status:         "analysis_review",
-				MarketingNote:  fallbackNote(note, "Marketing sudah verifikasi data agent dan dokumen, lalu dikirim ke analis."),
+				MarketingNote:  fallbackNote(note, "Marketing sudah verifikasi data agent dan dokumen, lalu dikirim ke operator."),
 				Recommendation: "marketing_verified",
 				ApprovedAmount: 0,
 			}, signatureData)
 		case "reject", "rejected", "tolak":
-			return nil, errors.New("marketing tidak bisa menolak pengajuan agent; keputusan tolak ada di analis")
+			return nil, errors.New("marketing tidak bisa menolak pengajuan agent; keputusan tolak ada di operator")
 		default:
-			return nil, errors.New("marketing wajib tanda tangan dan kirim ke analis")
+			return nil, errors.New("marketing wajib tanda tangan dan kirim ke operator")
 		}
 	}
-	return nil, errors.New("keputusan akhir pinjaman ada di analis")
+	return nil, errors.New("keputusan akhir pinjaman ada di operator")
 }
 
 func fallbackNote(note, fallback string) string {

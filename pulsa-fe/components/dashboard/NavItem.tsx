@@ -31,6 +31,13 @@ const iconByHref = {
   "/dashboard/master/analis/bukti-pelunasan": FileCheck2,
   "/dashboard/master/analis/penolakan-catatan": XCircle,
   "/dashboard/master/analis/arsip-keputusan": Archive,
+  "/dashboard/master/operator": ShieldCheck,
+  "/dashboard/master/operator/antrean": ClipboardList,
+  "/dashboard/master/operator/kredit-diterima": BadgeCheck,
+  "/dashboard/master/operator/monitor-pelunasan": WalletCards,
+  "/dashboard/master/operator/bukti-pelunasan": FileCheck2,
+  "/dashboard/master/operator/penolakan-catatan": XCircle,
+  "/dashboard/master/operator/arsip-keputusan": Archive,
   "/dashboard/master/riwayat-acc-analis": FileText,
 } as const;
 

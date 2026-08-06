@@ -18,12 +18,13 @@ export default async function AnalystApprovedHistoryPage() {
   const applications = await attachAgentCreditPaymentsFallback(rawApplications);
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeApproved = approvedItems.filter((item) => String(item.loan_status || "").toLowerCase() === "active").length;
-  const paidApproved = approvedItems.filter((item) => String(item.loan_status || "").toLowerCase() === "paid" || Number(item.outstanding_amount || 0) <= 0).length;
+  const paidApproved = approvedItems.filter((item) => String(item.loan_status || "").toLowerCase() === "paid").length;
+  const unusedApproved = approvedItems.filter((item) => String(item.loan_status || "").toLowerCase() === "active" && Number(item.outstanding_amount || 0) <= 0).length;
   const approvedNominal = approvedItems.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
 
   const stats = [
-    { label: "Total ACC", value: String(approvedItems.length), hint: "Disetujui analis", icon: BadgeCheck, tone: "from-emerald-500 to-lime-400" },
-    { label: "Pinjaman Aktif", value: String(activeApproved), hint: "Masih berjalan", icon: ShieldCheck, tone: "from-sky-500 to-cyan-400" },
+    { label: "Total ACC", value: String(approvedItems.length), hint: "Disetujui operator", icon: BadgeCheck, tone: "from-emerald-500 to-lime-400" },
+    { label: "Limit Aktif", value: String(activeApproved), hint: unusedApproved ? `${unusedApproved} belum dipakai` : "Masih berjalan", icon: ShieldCheck, tone: "from-sky-500 to-cyan-400" },
     { label: "Sudah Lunas", value: String(paidApproved), hint: "Selesai bayar", icon: History, tone: "from-violet-500 to-fuchsia-500" },
     { label: "Nominal ACC", value: formatIDR(approvedNominal), hint: "Total disetujui", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
   ];
@@ -38,11 +39,11 @@ export default async function AnalystApprovedHistoryPage() {
               <div className="max-w-2xl">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/12 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-lime-100">
                   <History className="h-3.5 w-3.5" />
-                  Riwayat Analis
+                  Riwayat Operator
                 </p>
-                <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Riwayat ACC Analis</h1>
+                <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Riwayat ACC Operator</h1>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-emerald-50/90 sm:text-base">
-                  Arsip keputusan analis yang sudah menyetujui pinjaman, lengkap dengan dokumen, nominal, dan riwayat pembayaran.
+                  Arsip keputusan operator yang sudah menyetujui pinjaman, lengkap dengan dokumen, nominal, dan riwayat pembayaran.
                 </p>
               </div>
               <div className="rounded-3xl border border-white/20 bg-white/12 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur">
@@ -52,7 +53,7 @@ export default async function AnalystApprovedHistoryPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-100">Sudah Final</p>
-                    <p className="text-xl font-black">ACC Analis</p>
+                    <p className="text-xl font-black">ACC Operator</p>
                   </div>
                 </div>
               </div>
@@ -88,7 +89,7 @@ export default async function AnalystApprovedHistoryPage() {
                 <div>
                   <p className="text-sm font-black text-slate-950">Riwayat ini tidak perlu aksi lagi.</p>
                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                    Gunakan untuk audit keputusan analis dan memantau pembayaran agent yang sudah cair.
+                    Gunakan untuk audit keputusan operator dan memantau pembayaran agent yang sudah cair.
                   </p>
                 </div>
               </div>
@@ -100,8 +101,8 @@ export default async function AnalystApprovedHistoryPage() {
               showActions={false}
               eyebrow="Sudah ACC"
               title="Daftar Pinjaman Disetujui"
-              emptyTitle="Belum ada ACC analis"
-              emptyDescription="Data yang disetujui analis akan masuk ke riwayat ini setelah keputusan final dibuat."
+              emptyTitle="Belum ada ACC operator"
+              emptyDescription="Data yang disetujui operator akan masuk ke riwayat ini setelah keputusan final dibuat."
             />
           </div>
         </div>

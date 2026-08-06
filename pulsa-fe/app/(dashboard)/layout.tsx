@@ -41,7 +41,7 @@ function targetPathByRole(role: AppRole): string {
   if (role === "admin" || role === "staff") return "/dashboard/admin";
   if (role === "auditor") return "/dashboard/auditor";
   if (role === "member" || role === "agent_member" || role === "master_member") return "/dashboard/member";
-  if (role === "analis") return "/dashboard/master/analis";
+  if (role === "analis") return "/dashboard/master/operator";
   if (role === "master" || role === "marketing") return "/dashboard/master";
   if (role === "operator_trx") return "/dashboard/operator";
   if (role === "operator_wallet") return "/dashboard/wallet";
