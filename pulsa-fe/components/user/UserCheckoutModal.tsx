@@ -35,6 +35,18 @@ type ApiItemResponse<T> = {
   error?: string;
 };
 
+type CheckoutQrisItem = {
+  ref_id: string;
+  amount: number;
+  fee_admin: number;
+  gross_amount: number;
+  status: string;
+  payment_type?: string;
+  transaction_id?: string;
+  qr_url?: string;
+  expired_at?: string;
+};
+
 const TURNSTILE_ENABLED = /^(1|true|yes|on)$/i.test(process.env.NEXT_PUBLIC_TURNSTILE_ENABLED || "");
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
@@ -191,6 +203,29 @@ function parsePaymentBreakdown(rawRequest?: string | null) {
   }
 }
 
+function checkoutQrisPayment(order: UserAppOrder, qris: CheckoutQrisItem): UserAppOrderPayment {
+  return {
+    id: 0,
+    app_order_id: order.id,
+    order_id: order.invoice_id,
+    transaction_id: qris.transaction_id || qris.ref_id,
+    gross_amount: Number(qris.gross_amount || qris.amount || order.harga_final || 0),
+    payment_type: qris.payment_type || "qris",
+    transaction_status: qris.status || "pending",
+    fraud_status: null,
+    acquirer: "pulsa24jam",
+    qr_url: qris.qr_url || null,
+    raw_request: JSON.stringify({
+      wallet_debit: 0,
+      credit_debit: 0,
+      qris_amount: Number(qris.gross_amount || qris.amount || order.harga_final || 0),
+      total_amount: Number(qris.gross_amount || qris.amount || order.harga_final || 0),
+      deposit_ref_id: qris.ref_id,
+    }),
+    expired_at: qris.expired_at || null,
+  };
+}
+
 export function UserCheckoutModal({
   open,
   product,
@@ -216,7 +251,9 @@ export function UserCheckoutModal({
   const [checkingStatus, setCheckingStatus] = React.useState(false);
   const [order, setOrder] = React.useState<UserAppOrder | null>(null);
   const [payment, setPayment] = React.useState<UserAppOrderPayment | null>(null);
+  const [checkoutQris, setCheckoutQris] = React.useState<CheckoutQrisItem | null>(null);
   const [retailSaldo, setRetailSaldo] = React.useState<number | null>(null);
+  const [retailCreditSaldo, setRetailCreditSaldo] = React.useState(0);
   const [guestTurnstileToken, setGuestTurnstileToken] = React.useState("");
   const [waitingTurnstile, setWaitingTurnstile] = React.useState(false);
   const [turnstileError, setTurnstileError] = React.useState<string | null>(null);
@@ -224,6 +261,7 @@ export function UserCheckoutModal({
   const [turnstileAppearance, setTurnstileAppearance] = React.useState<"always" | "interaction-only">("interaction-only");
   const [, forceTick] = React.useReducer((v) => v + 1, 0);
   const refundRecoveryAttemptedRef = React.useRef(false);
+  const checkoutQrisCompletingRef = React.useRef(false);
   const effectiveAuthToken = authToken || localAuthToken;
   const activeTurnstileToken = turnstileToken || guestTurnstileToken;
   const guestNeedsTurnstile = !effectiveAuthToken && TURNSTILE_ENABLED && Boolean(TURNSTILE_SITE_KEY);
@@ -243,13 +281,16 @@ export function UserCheckoutModal({
     setLoading(false);
     setOrder(null);
     setPayment(null);
+    setCheckoutQris(null);
     setRetailSaldo(null);
+    setRetailCreditSaldo(0);
     setGuestTurnstileToken("");
     setWaitingTurnstile(false);
     setTurnstileError(null);
     setTurnstileHint(null);
     setTurnstileAppearance("interaction-only");
     refundRecoveryAttemptedRef.current = false;
+    checkoutQrisCompletingRef.current = false;
   }, [open, initialDest, product?.id]);
 
   React.useEffect(() => {
@@ -258,18 +299,31 @@ export function UserCheckoutModal({
     let cancelled = false;
     const loadSaldo = async () => {
       try {
-        const res = await fetch("/api/me/profile", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${effectiveAuthToken}`,
-          },
-        });
-        const json = (await res.json().catch(() => ({}))) as { ok?: boolean; profile?: { saldo?: number } };
-        if (!cancelled && res.ok && json.ok) {
-          setRetailSaldo(Number(json.profile?.saldo || 0));
+        const [profileRes, creditRes] = await Promise.all([
+          fetch("/api/me/profile", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${effectiveAuthToken}` },
+          }),
+          fetch("/api/agent-credit/my-applications", { cache: "no-store" }),
+        ]);
+        const profileJson = (await profileRes.json().catch(() => ({}))) as { ok?: boolean; profile?: { saldo?: number } };
+        const creditJson = (await creditRes.json().catch(() => ({}))) as {
+          ok?: boolean;
+          items?: Array<{ credit_available_amount?: number }>;
+        };
+        if (!cancelled) {
+          setRetailSaldo(profileRes.ok && profileJson.ok ? Number(profileJson.profile?.saldo || 0) : 0);
+          setRetailCreditSaldo(
+            creditRes.ok && creditJson.ok && Array.isArray(creditJson.items)
+              ? creditJson.items.reduce((sum, item) => sum + Math.max(0, Number(item.credit_available_amount || 0)), 0)
+              : 0,
+          );
         }
       } catch {
-        if (!cancelled) setRetailSaldo(0);
+        if (!cancelled) {
+          setRetailSaldo(0);
+          setRetailCreditSaldo(0);
+        }
       }
     };
 
@@ -343,8 +397,10 @@ export function UserCheckoutModal({
       ? nominalValue + baseCharge + feeActive
       : 0;
   const walletSaldo = Math.max(0, retailSaldo || 0);
+  const creditSaldo = Math.max(0, retailCreditSaldo || 0);
   const estimatedWalletDebit = effectiveAuthToken ? Math.min(hargaSebelumFeeAdmin, walletSaldo) : 0;
-  const estimatedCreditDebit = effectiveAuthToken ? Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0) : 0;
+  const estimatedCreditDebit = effectiveAuthToken ? Math.min(Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0), creditSaldo) : 0;
+  const estimatedQrisAmount = effectiveAuthToken ? Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit - estimatedCreditDebit, 0) : 0;
   const feeAdminQris = 0;
   const totalBayar = hargaSebelumFeeAdmin;
   const billingDisplayTotalTagihan = billingBillAmount > 0 ? billingBillAmount : billingTotalAmount;
@@ -517,7 +573,31 @@ export function UserCheckoutModal({
       });
       const payJson = (await payRes.json().catch(() => ({}))) as ApiItemResponse<UserAppOrderPayment> & ApiErrorResponse;
       if (!payRes.ok || !payJson.ok || !payJson.item) {
-        throw new Error(payJson.error || "Gagal membuat pembayaran.");
+        const paymentError = payJson.error || "Gagal membuat pembayaran.";
+        if (/saldo utama dan saldo kredit tidak cukup/i.test(paymentError)) {
+          const qrisAmount = Math.max(
+            Number(orderJson.item.harga_final || 0) - walletSaldo - creditSaldo,
+            1,
+          );
+          const qrisRes = await fetch("/api/me/deposit/request/qris", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${effectiveAuthToken}`,
+            },
+            body: JSON.stringify({ amount: qrisAmount }),
+          });
+          const qrisJson = (await qrisRes.json().catch(() => ({}))) as ApiItemResponse<CheckoutQrisItem> & ApiErrorResponse;
+          if (!qrisRes.ok || !qrisJson.ok || !qrisJson.item?.ref_id) {
+            throw new Error(qrisJson.error || "Gagal membuat QRIS Pulsa24Jam.");
+          }
+          setOrder(orderJson.item);
+          setCheckoutQris(qrisJson.item);
+          setPayment(checkoutQrisPayment(orderJson.item, qrisJson.item));
+          setTurnstileHint(null);
+          return;
+        }
+        throw new Error(paymentError);
       }
 
       setOrder(orderJson.item);
@@ -568,6 +648,63 @@ export function UserCheckoutModal({
       setCheckingStatus(false);
     }
   }
+
+  React.useEffect(() => {
+    if (!order?.invoice_id || !checkoutQris?.ref_id || !effectiveAuthToken) return;
+    const currentStatus = String(checkoutQris.status || "").toLowerCase();
+    if (currentStatus === "approved" || currentStatus === "rejected") return;
+
+    let cancelled = false;
+    const refreshQris = async () => {
+      try {
+        const params = new URLSearchParams({ ref_id: checkoutQris.ref_id, refresh: "1" });
+        const statusRes = await fetch(`/api/me/deposit/request/qris/status?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${effectiveAuthToken}` },
+          cache: "no-store",
+        });
+        const statusJson = (await statusRes.json().catch(() => ({}))) as ApiItemResponse<CheckoutQrisItem> & ApiErrorResponse;
+        if (!statusRes.ok || !statusJson.ok || !statusJson.item) {
+          throw new Error(statusJson.error || "Gagal mengecek status QRIS Pulsa24Jam.");
+        }
+        if (cancelled) return;
+
+        const nextQris = statusJson.item;
+        const nextStatus = String(nextQris.status || "").toLowerCase();
+        setCheckoutQris(nextQris);
+        setPayment(checkoutQrisPayment(order, nextQris));
+
+        if (nextStatus !== "approved" || checkoutQrisCompletingRef.current) return;
+        checkoutQrisCompletingRef.current = true;
+
+        const payRes = await fetch(`/api/app/orders/${encodeURIComponent(order.invoice_id)}/pay`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${effectiveAuthToken}`,
+          },
+          body: "{}",
+        });
+        const payJson = (await payRes.json().catch(() => ({}))) as ApiItemResponse<UserAppOrderPayment> & ApiErrorResponse;
+        if (!payRes.ok || !payJson.ok || !payJson.item) {
+          checkoutQrisCompletingRef.current = false;
+          throw new Error(payJson.error || "QRIS berhasil, tetapi transaksi belum dapat dilanjutkan.");
+        }
+        if (cancelled) return;
+        setPayment(payJson.item);
+        setCheckoutQris(null);
+        setOrder(await fetchLatestOrder(order.invoice_id));
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Gagal mengecek pembayaran QRIS.");
+      }
+    };
+
+    void refreshQris();
+    const timer = window.setInterval(refreshQris, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [checkoutQris?.ref_id, checkoutQris?.status, effectiveAuthToken, order?.invoice_id]);
 
   React.useEffect(() => {
     if (!order?.invoice_id) return;
@@ -623,8 +760,10 @@ export function UserCheckoutModal({
   const isOrderRefunded = orderStatus === "refunded";
   const isOrderFailed = orderStatus === "failed";
   const isOrderExpired = orderStatus === "expired" || orderStatus === "cancelled";
-  const isFinalState = isOrderSuccess || isOrderRefunded || isOrderFailed || isOrderExpired;
-  const showQRCode = isAwaitingPayment && !isOrderExpired && Boolean(payment?.qr_url);
+  const checkoutQrisStatus = String(checkoutQris?.status || "").toLowerCase();
+  const isCheckoutQrisRejected = checkoutQrisStatus === "rejected";
+  const isFinalState = isOrderSuccess || isOrderRefunded || isOrderFailed || isOrderExpired || isCheckoutQrisRejected;
+  const showQRCode = isAwaitingPayment && !isOrderExpired && !isCheckoutQrisRejected && Boolean(payment?.qr_url);
   const breakdown = parsePaymentBreakdown(payment?.raw_request);
   const walletUsed = breakdown.walletDebit;
   const creditUsed = breakdown.creditDebit;
@@ -633,7 +772,15 @@ export function UserCheckoutModal({
   const totalAmount = walletUsed + creditUsed + qrisAmount;
   const isWalletOnly = ["wallet", "balance"].includes((payment?.payment_type || "").toLowerCase());
   const usesQris = qrisAmount > 0;
-  const paymentMethodLabel = creditUsed > 0 ? (walletUsed > 0 ? "Saldo Utama + Kredit" : "Saldo Kredit") : "Saldo Utama";
+  const paymentMethodLabel = usesQris
+    ? walletUsed > 0 || creditUsed > 0
+      ? "Saldo + QRIS Pulsa24Jam"
+      : "QRIS Pulsa24Jam"
+    : creditUsed > 0
+      ? walletUsed > 0
+        ? "Saldo Utama + Kredit"
+        : "Saldo Kredit"
+      : "Saldo Utama";
   const isGuestFailed = isOrderFailed && order?.buyer_type === "guest";
 
   let statusText = payment?.transaction_status || "pending";
@@ -673,6 +820,11 @@ export function UserCheckoutModal({
     statusTone = "text-rose-600";
     statusTitle = statusText;
     statusDescription = usesQris ? "QRIS tidak lagi aktif. Buat order baru untuk melanjutkan transaksi." : "Pembayaran tidak lagi aktif. Buat order baru untuk melanjutkan transaksi.";
+  } else if (isCheckoutQrisRejected) {
+    statusText = "QRIS kedaluwarsa";
+    statusTone = "text-rose-600";
+    statusTitle = "Pembayaran tidak selesai";
+    statusDescription = "QRIS Pulsa24Jam sudah tidak aktif. Buat transaksi baru untuk melanjutkan.";
   }
   if (isAwaitingPayment && walletUsed > 0) {
     statusDescription = "Saldo sudah terpotong. Selesaikan pembayaran untuk sisa tagihan.";
@@ -1051,6 +1203,12 @@ export function UserCheckoutModal({
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span>Saldo kredit</span>
                   <span className="font-semibold text-slate-900">{formatRupiah(estimatedCreditDebit)}</span>
+                </div>
+              ) : null}
+              {estimatedQrisAmount > 0 && effectiveAuthToken ? (
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span>Bayar QRIS</span>
+                  <span className="font-semibold text-slate-900">{formatRupiah(estimatedQrisAmount)}</span>
                 </div>
               ) : null}
               {!isBillingPayment && feeAdminQris > 0 ? (
