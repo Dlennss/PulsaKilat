@@ -25,8 +25,8 @@ WHERE UPPER(TRIM(p.sku)) = $1
   AND pr.aktif = true
   AND ppm.aktif = true
   AND (
-    ppm.jam_buka IS NULL OR ppm.jam_tutup IS NULL
-    OR (CURRENT_TIME AT TIME ZONE 'Asia/Jakarta')::time BETWEEN ppm.jam_buka AND ppm.jam_tutup
+    p.jam_buka IS NULL OR p.jam_tutup IS NULL
+    OR (CURRENT_TIME AT TIME ZONE 'Asia/Jakarta')::time BETWEEN p.jam_buka AND p.jam_tutup
   )
 ORDER BY
   CASE
@@ -121,8 +121,8 @@ WHERE UPPER(TRIM(p.sku)) = $1
   AND (ppm.minimal_nominal IS NULL OR ppm.minimal_nominal <= $3)
   AND (ppm.maksimal_nominal IS NULL OR ppm.maksimal_nominal >= $3)
   AND (
-    ppm.jam_buka IS NULL OR ppm.jam_tutup IS NULL
-    OR (CURRENT_TIME AT TIME ZONE 'Asia/Jakarta')::time BETWEEN ppm.jam_buka AND ppm.jam_tutup
+    p.jam_buka IS NULL OR p.jam_tutup IS NULL
+    OR (CURRENT_TIME AT TIME ZONE 'Asia/Jakarta')::time BETWEEN p.jam_buka AND p.jam_tutup
   )
 ORDER BY
   CASE

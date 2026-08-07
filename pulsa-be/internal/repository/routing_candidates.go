@@ -44,8 +44,8 @@ WHERE UPPER(TRIM(p.sku)) = $1
   AND ($2 <= 0 OR (ppm.minimal_nominal IS NULL OR ppm.minimal_nominal <= $2))
   AND ($2 <= 0 OR (ppm.maksimal_nominal IS NULL OR ppm.maksimal_nominal >= $2))
   AND (
-    ppm.jam_buka IS NULL OR ppm.jam_tutup IS NULL
-    OR (CURRENT_TIME AT TIME ZONE 'Asia/Jakarta')::time BETWEEN ppm.jam_buka AND ppm.jam_tutup
+    p.jam_buka IS NULL OR p.jam_tutup IS NULL
+    OR (CURRENT_TIME AT TIME ZONE 'Asia/Jakarta')::time BETWEEN p.jam_buka AND p.jam_tutup
   )
   AND (COALESCE(array_length($3::bigint[], 1), 0) = 0 OR NOT (ppm.id = ANY($3)))
   AND (
