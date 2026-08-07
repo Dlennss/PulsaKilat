@@ -81,3 +81,21 @@ func BuildPaymentRawRequest(midtransReq any, walletDebit int64, qrisAmount int64
 	}
 	return string(raw)
 }
+
+func BuildBalancePaymentRawRequest(walletDebit, creditDebit, orderAmount int64) string {
+	payload := map[string]any{
+		"provider":       "pulsa24jam",
+		"wallet_debit":   walletDebit,
+		"credit_debit":   creditDebit,
+		"qris_amount":    0,
+		"qris_fee_admin": 0,
+		"order_amount":   orderAmount,
+		"payable_amount": orderAmount,
+		"total_amount":   orderAmount,
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return "{}"
+	}
+	return string(raw)
+}

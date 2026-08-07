@@ -155,7 +155,7 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 			if msg != "" {
 				catatan = "refund saldo otomatis: " + msg
 			}
-			if err := s.callbackRepo.CreditDompet(ctx, *order.MemberID, order.InvoiceID, order.HargaFinal, "APP_ORDER_REFUND", catatan); err != nil {
+			if err := s.callbackRepo.RefundAppOrderFunding(ctx, *order.MemberID, order.InvoiceID, catatan); err != nil {
 				_ = s.orderRepo.UpdateStatusByID(ctx, order.ID, "failed")
 				return fmt.Errorf("refund app order gagal member_id=%d invoice=%s err=%w", *order.MemberID, order.InvoiceID, err)
 			}

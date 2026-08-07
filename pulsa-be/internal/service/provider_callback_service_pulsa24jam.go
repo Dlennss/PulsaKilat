@@ -229,7 +229,7 @@ func (s *ProviderCallbackService) processPulsa24JamAppCallback(ctx context.Conte
 		if strings.TrimSpace(data.msg) != "" {
 			reason = "refund saldo otomatis: " + strings.TrimSpace(data.msg)
 		}
-		if err := s.repo.CreditDompet(ctx, *order.MemberID, order.InvoiceID, order.HargaFinal, "APP_ORDER_REFUND", reason); err != nil {
+		if err := s.repo.RefundAppOrderFunding(ctx, *order.MemberID, order.InvoiceID, reason); err != nil {
 			_ = s.appOrderRepo.UpdateStatusByID(ctx, order.ID, "failed")
 			return 200, map[string]any{"ok": true, "refid": data.refid, "status": "failed", "refund_error": err.Error()}
 		}

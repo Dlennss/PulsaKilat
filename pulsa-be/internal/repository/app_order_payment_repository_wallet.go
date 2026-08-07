@@ -85,6 +85,72 @@ WHERE id = $1
 	return tx.Commit()
 }
 
+func (r *AppOrderPaymentRepository) CreateWithBalanceDebit(ctx context.Context, in AppOrderPaymentCreateInput, memberID, amount int64) error {
+	if memberID <= 0 || amount <= 0 {
+		return errors.New("member dan nominal pembayaran tidak valid")
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var walletBefore int64
+	if err := tx.QueryRowContext(ctx, `SELECT saldo FROM public.dompet_member WHERE member_id = $1 FOR UPDATE`, memberID).Scan(&walletBefore); err != nil {
+		return err
+	}
+	walletDebit := amount
+	if walletDebit > walletBefore {
+		walletDebit = walletBefore
+	}
+	creditDebit := int64(0)
+	if walletDebit < amount {
+		if err := tx.QueryRowContext(ctx, `
+SELECT public.fn_agent_credit_debit_available($1,$2,$3,'APP_ORDER_CREDIT_DEBIT','pembayaran produk melalui Pulsa24Jam')
+`, memberID, in.OrderID, amount-walletDebit).Scan(&creditDebit); err != nil {
+			return err
+		}
+	}
+	if walletDebit+creditDebit < amount {
+		return errors.New("saldo utama dan saldo kredit tidak cukup")
+	}
+	if walletDebit > 0 {
+		walletAfter := walletBefore - walletDebit
+		if _, err := tx.ExecContext(ctx, `UPDATE public.dompet_member SET saldo=$2, diperbarui_pada=now() WHERE member_id=$1`, memberID, walletAfter); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.mutasi_dompet
+  (member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, dibuat_pada)
+VALUES ($1,$2,'DEBIT',$3,'APP_ORDER_WALLET_DEBIT','pembayaran produk melalui Pulsa24Jam',$4,$5,now())
+`, memberID, in.OrderID, walletDebit, walletBefore, walletAfter); err != nil {
+			return err
+		}
+	}
+
+	in.RawRequest = BuildBalancePaymentRawRequest(walletDebit, creditDebit, amount)
+	if err := tx.QueryRowContext(ctx, `
+INSERT INTO public.app_order_payment
+  (app_order_id, order_id, transaction_id, gross_amount, payment_type, transaction_status, fraud_status, acquirer, qr_url, raw_request, raw_callback, paid_at, expired_at, settlement_time, dibuat_pada, diubah_pada)
+VALUES
+  ($1,$2,NULL,0,'balance','settlement','accept','pulsa24jam',NULL,$3::jsonb,'{}'::jsonb,$4,NULL,$4,now(),now())
+RETURNING id
+`, in.AppOrderID, in.OrderID, in.RawRequest, in.PaidAt).Scan(&in.ID); err != nil {
+		return err
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE public.app_order SET status='paid', diubah_pada=now() WHERE id=$1 AND status='pending_payment'`, in.AppOrderID)
+	if err != nil {
+		return err
+	}
+	if affected, err := res.RowsAffected(); err != nil || affected != 1 {
+		if err != nil {
+			return err
+		}
+		return errors.New("status order sudah berubah")
+	}
+	return tx.Commit()
+}
+
 func (r *AppOrderPaymentRepository) RefundWalletDebitIfNeeded(ctx context.Context, orderID string, reason string, note string) (bool, error) {
 	orderID = strings.TrimSpace(orderID)
 	if orderID == "" {

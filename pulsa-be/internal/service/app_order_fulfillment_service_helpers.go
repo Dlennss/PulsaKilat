@@ -25,7 +25,7 @@ func (s *AppOrderFulfillmentService) handleFailedOrder(ctx context.Context, orde
 	}
 
 	if order.BuyerType == "user" && order.MemberID != nil && *order.MemberID > 0 && order.HargaFinal > 0 {
-		if err := s.callbackRepo.CreditDompet(ctx, *order.MemberID, order.InvoiceID, order.HargaFinal, "APP_ORDER_REFUND", "refund saldo otomatis: "+reason); err != nil {
+		if err := s.callbackRepo.RefundAppOrderFunding(ctx, *order.MemberID, order.InvoiceID, "refund saldo otomatis: "+reason); err != nil {
 			_ = s.orderRepo.UpdateStatusByID(ctx, order.ID, "failed")
 			return fmt.Errorf("refund app order gagal member_id=%d invoice=%s err=%w", *order.MemberID, order.InvoiceID, err)
 		}

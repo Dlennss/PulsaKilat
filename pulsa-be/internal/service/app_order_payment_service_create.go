@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -29,74 +28,29 @@ func (s *AppOrderPaymentService) CreateByInvoiceID(ctx context.Context, invoiceI
 		return nil, err
 	}
 
-	walletDebit := int64(0)
-	qrisAmount := order.HargaFinal
-	if order.BuyerType == "user" && order.MemberID != nil && *order.MemberID > 0 && order.HargaFinal > 0 {
-		saldo, err := s.paymentRepo.GetMemberSaldo(ctx, *order.MemberID)
-		if err == nil && saldo > 0 {
-			walletDebit = minInt64(order.HargaFinal, saldo)
-			qrisAmount = order.HargaFinal - walletDebit
-		}
+	if order.BuyerType != "user" || order.MemberID == nil || *order.MemberID <= 0 {
+		return nil, fmt.Errorf("transaksi produk wajib login dan menggunakan saldo PulsaKilat")
 	}
-
-	if qrisAmount == 0 {
-		now := time.Now()
-		rawReq := repository.BuildPaymentRawRequest(nil, walletDebit, 0, 0, order.HargaFinal, order.HargaFinal)
-		payment := repository.AppOrderPaymentCreateInput{
-			AppOrderID:        order.ID,
-			OrderID:           order.InvoiceID,
-			GrossAmount:       0,
-			PaymentType:       "wallet",
-			TransactionStatus: "settlement",
-			FraudStatus:       "accept",
-			RawRequest:        rawReq,
-			RawCallback:       "{}",
-			PaidAt:            &now,
-			SettlementTime:    &now,
-		}
-		if err := s.paymentRepo.CreateWithWalletDebit(ctx, payment, derefInt64(order.MemberID), walletDebit, "APP_ORDER_WALLET_DEBIT", "pembayaran penuh via saldo", true); err != nil {
-			return nil, err
-		}
-		if s.fulfillmentSvc != nil {
-			if err := s.fulfillmentSvc.DispatchPaidOrderByInvoiceID(ctx, order.InvoiceID); err != nil {
-				log.Printf("[app_order_payment] fulfillment dispatch gagal invoice=%s err=%v", order.InvoiceID, err)
-			}
-		}
-		return s.paymentRepo.GetByOrderID(ctx, order.InvoiceID)
+	if order.HargaFinal <= 0 {
+		return nil, fmt.Errorf("nominal pembayaran tidak valid")
 	}
-
-	serverKey, err := midtransServerKeyFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	payload := buildMidtransChargeRequest(order, qrisAmount)
-	payloadJSON := repository.BuildPaymentRawRequest(payload, walletDebit, qrisAmount, 0, order.HargaFinal, order.HargaFinal)
-
-	resp, err := chargeMidtransQRIS(serverKey, payload)
-	if err != nil {
-		return nil, err
-	}
-	rawResp, _ := json.Marshal(resp)
-
-	qrURL := firstQRURL(resp.Actions)
-	expiredAt := parseMidtransTime(resp.ExpiryTime)
+	now := time.Now()
 	payment := repository.AppOrderPaymentCreateInput{
 		AppOrderID:        order.ID,
 		OrderID:           order.InvoiceID,
-		TransactionID:     resp.TransactionID,
-		GrossAmount:       qrisAmount,
-		PaymentType:       resp.PaymentType,
-		TransactionStatus: resp.TransactionStatus,
-		FraudStatus:       resp.FraudStatus,
-		Acquirer:          resp.Acquirer,
-		QRURL:             qrURL,
-		RawRequest:        payloadJSON,
-		RawCallback:       string(rawResp),
-		ExpiredAt:         expiredAt,
+		PaymentType:       "balance",
+		TransactionStatus: "settlement",
+		FraudStatus:       "accept",
+		PaidAt:            &now,
+		SettlementTime:    &now,
 	}
-	if err := s.paymentRepo.CreateWithWalletDebit(ctx, payment, derefInt64(order.MemberID), walletDebit, "APP_ORDER_WALLET_DEBIT", "pembayaran parsial via saldo", false); err != nil {
+	if err := s.paymentRepo.CreateWithBalanceDebit(ctx, payment, *order.MemberID, order.HargaFinal); err != nil {
 		return nil, err
+	}
+	if s.fulfillmentSvc != nil {
+		if err := s.fulfillmentSvc.DispatchPaidOrderByInvoiceID(ctx, order.InvoiceID); err != nil {
+			log.Printf("[app_order_payment] fulfillment Pulsa24Jam gagal invoice=%s err=%v", order.InvoiceID, err)
+		}
 	}
 	return s.paymentRepo.GetByOrderID(ctx, order.InvoiceID)
 }

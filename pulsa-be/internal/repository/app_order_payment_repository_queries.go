@@ -228,3 +228,24 @@ LIMIT 1
 	}
 	return saldo, nil
 }
+
+func (r *AppOrderPaymentRepository) GetMemberFundingBalance(ctx context.Context, memberID int64) (wallet, credit int64, err error) {
+	if memberID <= 0 {
+		return 0, 0, errors.New("member_id tidak valid")
+	}
+	err = r.db.QueryRowContext(ctx, `
+SELECT
+  COALESCE(d.saldo, 0),
+  COALESCE((
+    SELECT SUM(l.available_amount)
+    FROM public.agent_credit_loan l
+    WHERE l.member_id = $1
+      AND l.status IN ('active', 'overdue')
+      AND l.available_amount > 0
+  ), 0)
+FROM public.dompet_member d
+WHERE d.member_id = $1
+LIMIT 1
+`, memberID).Scan(&wallet, &credit)
+	return wallet, credit, err
+}

@@ -75,11 +75,6 @@ function buildGuestIdentity(dest: string) {
   };
 }
 
-function calcQrisAdminFee(value: number) {
-	if (!value || value <= 0) return 0;
-	return Math.ceil(value * 0.007);
-}
-
 function normalizeRetailRole(role?: string | null) {
 	const value = String(role || "").trim().toLowerCase();
 	if (value === "master") return "master";
@@ -177,20 +172,22 @@ function formatDateTime(value?: string | null) {
 }
 
 function parsePaymentBreakdown(rawRequest?: string | null) {
-  if (!rawRequest) return { walletDebit: 0, qrisAmount: 0, totalAmount: 0 };
+  if (!rawRequest) return { walletDebit: 0, creditDebit: 0, qrisAmount: 0, totalAmount: 0 };
   try {
     const parsed = JSON.parse(rawRequest) as {
       wallet_debit?: number;
+      credit_debit?: number;
       qris_amount?: number;
       total_amount?: number;
     };
     return {
       walletDebit: Number(parsed.wallet_debit || 0),
+      creditDebit: Number(parsed.credit_debit || 0),
       qrisAmount: Number(parsed.qris_amount || 0),
       totalAmount: Number(parsed.total_amount || 0),
     };
   } catch {
-    return { walletDebit: 0, qrisAmount: 0, totalAmount: 0 };
+    return { walletDebit: 0, creditDebit: 0, qrisAmount: 0, totalAmount: 0 };
   }
 }
 
@@ -347,10 +344,9 @@ export function UserCheckoutModal({
       : 0;
   const walletSaldo = Math.max(0, retailSaldo || 0);
   const estimatedWalletDebit = effectiveAuthToken ? Math.min(hargaSebelumFeeAdmin, walletSaldo) : 0;
-  const estimatedQrisBaseAmount = Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0);
-  const feeAdminQris = estimatedQrisBaseAmount > 0 ? calcQrisAdminFee(estimatedQrisBaseAmount) : 0;
-  const estimatedQrisAmount = estimatedQrisBaseAmount > 0 ? estimatedQrisBaseAmount + feeAdminQris : 0;
-  const totalBayar = estimatedWalletDebit + estimatedQrisAmount;
+  const estimatedCreditDebit = effectiveAuthToken ? Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0) : 0;
+  const feeAdminQris = 0;
+  const totalBayar = hargaSebelumFeeAdmin;
   const billingDisplayTotalTagihan = billingBillAmount > 0 ? billingBillAmount : billingTotalAmount;
   const billingDisplayAdminFee = billingTotalAmount > 0
     ? Math.max(totalBayar - billingDisplayTotalTagihan, 0)
@@ -466,17 +462,8 @@ export function UserCheckoutModal({
       return;
     }
     if (!effectiveAuthToken) {
-      if (guestIdentity.guestPhone.length < 8) {
-        setError(`${destLabel} belum valid.`);
-        return;
-      }
-      if (guestNeedsTurnstile && !activeTurnstileToken) {
-        setTurnstileError(null);
-        setTurnstileAppearance("interaction-only");
-        setTurnstileHint("Menyiapkan verifikasi keamanan untuk pembayaran...");
-        setWaitingTurnstile(true);
-        return;
-      }
+      setError("Silakan login dan gunakan saldo PulsaKilat untuk bertransaksi.");
+      return;
     }
 
     const finalDest = destMode === "ml_id_server" ? `${cleanDest}${cleanServer}` : cleanDest;
@@ -637,15 +624,16 @@ export function UserCheckoutModal({
   const isOrderFailed = orderStatus === "failed";
   const isOrderExpired = orderStatus === "expired" || orderStatus === "cancelled";
   const isFinalState = isOrderSuccess || isOrderRefunded || isOrderFailed || isOrderExpired;
-  const showQRCode = isAwaitingPayment && !isOrderExpired;
+  const showQRCode = isAwaitingPayment && !isOrderExpired && Boolean(payment?.qr_url);
   const breakdown = parsePaymentBreakdown(payment?.raw_request);
   const walletUsed = breakdown.walletDebit;
+  const creditUsed = breakdown.creditDebit;
   const qrisAmount = breakdown.qrisAmount || payment?.gross_amount || 0;
   const qrisAdminFeeActual = order ? Math.max(Number(order.fee || 0) - feeActive, 0) : feeAdminQris;
-  const totalAmount = walletUsed + qrisAmount;
-  const isWalletOnly = (payment?.payment_type || "").toLowerCase() === "wallet";
+  const totalAmount = walletUsed + creditUsed + qrisAmount;
+  const isWalletOnly = ["wallet", "balance"].includes((payment?.payment_type || "").toLowerCase());
   const usesQris = qrisAmount > 0;
-  const paymentMethodLabel = isWalletOnly ? "Saldo" : walletUsed > 0 && usesQris ? "Saldo + QRIS" : "QRIS";
+  const paymentMethodLabel = creditUsed > 0 ? (walletUsed > 0 ? "Saldo Utama + Kredit" : "Saldo Kredit") : "Saldo Utama";
   const isGuestFailed = isOrderFailed && order?.buyer_type === "guest";
 
   let statusText = payment?.transaction_status || "pending";
@@ -924,6 +912,12 @@ export function UserCheckoutModal({
                   <span className="font-semibold text-slate-900">{formatRupiah(walletUsed)}</span>
                 </div>
               ) : null}
+              {creditUsed > 0 ? (
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span>Pakai saldo kredit</span>
+                  <span className="font-semibold text-slate-900">{formatRupiah(creditUsed)}</span>
+                </div>
+              ) : null}
               {usesQris ? (
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span>Bayar QRIS</span>
@@ -1053,10 +1047,10 @@ export function UserCheckoutModal({
                   <span className="font-semibold text-slate-900">{formatRupiah(estimatedWalletDebit)}</span>
                 </div>
               ) : null}
-              {estimatedQrisAmount > 0 ? (
+              {estimatedCreditDebit > 0 && effectiveAuthToken ? (
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <span>Bayar QRIS</span>
-                  <span className="font-semibold text-slate-900">{formatRupiah(estimatedQrisAmount)}</span>
+                  <span>Saldo kredit</span>
+                  <span className="font-semibold text-slate-900">{formatRupiah(estimatedCreditDebit)}</span>
                 </div>
               ) : null}
               {!isBillingPayment && feeAdminQris > 0 ? (
