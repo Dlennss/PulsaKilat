@@ -23,6 +23,8 @@ jobs:
       SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
       SSH_PORT: ${{ secrets.SERVER_PORT || '22' }}
       BACKEND_SOURCE_DIR: ${{ secrets.BACKEND_SOURCE_DIR || '/var/lib/syslog-ng/PulsaKilat/pulsa-be' }}
+      BACKEND_RELEASE_DIR: ${{ secrets.BACKEND_RELEASE_DIR || '/var/lib/syslog-ng/PulsaKilat/releases/pulsa-be/current' }}
+      FRONTEND_RELEASE_DIR: ${{ secrets.FRONTEND_RELEASE_DIR || '/var/lib/syslog-ng/PulsaKilat/releases/pulsa-fe/current' }}
       BACKEND_SERVICE_NAME: ${{ secrets.BACKEND_SERVICE_NAME || 'pulsakilat-be.service' }}
       FRONTEND_SERVICE_NAME: ${{ secrets.FRONTEND_SERVICE_NAME || 'pulsakilat-fe.service' }}
 
@@ -99,5 +101,14 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' "$SERVER_PASSWORD" | sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "sudo -S -p '' bash -c 'nginx -t && systemctl restart $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx && systemctl is-active --quiet $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx'"
-
+            "sudo -S -p '' bash -c '
+              install -d /etc/systemd/system/$BACKEND_SERVICE_NAME.d /etc/systemd/system/$FRONTEND_SERVICE_NAME.d
+              printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$BACKEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=$BACKEND_RELEASE_DIR/pulsa-be\" > /etc/systemd/system/$BACKEND_SERVICE_NAME.d/release.conf
+              printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$FRONTEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 3003\" > /etc/systemd/system/$FRONTEND_SERVICE_NAME.d/release.conf
+              systemctl daemon-reload
+              nginx -t
+              systemctl restart $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx
+              systemctl is-active --quiet $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx
+            '"
+          sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
+            "curl --fail --silent --show-error http://127.0.0.1:8083/health >/dev/null && curl --fail --silent --show-error http://127.0.0.1:3003/login >/dev/null"
