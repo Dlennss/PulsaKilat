@@ -1,0 +1,102 @@
+name: Deploy Frontend Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "pulsa-fe/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: production-frontend-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    name: Deploy frontend and restart production services
+    runs-on: ubuntu-latest
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+      SSH_PORT: ${{ secrets.SERVER_PORT || '22' }}
+      FRONTEND_SOURCE_DIR: ${{ secrets.FRONTEND_SOURCE_DIR || '/var/lib/syslog-ng/PulsaKilat/pulsa-fe' }}
+      BACKEND_SERVICE_NAME: ${{ secrets.BACKEND_SERVICE_NAME || 'pulsakilat-be.service' }}
+      FRONTEND_SERVICE_NAME: ${{ secrets.FRONTEND_SERVICE_NAME || 'pulsakilat-fe.service' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SERVER_HOST" || (echo "SERVER_HOST secret is required" && exit 1)
+          test -n "$SERVER_USER" || (echo "SERVER_USER secret is required" && exit 1)
+          test -n "$SERVER_PASSWORD" || (echo "SERVER_PASSWORD secret is required" && exit 1)
+
+      - name: Install deployment tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y sshpass rsync
+
+      - name: Prepare SSH connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$SSH_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync frontend source
+        shell: bash
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" "mkdir -p '$FRONTEND_SOURCE_DIR'"
+          sshpass -e rsync -az --delete \
+            -e "ssh -p $SSH_PORT" \
+            --exclude '.env' \
+            --exclude '.env.local' \
+            --exclude '.git' \
+            --exclude '.next' \
+            --exclude 'node_modules' \
+            --exclude 'releases' \
+            pulsa-fe/ "$SERVER_USER@$SERVER_HOST:$FRONTEND_SOURCE_DIR/"
+
+      - name: Write frontend environment
+        shell: bash
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+          FRONTEND_ENV: ${{ secrets.FRONTEND_ENV }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$FRONTEND_ENV" ]]; then
+            echo "FRONTEND_ENV is empty; keeping the existing server environment."
+            exit 0
+          fi
+          printf '%s\n' "$FRONTEND_ENV" | sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
+            "cat > '$FRONTEND_SOURCE_DIR/.env' && chmod 600 '$FRONTEND_SOURCE_DIR/.env'"
+
+      - name: Build and publish frontend release
+        shell: bash
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
+            "cd '$FRONTEND_SOURCE_DIR' && SOURCE_DIR='$FRONTEND_SOURCE_DIR' SKIP_SERVICE_RESTART=true bash scripts/deploy-prod-release.sh"
+
+      - name: Restart PulsaKilat services and Nginx
+        shell: bash
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$SERVER_PASSWORD" | sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
+            "sudo -S -p '' bash -c 'nginx -t && systemctl restart $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx && systemctl is-active --quiet $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx'"

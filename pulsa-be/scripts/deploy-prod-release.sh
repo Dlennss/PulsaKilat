@@ -114,7 +114,9 @@ fi
 ln -sfn "$BUILD_DIR" "$TMP_LINK"
 mv -Tf "$TMP_LINK" "$CURRENT_LINK"
 
-restart_service "$SERVICE_NAME"
+if [[ "${SKIP_SERVICE_RESTART:-false}" != "true" ]]; then
+  restart_service "$SERVICE_NAME"
+fi
 
 if [[ "$KEEP_RELEASES" =~ ^[0-9]+$ ]]; then
   mapfile -t old_builds < <(find "$RELEASE_ROOT" -maxdepth 1 -mindepth 1 -type d -name 'build-*' | sort)
