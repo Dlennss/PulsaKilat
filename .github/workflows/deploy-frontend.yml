@@ -100,7 +100,16 @@ jobs:
           sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
             "curl -fsSL https://deb.nodesource.com/setup_20.x -o /tmp/pulsakilat-node-setup.sh"
           printf '%s\n' "$SERVER_PASSWORD" | sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "sudo -S -p '' bash -c 'bash /tmp/pulsakilat-node-setup.sh && apt-get install -y nodejs && rm -f /tmp/pulsakilat-node-setup.sh'"
+            "sudo -S -p '' bash -c '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get purge -y nodejs libnode-dev nodejs-doc npm || true
+              dpkg --remove --force-remove-reinstreq nodejs 2>/dev/null || true
+              dpkg --configure -a
+              apt-get install -f -y
+              bash /tmp/pulsakilat-node-setup.sh
+              apt-get install -y nodejs
+              rm -f /tmp/pulsakilat-node-setup.sh
+            '"
           sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
             "node --version && npm --version && node -e 'const major=Number(process.versions.node.split(\".\")[0]); if (major < 20) process.exit(1)'"
 
