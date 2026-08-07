@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOURCE_DIR="/home/syarif/app/pulsakilat-fe"
-RELEASE_ROOT="/home/syarif/app/releases/pulsakilat-fe"
+SOURCE_DIR="${SOURCE_DIR:-/var/lib/syslog-ng/PulsaKilat/pulsa-fe}"
+RELEASE_ROOT="${RELEASE_ROOT:-/var/lib/syslog-ng/PulsaKilat/releases/pulsa-fe}"
 KEEP_RELEASES="${KEEP_RELEASES:-3}"
 BUILD_ID="$(date +%Y%m%d%H%M%S)"
 BUILD_DIR="$RELEASE_ROOT/build-$BUILD_ID"

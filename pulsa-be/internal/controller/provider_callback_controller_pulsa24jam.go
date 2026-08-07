@@ -2,6 +2,7 @@ package controller
 
 import (
 	"crypto/subtle"
+	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
@@ -26,13 +27,12 @@ func (h *ProviderCallbackController) CallbackPulsa24Jam(w http.ResponseWriter, r
 	}
 	appendProviderLog("pulsa24jam", r, raw)
 
-	// Format callback Pulsa24Jam perlu disesuaikan dengan dokumentasi resmi.
-	// Endpoint ini sengaja hanya menerima dan mencatat payload dulu supaya aman
-	// saat testing whitelist/callback URL sebelum finalisasi transaksi otomatis.
-	helper.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":  true,
-		"message": "callback received",
-	})
+	payload := map[string]any{}
+	if len(raw) > 0 && strings.TrimSpace(string(raw)) != "" {
+		_ = json.Unmarshal(raw, &payload)
+	}
+	status, out := h.svc.ProcessPulsa24JamCallback(r.Context(), string(raw), r.URL.Query(), payload)
+	helper.WriteJSON(w, status, out)
 }
 
 func validPulsa24JamCallbackToken(r *http.Request) bool {

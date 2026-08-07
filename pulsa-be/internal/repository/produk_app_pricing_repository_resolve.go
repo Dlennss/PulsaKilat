@@ -118,15 +118,9 @@ JOIN public.produk p ON p.id = a.produk_id
 JOIN public.kategori k ON k.id = p.kategori_id
 WHERE a.produk_id = $1
   AND a.aktif = true
-  AND LOWER(TRIM(a.provider)) IN ('yuscom', 'gemilang', 'pulsa24jam')
+  AND LOWER(TRIM(a.provider)) = 'pulsa24jam'
 ORDER BY
   a.harga ASC,
-  CASE LOWER(TRIM(a.provider))
-    WHEN 'yuscom' THEN 0
-    WHEN 'gemilang' THEN 1
-    WHEN 'pulsa24jam' THEN 2
-    ELSE 99
-  END ASC,
   a.id DESC
 LIMIT 1
 `, produkID).Scan(
@@ -169,5 +163,5 @@ LIMIT 1
 }
 
 func (r *ProdukAppPricingRepository) GetByProdukIDActive(ctx context.Context, produkID int64) (*ProdukAppPricingRow, error) {
-	return r.GetByProdukIDProviderActive(ctx, produkID, "yuscom")
+	return r.GetByProdukIDProviderActive(ctx, produkID, "pulsa24jam")
 }

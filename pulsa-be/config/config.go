@@ -12,14 +12,15 @@ import (
 type Config struct {
 	DatabaseURL string
 
-	// Primary provider: YUSCOM
+	// Legacy direct provider: YUSCOM. For the current H2H flow, Pulsa24Jam is
+	// the primary upstream and legacy providers should remain optional.
 	YuscomBaseURL  string
 	YuscomMemberID string
 	YuscomPIN      string
 	YuscomPassword string
 	YuscomTimeout  time.Duration
 
-	// Fallback provider: JAVAPAY
+	// Legacy fallback provider: JAVAPAY
 	JavaPayBaseURL  string
 	JavaPayMemberID string
 	JavaPayAPIKey   string
@@ -108,7 +109,7 @@ type Config struct {
 	RajabillerMerchantID string
 	RajabillerTimeout    time.Duration
 
-	// H2H provider: PULSA24JAM
+	// Primary H2H provider: PULSA24JAM
 	Pulsa24JamBaseURL       string
 	Pulsa24JamMemberID      string
 	Pulsa24JamAPIKey        string
@@ -211,16 +212,16 @@ func Load() Config {
 	return Config{
 		DatabaseURL: mustEnv("DATABASE_URL"),
 
-		YuscomBaseURL:  mustEnv("YUSCOM_BASE_URL"),
-		YuscomMemberID: mustEnv("YUSCOM_MEMBERID"),
-		YuscomPIN:      mustEnv("YUSCOM_PIN"),
-		YuscomPassword: mustEnv("YUSCOM_PASSWORD"),
+		YuscomBaseURL:  getEnv("YUSCOM_BASE_URL", ""),
+		YuscomMemberID: getEnv("YUSCOM_MEMBERID", ""),
+		YuscomPIN:      getEnv("YUSCOM_PIN", ""),
+		YuscomPassword: getEnv("YUSCOM_PASSWORD", ""),
 		YuscomTimeout:  yto,
 
-		JavaPayBaseURL:  mustEnv("JAVAPAY_BASE_URL"),
-		JavaPayMemberID: mustEnv("JAVAPAY_MEMBERID"),
-		JavaPayAPIKey:   mustEnv("JAVAPAY_APIKEY"),
-		JavaPayPIN:      mustEnv("JAVAPAY_PIN"),
+		JavaPayBaseURL:  getEnv("JAVAPAY_BASE_URL", ""),
+		JavaPayMemberID: getEnv("JAVAPAY_MEMBERID", ""),
+		JavaPayAPIKey:   getEnv("JAVAPAY_APIKEY", ""),
+		JavaPayPIN:      getEnv("JAVAPAY_PIN", ""),
 		JavaPayTimeout:  jto,
 
 		TalentaBaseURL:  getEnv("TALENTA_BASE_URL", ""),
@@ -294,11 +295,11 @@ func Load() Config {
 		RajabillerMerchantID: getEnv("RAJABILLER_MERCHANT_ID", ""),
 		RajabillerTimeout:    rjto,
 
-		Pulsa24JamBaseURL:       getEnv("PULSA24JAM_BASE_URL", ""),
+		Pulsa24JamBaseURL:       mustEnv("PULSA24JAM_BASE_URL"),
 		Pulsa24JamMemberID:      getEnvAny("", "PULSA24JAM_MEMBERID", "PULSA24JAM_MEMBER_ID"),
-		Pulsa24JamAPIKey:        getEnv("PULSA24JAM_API_KEY", ""),
-		Pulsa24JamPIN:           getEnv("PULSA24JAM_PIN", ""),
-		Pulsa24JamPassword:      getEnv("PULSA24JAM_PASSWORD", ""),
+		Pulsa24JamAPIKey:        mustEnv("PULSA24JAM_API_KEY"),
+		Pulsa24JamPIN:           mustEnv("PULSA24JAM_PIN"),
+		Pulsa24JamPassword:      mustEnv("PULSA24JAM_PASSWORD"),
 		Pulsa24JamSecret:        getEnv("PULSA24JAM_SECRET", ""),
 		Pulsa24JamCallbackToken: getEnv("PULSA24JAM_CALLBACK_TOKEN", ""),
 		Pulsa24JamTimeout:       p24to,

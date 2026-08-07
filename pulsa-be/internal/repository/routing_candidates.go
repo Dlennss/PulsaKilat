@@ -38,15 +38,8 @@ FROM public.produk_provider_map ppm
 JOIN public.produk p ON p.id = ppm.produk_id
 JOIN public.provider pr ON LOWER(TRIM(pr.nama)) = LOWER(TRIM(ppm.provider))
 WHERE UPPER(TRIM(p.sku)) = $1
-  AND (
-    pr.aktif = true
-    OR (
-      UPPER(TRIM(p.sku)) = 'DANA'
-      AND LOWER(TRIM(ppm.provider)) = 'loketbayar'
-      AND UPPER(TRIM(ppm.kode_provider)) = 'DANAPLUS'
-      AND COALESCE(UPPER(TRIM(ppm.special_code)), '') = ''
-    )
-  )
+  AND LOWER(TRIM(ppm.provider)) = 'pulsa24jam'
+  AND pr.aktif = true
   AND ppm.aktif = true
   AND ($2 <= 0 OR (ppm.minimal_nominal IS NULL OR ppm.minimal_nominal <= $2))
   AND ($2 <= 0 OR (ppm.maksimal_nominal IS NULL OR ppm.maksimal_nominal >= $2))
@@ -59,13 +52,7 @@ WHERE UPPER(TRIM(p.sku)) = $1
     COALESCE(array_length($4::text[], 1), 0) = 0
     OR NOT ((LOWER(TRIM(ppm.provider)) || '#code:' || UPPER(TRIM(ppm.kode_provider))) = ANY($4))
   )
-  AND (
-    $5 = true
-    OR NOT (
-      LOWER(TRIM(ppm.provider)) = 'loketbayar'
-      AND UPPER(TRIM(COALESCE(ppm.special_code, ''))) IN ('TRFBANK', 'DBALLBANK')
-    )
-  )
+  AND ($5 = true OR $5 = false)
 ORDER BY
   CASE
     WHEN LOWER(TRIM(ppm.provider)) = 'smb' AND UPPER(TRIM(COALESCE(ppm.special_code, ''))) = 'BIFASTOPEN' THEN 0

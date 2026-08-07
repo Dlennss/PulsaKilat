@@ -53,21 +53,31 @@ func main() {
 	dbConn := connectDB(cfg.DatabaseURL)
 	defer dbConn.Close()
 
-	ys := yuscom.New(
-		cfg.YuscomBaseURL,
-		cfg.YuscomMemberID,
-		cfg.YuscomPIN,
-		cfg.YuscomPassword,
-		cfg.YuscomTimeout,
-	)
+	var ys *yuscom.Client
+	if cfg.YuscomBaseURL != "" && cfg.YuscomMemberID != "" && cfg.YuscomPIN != "" && cfg.YuscomPassword != "" {
+		ys = yuscom.New(
+			cfg.YuscomBaseURL,
+			cfg.YuscomMemberID,
+			cfg.YuscomPIN,
+			cfg.YuscomPassword,
+			cfg.YuscomTimeout,
+		)
+	} else {
+		log.Printf("yuscom client nonaktif: env YUSCOM_* belum lengkap")
+	}
 
-	jp := javapay.New(
-		cfg.JavaPayBaseURL,
-		cfg.JavaPayMemberID,
-		cfg.JavaPayAPIKey,
-		cfg.JavaPayPIN,
-		cfg.JavaPayTimeout,
-	)
+	var jp *javapay.Client
+	if cfg.JavaPayBaseURL != "" && cfg.JavaPayMemberID != "" && cfg.JavaPayAPIKey != "" && cfg.JavaPayPIN != "" {
+		jp = javapay.New(
+			cfg.JavaPayBaseURL,
+			cfg.JavaPayMemberID,
+			cfg.JavaPayAPIKey,
+			cfg.JavaPayPIN,
+			cfg.JavaPayTimeout,
+		)
+	} else {
+		log.Printf("javapay client nonaktif: env JAVAPAY_* belum lengkap")
+	}
 
 	var tl *talenta.Client
 	if cfg.TalentaBaseURL != "" && cfg.TalentaMemberID != "" && cfg.TalentaPIN != "" && cfg.TalentaPassword != "" {
@@ -218,7 +228,7 @@ func main() {
 	}
 
 	var p24 provider.Client
-	if cfg.Pulsa24JamBaseURL != "" && cfg.Pulsa24JamMemberID != "" && cfg.Pulsa24JamAPIKey != "" && cfg.Pulsa24JamPIN != "" {
+	if cfg.Pulsa24JamBaseURL != "" && cfg.Pulsa24JamAPIKey != "" && cfg.Pulsa24JamPIN != "" && cfg.Pulsa24JamPassword != "" {
 		p24 = provider.NewPulsa24JamAdapter(provider.Pulsa24JamConfig{
 			BaseURL:       cfg.Pulsa24JamBaseURL,
 			MemberID:      cfg.Pulsa24JamMemberID,

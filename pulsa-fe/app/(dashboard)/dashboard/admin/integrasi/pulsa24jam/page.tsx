@@ -48,25 +48,31 @@ const envItems = [
     key: "PULSA24JAM_BASE_URL",
     label: "Base URL",
     value: process.env.PULSA24JAM_BASE_URL,
-    desc: "Alamat API resmi dari provider.",
+    desc: "Isi https://api.pulsa24jam.net atau base URL resmi provider.",
   },
   {
-    key: "PULSA24JAM_MEMBER_ID",
-    label: "Member ID",
-    value: process.env.PULSA24JAM_MEMBER_ID,
-    desc: "Identitas akun H2H Pulsa24Jam.",
+    key: "PULSA24JAM_API_KEY",
+    label: "API Key",
+    value: process.env.PULSA24JAM_API_KEY,
+    desc: "Dikirim dari backend melalui header X-Api-Key.",
   },
   {
     key: "PULSA24JAM_PIN",
     label: "PIN",
     value: process.env.PULSA24JAM_PIN,
-    desc: "Autentikasi saat transaksi dikirim.",
+    desc: "Dikirim di body request sebagai pin.",
   },
   {
-    key: "PULSA24JAM_SECRET",
-    label: "Secret",
-    value: process.env.PULSA24JAM_SECRET,
-    desc: "Dipakai jika provider mewajibkan signature.",
+    key: "PULSA24JAM_PASSWORD",
+    label: "Password",
+    value: process.env.PULSA24JAM_PASSWORD,
+    desc: "Disimpan di server sebagai credential akun Pulsa24Jam.",
+  },
+  {
+    key: "PULSA24JAM_CALLBACK_IP",
+    label: "Callback IP",
+    value: process.env.PULSA24JAM_CALLBACK_IP,
+    desc: "IP callback provider yang diizinkan masuk ke webhook.",
   },
   {
     key: "PULSA24JAM_CALLBACK_TOKEN",
@@ -76,29 +82,73 @@ const envItems = [
   },
 ];
 
+const commandRows = [
+  {
+    command: "SALDO",
+    panel: "Admin / Wallet",
+    fungsi: "Cek saldo deposit induk Pulsa24Jam.",
+    wajib: "pin",
+    catatan: "Tidak perlu product, dest, qty, atau refid.",
+  },
+  {
+    command: "PRODUK",
+    panel: "Admin Produk",
+    fungsi: "Sinkron referensi produk, harga, dan status aktif.",
+    wajib: "pin",
+    catatan: "Boleh pakai product untuk filter kode tertentu.",
+  },
+  {
+    command: "PAY",
+    panel: "Retail & H2H",
+    fungsi: "Kirim transaksi utama setelah order valid.",
+    wajib: "product, dest, qty, refid, pin",
+    catatan: "Refid wajib unik dari sistem PulsaKilat.",
+  },
+  {
+    command: "INQ",
+    panel: "Retail PPOB & H2H",
+    fungsi: "Cek tagihan sebelum pembayaran postpaid.",
+    wajib: "product, dest, refid, pin",
+    catatan: "Qty otomatis 1 untuk inquiry.",
+  },
+  {
+    command: "STATUS-PAY",
+    panel: "Operator / Admin",
+    fungsi: "Cek ulang transaksi pending atau belum final.",
+    wajib: "product, dest, qty, refid, pin",
+    catatan: "Dipakai untuk retry status dan fallback provider.",
+  },
+];
+
 export default function Pulsa24JamIntegrationPage() {
   const readyCount = envItems.filter((item) => configured(item.value)).length;
   const callbackURL = `${backendBaseURL()}/v1/webhook/pulsa24jam`;
+  const trxURL = `${String(process.env.PULSA24JAM_BASE_URL || "https://api.pulsa24jam.net").replace(/\/$/, "")}/v1/trx`;
   const isReady = readyCount >= 4;
   const steps = [
     {
-      title: "Credential",
-      desc: "Ambil API key, member ID, PIN, dan secret dari panel Pulsa24Jam.",
-      icon: KeyRound,
-    },
-    {
-      title: "Whitelist IP",
-      desc: "Daftarkan IP public server PulsaKilat agar request API diterima.",
+      title: "1. IP Whitelist",
+      desc: "Daftarkan IP publik server PulsaKilat di Pulsa24Jam. Tanpa ini, transaksi H2H akan ditolak.",
       icon: ShieldCheck,
     },
     {
-      title: "Webhook",
-      desc: "Pasang URL callback supaya status sukses atau gagal masuk otomatis.",
+      title: "2. Webhook Callback",
+      desc: "Pasang URL callback PulsaKilat agar status pending, sukses, gagal, SN, dan keterangan final masuk otomatis.",
       icon: Webhook,
     },
     {
-      title: "Mapping Produk",
-      desc: "Cocokkan produk PulsaKilat dengan kode produk Pulsa24Jam.",
+      title: "3. API Key",
+      desc: "Simpan API key hanya di server. Backend mengirimnya lewat header X-Api-Key, bukan dari browser.",
+      icon: KeyRound,
+    },
+    {
+      title: "4. PIN Transaksi",
+      desc: "PIN akun H2H dipakai di body request untuk semua command transaksi.",
+      icon: ShieldCheck,
+    },
+    {
+      title: "5. Kirim Transaksi",
+      desc: "Backend mengirim command ke /v1/trx dengan refid unik, lalu menunggu callback final.",
       icon: MapPinned,
     },
   ];
@@ -117,14 +167,14 @@ export default function Pulsa24JamIntegrationPage() {
                 Integrasi Provider
               </h1>
               <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-emerald-50">
-                Halaman ini adalah pusat kontrol PulsaKilat untuk menyiapkan koneksi ke supplier Pulsa24Jam. Credential tetap disimpan di server, bukan di browser.
+                Halaman ini adalah pusat kontrol alur H2H Pulsa24Jam: whitelist IP, webhook, API key, PIN, command transaksi, callback final, dan monitoring semua panel.
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 <span className="rounded-full border border-[#052e26] bg-white px-3 py-1.5 text-xs font-black text-[#052e26]">
                   Provider: Pulsa24Jam
                 </span>
                 <span className="rounded-full border border-white bg-[#052e26] px-3 py-1.5 text-xs font-black text-white">
-                  Mode: Persiapan API
+                  Endpoint: POST /v1/trx
                 </span>
               </div>
             </div>
@@ -152,13 +202,18 @@ export default function Pulsa24JamIntegrationPage() {
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {envItems.map((item) => {
             const ok = configured(item.value);
-            const sensitive = item.key.includes("PIN") || item.key.includes("SECRET") || item.key.includes("TOKEN");
+            const sensitive =
+              item.key.includes("API_KEY") ||
+              item.key.includes("PASSWORD") ||
+              item.key.includes("PIN") ||
+              item.key.includes("SECRET") ||
+              item.key.includes("TOKEN");
             return (
               <div key={item.key} className="rounded-[22px] border border-emerald-100 bg-white p-4 shadow-[0_14px_34px_rgba(6,78,59,0.07)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#052e26]">{item.label}</p>
-                    <p className="mt-2 truncate text-sm font-black text-slate-950">{sensitive ? mask(item.value) : item.value || "Belum diisi"}</p>
+                    <p className="mt-2 truncate text-sm font-black text-slate-950">{sensitive || item.key.includes("API_KEY") ? mask(item.value) : item.value || "Belum diisi"}</p>
                   </div>
                   <span className={ok ? "grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-white text-[#052e26] ring-2 ring-[#052e26]" : "grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-white text-rose-700 ring-2 ring-rose-700"}>
                     {ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
@@ -181,7 +236,7 @@ export default function Pulsa24JamIntegrationPage() {
                   <p className="text-[11px] font-black uppercase tracking-[0.20em] text-[#052e26]">Koneksi Transaksi</p>
                   <h2 className="mt-1 text-xl font-black text-slate-950">Jalur hit PulsaKilat ke Pulsa24Jam</h2>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-                    Frontend membuat order, backend PulsaKilat mengirim request ke Pulsa24Jam, lalu webhook menerima update status dari provider.
+                    Frontend dan panel hanya membuat order atau monitoring. Backend PulsaKilat yang menyimpan API key, mengirim command, mencatat refid, lalu menerima callback final.
                   </p>
                 </div>
               </div>
@@ -193,6 +248,13 @@ export default function Pulsa24JamIntegrationPage() {
             <div className="mt-5 rounded-[22px] border border-dashed border-emerald-300 bg-[#f7fffb] p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Callback URL</p>
               <p className="mt-2 break-all text-sm font-black text-[#064e3b]">{callbackURL}</p>
+            </div>
+            <div className="mt-3 rounded-[22px] border border-dashed border-emerald-300 bg-white p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Transaction URL</p>
+              <p className="mt-2 break-all text-sm font-black text-[#064e3b]">{trxURL}</p>
+              <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                Header wajib: X-Api-Key dan Content-Type application/json. Body wajib berisi commands dan pin.
+              </p>
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -226,12 +288,52 @@ export default function Pulsa24JamIntegrationPage() {
                       <Icon className="h-4 w-4" />
                     </span>
                     <div>
-                      <p className="text-sm font-black text-slate-950">{index + 1}. {step.title}</p>
+                      <p className="text-sm font-black text-slate-950">{step.title}</p>
                       <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{step.desc}</p>
                     </div>
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-[0_20px_46px_rgba(6,78,59,0.08)] sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.20em] text-[#052e26]">Command H2H</p>
+              <h2 className="mt-1 text-xl font-black text-slate-950">Perintah yang Dipakai Semua Panel</h2>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                Semua command dikirim dari backend ke Pulsa24Jam. Panel hanya mengatur data, menampilkan status, dan menjalankan monitoring.
+              </p>
+            </div>
+            <span className="w-fit rounded-full bg-[#052e26] px-3 py-1.5 text-xs font-black text-white">
+              Jangan taruh API key di frontend
+            </span>
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-[22px] border border-slate-200">
+            <div className="hidden grid-cols-[120px_160px_minmax(0,1fr)_220px_minmax(0,1fr)] gap-3 bg-[#052e26] px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white md:grid">
+              <span>Command</span>
+              <span>Panel</span>
+              <span>Fungsi</span>
+              <span>Parameter Wajib</span>
+              <span>Catatan</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {commandRows.map((row) => (
+                <div key={row.command} className="grid gap-3 px-4 py-4 text-sm md:grid-cols-[120px_160px_minmax(0,1fr)_220px_minmax(0,1fr)] md:items-center">
+                  <div>
+                    <span className="inline-flex rounded-xl bg-emerald-50 px-3 py-1 text-xs font-black text-[#047857] ring-1 ring-emerald-100">
+                      {row.command}
+                    </span>
+                  </div>
+                  <p className="font-black text-slate-950">{row.panel}</p>
+                  <p className="font-semibold leading-6 text-slate-600">{row.fungsi}</p>
+                  <p className="break-words font-mono text-xs font-bold text-slate-800">{row.wajib}</p>
+                  <p className="font-semibold leading-6 text-slate-500">{row.catatan}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -244,7 +346,7 @@ export default function Pulsa24JamIntegrationPage() {
             <div>
               <h2 className="text-base font-black text-slate-950">Catatan sebelum live</h2>
               <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                Tampilan ini adalah panel kontrol PulsaKilat. Transaksi live tetap perlu adapter backend yang mengikuti dokumentasi resmi Pulsa24Jam untuk format request, signature, response, dan callback.
+                Alur live sekarang harus berurutan: ambil produk, pastikan IP terdaftar, pastikan webhook aktif, kirim command dengan API key dan PIN, simpan refid, lalu biarkan callback menjadi sumber status final.
               </p>
             </div>
           </div>

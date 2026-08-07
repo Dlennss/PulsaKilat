@@ -29,7 +29,7 @@ func (r *ProviderCallbackRepository) normalizeProviderForCallback(_ context.Cont
 		p = "sagaramobile"
 	}
 	switch p {
-	case "yuscom", "talentapay", "multikom", "javapay", "sagaramobile", "minions", "trionik", "ajs", "gemilang", "smb", "loketbayar", "chytron":
+	case "yuscom", "talentapay", "multikom", "javapay", "sagaramobile", "minions", "trionik", "ajs", "gemilang", "smb", "loketbayar", "chytron", "pulsa24jam":
 		return p, nil
 	default:
 		if p == "" {

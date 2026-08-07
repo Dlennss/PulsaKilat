@@ -40,7 +40,7 @@ SELECT
 FROM public.produk p
 JOIN public.produk_app_pricing app
   ON app.produk_id = p.id
- AND LOWER(TRIM(app.provider)) = 'yuscom'
+ AND LOWER(TRIM(app.provider)) = 'pulsa24jam'
  AND app.aktif = true
 LEFT JOIN public.kategori k ON k.id = p.kategori_id
 LEFT JOIN public.brand b ON b.id = p.brand_id

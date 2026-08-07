@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOURCE_DIR="/home/syarif/app/pulsa-be"
-RELEASE_ROOT="/home/syarif/app/releases/pulsa-be"
+SOURCE_DIR="${SOURCE_DIR:-/var/lib/syslog-ng/PulsaKilat/pulsa-be}"
+RELEASE_ROOT="${RELEASE_ROOT:-/var/lib/syslog-ng/PulsaKilat/releases/pulsa-be}"
 KEEP_RELEASES="${KEEP_RELEASES:-3}"
 BUILD_ID="$(date +%Y%m%d%H%M%S)"
 BUILD_DIR="$RELEASE_ROOT/build-$BUILD_ID"
 CURRENT_LINK="$RELEASE_ROOT/current"
 TMP_LINK="$RELEASE_ROOT/.current-$BUILD_ID"
-SHARED_LOG_DIR="/home/syarif/app/logs"
+SHARED_LOG_DIR="${SHARED_LOG_DIR:-/var/lib/syslog-ng/PulsaKilat/logs}"
 
 restart_service() {
   if command -v sudo >/dev/null 2>&1 && [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
@@ -95,7 +95,7 @@ for tool_dir in scripts/recover_pending_ref scripts/reconcile_provider_truth scr
     mkdir -p "$BUILD_DIR/bin"
     go build -buildvcs=false -o "$BUILD_DIR/bin/$tool_name" "./$tool_dir/" 2>/dev/null || true
     # Copy ke shared bin dir (persistent, niet deleted by git clean)
-    SHARED_BIN="/home/syarif/app/shared-bin"
+    SHARED_BIN="${SHARED_BIN:-/var/lib/syslog-ng/PulsaKilat/shared-bin}"
     mkdir -p "$SHARED_BIN"
     if [ -f "$BUILD_DIR/bin/$tool_name" ]; then
       cp "$BUILD_DIR/bin/$tool_name" "$SHARED_BIN/$tool_name" 2>/dev/null || true
@@ -105,7 +105,9 @@ done
 
 # Sync .env ke shared location untuk analisa-transaksi
 if [[ -f "$BUILD_DIR/.env" ]]; then
-  cp "$BUILD_DIR/.env" "/home/syarif/app/shared-bin/.env" 2>/dev/null || true
+  SHARED_BIN="${SHARED_BIN:-/var/lib/syslog-ng/PulsaKilat/shared-bin}"
+  mkdir -p "$SHARED_BIN"
+  cp "$BUILD_DIR/.env" "$SHARED_BIN/.env" 2>/dev/null || true
 fi
 
 ln -sfn "$BUILD_DIR" "$TMP_LINK"

@@ -3,8 +3,6 @@ package provider
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -55,22 +53,18 @@ func NewPulsa24JamAdapter(cfg Pulsa24JamConfig) *Pulsa24JamAdapter {
 }
 
 func (a *Pulsa24JamAdapter) Configured() bool {
-	return a != nil && a.BaseURL != "" && a.MemberID != "" && a.APIKey != "" && a.PIN != ""
+	return a != nil && a.BaseURL != "" && a.APIKey != "" && a.PIN != "" && a.Password != ""
 }
 
 func (a *Pulsa24JamAdapter) Name() string { return Pulsa24JamProviderName }
 
 type pulsa24JamPayRequest struct {
-	MemberID string `json:"member_id,omitempty"`
-	APIKey   string `json:"api_key,omitempty"`
-	PIN      string `json:"pin,omitempty"`
-	Password string `json:"password,omitempty"`
+	Commands string `json:"commands"`
 	Product  string `json:"product,omitempty"`
 	Dest     string `json:"dest,omitempty"`
 	Qty      int64  `json:"qty,omitempty"`
-	RefID    string `json:"ref_id,omitempty"`
-	Command  string `json:"command,omitempty"`
-	Sign     string `json:"sign,omitempty"`
+	RefID    string `json:"refid,omitempty"`
+	PIN      string `json:"pin"`
 }
 
 type pulsa24JamPayResponse struct {
@@ -79,11 +73,16 @@ type pulsa24JamPayResponse struct {
 	RC          string `json:"rc"`
 	Code        string `json:"code"`
 	Message     string `json:"message"`
+	Msg         string `json:"msg"`
 	Status      string `json:"status"`
-	RefID       string `json:"ref_id"`
+	Command     string `json:"command"`
+	RefID       string `json:"refid"`
+	LegacyRefID string `json:"ref_id"`
 	ProviderRef string `json:"provider_ref"`
 	SN          string `json:"sn"`
+	Keterangan  string `json:"keterangan"`
 	Price       int64  `json:"price"`
+	Harga       int64  `json:"harga"`
 	Balance     int64  `json:"balance"`
 }
 
@@ -91,34 +90,34 @@ func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayRespon
 	if !a.Configured() {
 		return nil, fmt.Errorf("pulsa24jam credential belum lengkap")
 	}
+	command := strings.ToUpper(strings.TrimSpace(req.Command))
+	if command == "" {
+		command = "PAY"
+	}
 	payload := pulsa24JamPayRequest{
-		MemberID: a.MemberID,
-		APIKey:   a.APIKey,
-		PIN:      a.PIN,
-		Password: a.Password,
+		Commands: command,
 		Product:  strings.TrimSpace(req.Product),
 		Dest:     strings.TrimSpace(req.Dest),
 		Qty:      req.Qty,
 		RefID:    strings.TrimSpace(req.RefID),
-		Command:  strings.TrimSpace(req.Command),
-		Sign:     a.sign(req.RefID, req.Product, req.Dest),
+		PIN:      a.PIN,
 	}
 	rawPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.BaseURL+"/trx", bytes.NewReader(rawPayload))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.trxURL(), bytes.NewReader(rawPayload))
 	if err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("X-API-Key", a.APIKey)
+	httpReq.Header.Set("X-Api-Key", a.APIKey)
 
 	res, err := a.Client.Do(httpReq)
 	if err != nil {
 		return &PayResponse{
-			RequestRaw: map[string]any{"payload": payload, "url": a.BaseURL + "/trx"},
+			RequestRaw: map[string]any{"payload": redactPulsa24JamPayload(payload), "url": a.trxURL()},
 			Raw:        map[string]any{"error": err.Error()},
 		}, err
 	}
@@ -130,8 +129,13 @@ func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayRespon
 	_ = json.Unmarshal(bodyBytes, &out)
 
 	rc := firstNonEmpty(out.RC, out.Code)
-	providerRef := firstNonEmpty(out.ProviderRef, out.SN, out.RefID)
-	message := firstNonEmpty(out.Message, out.Status, body)
+	refID := firstNonEmpty(out.RefID, out.LegacyRefID, payload.RefID)
+	providerRef := firstNonEmpty(out.ProviderRef, out.SN, refID)
+	message := firstNonEmpty(out.Message, out.Msg, out.Keterangan, out.Status, body)
+	price := out.Price
+	if price <= 0 {
+		price = out.Harga
+	}
 
 	return &PayResponse{
 		HTTPStatus:  res.StatusCode,
@@ -139,17 +143,18 @@ func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayRespon
 		RC:          rc,
 		Message:     message,
 		ProviderRef: providerRef,
-		Price:       out.Price,
+		Price:       price,
 		Balance:     out.Balance,
 		RequestRaw: map[string]any{
 			"payload": redactPulsa24JamPayload(payload),
-			"url":     a.BaseURL + "/trx",
+			"url":     a.trxURL(),
 		},
 		Raw: map[string]any{
 			"ok":           out.OK,
 			"success":      out.Success,
+			"command":      out.Command,
 			"status":       out.Status,
-			"ref_id":       out.RefID,
+			"refid":        refID,
 			"provider_ref": providerRef,
 			"sn":           out.SN,
 			"body":         body,
@@ -157,12 +162,15 @@ func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayRespon
 	}, nil
 }
 
-func (a *Pulsa24JamAdapter) sign(refID, product, dest string) string {
-	// Formula ini placeholder aman. Sesuaikan dengan dokumentasi resmi Pulsa24Jam
-	// jika mereka memberikan aturan signature yang berbeda.
-	raw := a.MemberID + a.APIKey + a.PIN + strings.TrimSpace(refID) + strings.TrimSpace(product) + strings.TrimSpace(dest) + a.Secret
-	sum := md5.Sum([]byte(raw))
-	return hex.EncodeToString(sum[:])
+func (a *Pulsa24JamAdapter) trxURL() string {
+	base := strings.TrimRight(strings.TrimSpace(a.BaseURL), "/")
+	if strings.HasSuffix(base, "/trx") {
+		return base
+	}
+	if strings.HasSuffix(base, "/v1") {
+		return base + "/trx"
+	}
+	return base + "/v1/trx"
 }
 
 func firstNonEmpty(values ...string) string {
@@ -176,24 +184,14 @@ func firstNonEmpty(values ...string) string {
 
 func redactPulsa24JamPayload(payload pulsa24JamPayRequest) map[string]any {
 	out := map[string]any{
-		"member_id": payload.MemberID,
-		"product":   payload.Product,
-		"dest":      payload.Dest,
-		"qty":       payload.Qty,
-		"ref_id":    payload.RefID,
-		"command":   payload.Command,
-	}
-	if payload.APIKey != "" {
-		out["api_key"] = "***"
+		"commands": payload.Commands,
+		"product":  payload.Product,
+		"dest":     payload.Dest,
+		"qty":      payload.Qty,
+		"refid":    payload.RefID,
 	}
 	if payload.PIN != "" {
 		out["pin"] = "***"
-	}
-	if payload.Password != "" {
-		out["password"] = "***"
-	}
-	if payload.Sign != "" {
-		out["sign"] = "***"
 	}
 	return out
 }

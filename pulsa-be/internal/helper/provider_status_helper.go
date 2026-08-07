@@ -186,6 +186,15 @@ func ProviderResponseStateOf(provider, rc, msg string) ProviderResponseState {
 		case LooksLikeRajabillerImmediateReject(rc, msg):
 			return ProviderResponseFailed
 		}
+	case "pulsa24jam":
+		switch {
+		case upper == "SUCCESS" || upper == "SUKSES" || strings.Contains(upper, "TRANSAKSI BERHASIL") || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "SUCCESS")) || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "SUKSES")) || strings.Contains(upper, `"OK":TRUE`) || strings.Contains(upper, `"OK": TRUE`):
+			return ProviderResponseSuccess
+		case upper == "FAILED" || upper == "FAIL" || upper == "GAGAL" || strings.Contains(upper, "NOMOR TUJUAN SALAH") || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "FAILED")) || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "GAGAL")) || strings.Contains(upper, `"OK":FALSE`) || strings.Contains(upper, `"OK": FALSE`):
+			return ProviderResponseFailed
+		case upper == "PENDING" || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "PENDING")) || strings.Contains(upper, "SEDANG DIPROSES"):
+			return ProviderResponsePending
+		}
 	default:
 		switch {
 		case strings.Contains(upper, "ER_") || strings.Contains(upper, "SQLSTATE") || strings.Contains(upper, "SQLMESSAGE") || strings.Contains(upper, "DATA TOO LONG"):

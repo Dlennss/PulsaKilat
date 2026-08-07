@@ -1,0 +1,165 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Sync and deploy to server
+    runs-on: ubuntu-latest
+
+    env:
+      SSH_PORT: ${{ secrets.SERVER_PORT || '22' }}
+      BACKEND_SOURCE_DIR: ${{ secrets.BACKEND_SOURCE_DIR || '/var/lib/syslog-ng/PulsaKilat/pulsa-be' }}
+      FRONTEND_SOURCE_DIR: ${{ secrets.FRONTEND_SOURCE_DIR || '/var/lib/syslog-ng/PulsaKilat/pulsa-fe' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed apps
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+
+          if [[ -z "$BEFORE" || "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+            BEFORE="$(git rev-list --max-parents=0 "$AFTER")"
+          fi
+
+          CHANGED_FILES="$(git diff --name-only "$BEFORE" "$AFTER")"
+          echo "$CHANGED_FILES"
+
+          backend=false
+          frontend=false
+
+          if echo "$CHANGED_FILES" | grep -Eq '^(pulsa-be/|\.github/workflows/deploy-production\.yml$)'; then
+            backend=true
+          fi
+          if echo "$CHANGED_FILES" | grep -Eq '^(pulsa-fe/|\.github/workflows/deploy-production\.yml$)'; then
+            frontend=true
+          fi
+
+          echo "backend=$backend" >> "$GITHUB_OUTPUT"
+          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
+
+      - name: Verify required secrets
+        if: steps.changes.outputs.backend == 'true' || steps.changes.outputs.frontend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${{ secrets.SERVER_HOST }}" || (echo "SERVER_HOST secret is required" && exit 1)
+          test -n "${{ secrets.SERVER_USER }}" || (echo "SERVER_USER secret is required" && exit 1)
+          test -n "${{ secrets.SERVER_PASSWORD }}" || (echo "SERVER_PASSWORD secret is required" && exit 1)
+
+      - name: Install SSH password tools
+        if: steps.changes.outputs.backend == 'true' || steps.changes.outputs.frontend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y sshpass rsync
+
+      - name: Prepare SSH known hosts
+        if: steps.changes.outputs.backend == 'true' || steps.changes.outputs.frontend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$SSH_PORT" "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync backend source
+        if: steps.changes.outputs.backend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -p "$SSH_PORT" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "mkdir -p '$BACKEND_SOURCE_DIR'"
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" rsync -az --delete \
+            -e "ssh -p $SSH_PORT" \
+            --exclude '.env' \
+            --exclude '.git' \
+            --exclude 'log' \
+            --exclude 'releases' \
+            --exclude 'pulsa-be' \
+            --exclude 'pulsa2' \
+            pulsa-be/ "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$BACKEND_SOURCE_DIR/"
+
+      - name: Write backend env from secret
+        if: steps.changes.outputs.backend == 'true'
+        shell: bash
+        env:
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${BACKEND_ENV}" ]]; then
+            echo "BACKEND_ENV secret is empty; keeping existing backend .env on server."
+            exit 0
+          fi
+          printf '%s\n' "$BACKEND_ENV" | sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -p "$SSH_PORT" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "cat > '$BACKEND_SOURCE_DIR/.env' && chmod 600 '$BACKEND_SOURCE_DIR/.env'"
+
+      - name: Sync frontend source
+        if: steps.changes.outputs.frontend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -p "$SSH_PORT" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "mkdir -p '$FRONTEND_SOURCE_DIR'"
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" rsync -az --delete \
+            -e "ssh -p $SSH_PORT" \
+            --exclude '.env' \
+            --exclude '.env.local' \
+            --exclude '.git' \
+            --exclude '.next' \
+            --exclude 'node_modules' \
+            --exclude 'releases' \
+            pulsa-fe/ "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$FRONTEND_SOURCE_DIR/"
+
+      - name: Write frontend env from secret
+        if: steps.changes.outputs.frontend == 'true'
+        shell: bash
+        env:
+          FRONTEND_ENV: ${{ secrets.FRONTEND_ENV }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${FRONTEND_ENV}" ]]; then
+            echo "FRONTEND_ENV secret is empty; keeping existing frontend .env on server."
+            exit 0
+          fi
+          printf '%s\n' "$FRONTEND_ENV" | sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -p "$SSH_PORT" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "cat > '$FRONTEND_SOURCE_DIR/.env' && chmod 600 '$FRONTEND_SOURCE_DIR/.env'"
+
+      - name: Deploy backend release
+        if: steps.changes.outputs.backend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -p "$SSH_PORT" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "cd '$BACKEND_SOURCE_DIR' && SOURCE_DIR='$BACKEND_SOURCE_DIR' bash scripts/deploy-prod-release.sh"
+
+      - name: Deploy frontend release
+        if: steps.changes.outputs.frontend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -p "$SSH_PORT" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "cd '$FRONTEND_SOURCE_DIR' && SOURCE_DIR='$FRONTEND_SOURCE_DIR' bash scripts/deploy-prod-release.sh"
