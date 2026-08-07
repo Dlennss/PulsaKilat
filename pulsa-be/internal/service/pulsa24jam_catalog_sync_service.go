@@ -3,23 +3,29 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 )
 
 type Pulsa24JamCatalogSyncService struct {
-	repo   *repository.Pulsa24JamCatalogRepository
-	client *provider.Pulsa24JamAdapter
+	repo          *repository.Pulsa24JamCatalogRepository
+	client        *provider.Pulsa24JamAdapter
+	yuscomCatalog *provider.YuscomPublicCatalog
 }
 
-func NewPulsa24JamCatalogSyncService(dbRepo *repository.Pulsa24JamCatalogRepository, client *provider.Pulsa24JamAdapter) *Pulsa24JamCatalogSyncService {
-	return &Pulsa24JamCatalogSyncService{repo: dbRepo, client: client}
+func NewPulsa24JamCatalogSyncService(dbRepo *repository.Pulsa24JamCatalogRepository, client *provider.Pulsa24JamAdapter, yuscomCatalog *provider.YuscomPublicCatalog) *Pulsa24JamCatalogSyncService {
+	return &Pulsa24JamCatalogSyncService{repo: dbRepo, client: client, yuscomCatalog: yuscomCatalog}
 }
 
 func (s *Pulsa24JamCatalogSyncService) Sync(ctx context.Context) (*repository.Pulsa24JamCatalogSyncResult, error) {
-	if s == nil || s.repo == nil || s.client == nil || !s.client.Configured() {
+	if s == nil || s.repo == nil || s.client == nil || !s.client.Configured() || s.yuscomCatalog == nil {
 		return nil, fmt.Errorf("sinkronisasi katalog Pulsa24Jam belum dikonfigurasi")
+	}
+	yuscomCodes, err := s.yuscomCatalog.OpenProductCodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("validasi katalog Yuscom gagal: %w", err)
 	}
 	products, err := s.client.Products(ctx, "")
 	if err != nil {
@@ -27,6 +33,9 @@ func (s *Pulsa24JamCatalogSyncService) Sync(ctx context.Context) (*repository.Pu
 	}
 	items := make([]repository.Pulsa24JamCatalogItem, 0, len(products))
 	for _, product := range products {
+		if _, ok := yuscomCodes[strings.ToUpper(strings.TrimSpace(product.SKU))]; !ok {
+			continue
+		}
 		price := int64(0)
 		if product.Price != nil {
 			price = *product.Price
