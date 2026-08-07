@@ -13,7 +13,7 @@ import (
 	"pulsa2/internal/repository"
 )
 
-func (s *DepositService) CreateQrisRequest(ctx context.Context, memberID int64, role string, amount int64) (*DepositQrisCreateResult, error) {
+func (s *DepositService) createMidtransQrisRequest(ctx context.Context, memberID int64, role string, amount int64) (*DepositQrisCreateResult, error) {
 	if memberID <= 0 {
 		return nil, errors.New("unauthorized")
 	}
@@ -70,7 +70,7 @@ func (s *DepositService) CreateQrisRequest(ctx context.Context, memberID int64, 
 	}, nil
 }
 
-func (s *DepositService) GetQrisStatusByRefID(ctx context.Context, memberID int64, role, refID string, refresh bool) (*DepositQrisCreateResult, *repository.DepositRequestRow, error) {
+func (s *DepositService) getMidtransQrisStatusByRefID(ctx context.Context, memberID int64, role, refID string, refresh bool) (*DepositQrisCreateResult, *repository.DepositRequestRow, error) {
 	if memberID <= 0 {
 		return nil, nil, errors.New("unauthorized")
 	}

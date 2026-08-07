@@ -9,15 +9,17 @@ import (
 
 	"pulsa2/internal/controller"
 	"pulsa2/internal/helper"
+	"pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 	"pulsa2/internal/service"
 	"pulsa2/loketbayar"
 )
 
-func DepositRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB, lbClient *loketbayar.Client) {
+func DepositRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB, lbClient *loketbayar.Client, p24Client *provider.Pulsa24JamAdapter) {
 	repo := repository.NewDepositRepository(db)
 	bankRepo := repository.NewBankRepository(db)
 	svc := service.NewDepositService(repo, bankRepo, lbClient)
+	svc.SetPulsa24JamClient(p24Client)
 	ctrl := controller.NewDepositController(svc)
 
 	// member
@@ -58,4 +60,23 @@ func DepositRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB, lbClient *lo
 			}
 		}
 	}()
+
+	if p24Client != nil && p24Client.Configured() {
+		go func() {
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+			for range ticker.C {
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				n, err := svc.ReconcilePulsa24JamQris(ctx, 25)
+				cancel()
+				if err != nil {
+					log.Printf("[pulsa24jam_qris_reconcile] error: %v", err)
+					continue
+				}
+				if n > 0 {
+					log.Printf("[pulsa24jam_qris_reconcile] %d deposit diperiksa", n)
+				}
+			}
+		}()
+	}
 }

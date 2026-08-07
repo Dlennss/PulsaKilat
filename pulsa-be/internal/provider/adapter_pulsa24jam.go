@@ -68,22 +68,46 @@ type pulsa24JamPayRequest struct {
 }
 
 type pulsa24JamPayResponse struct {
-	OK          bool   `json:"ok"`
-	Success     bool   `json:"success"`
-	RC          string `json:"rc"`
-	Code        string `json:"code"`
-	Message     string `json:"message"`
-	Msg         string `json:"msg"`
-	Status      string `json:"status"`
-	Command     string `json:"command"`
-	RefID       string `json:"refid"`
-	LegacyRefID string `json:"ref_id"`
-	ProviderRef string `json:"provider_ref"`
-	SN          string `json:"sn"`
-	Keterangan  string `json:"keterangan"`
-	Price       int64  `json:"price"`
-	Harga       int64  `json:"harga"`
-	Balance     int64  `json:"balance"`
+	OK            bool                `json:"ok"`
+	Success       bool                `json:"success"`
+	RC            string              `json:"rc"`
+	Code          string              `json:"code"`
+	Message       string              `json:"message"`
+	Msg           string              `json:"msg"`
+	Status        string              `json:"status"`
+	Command       string              `json:"command"`
+	RefID         string              `json:"refid"`
+	LegacyRefID   string              `json:"ref_id"`
+	ProviderRef   string              `json:"provider_ref"`
+	SN            string              `json:"sn"`
+	Keterangan    string              `json:"keterangan"`
+	Price         int64               `json:"price"`
+	Harga         int64               `json:"harga"`
+	Balance       int64               `json:"balance"`
+	Amount        int64               `json:"amount"`
+	ProviderRefID string              `json:"provider_refid"`
+	QRURL         string              `json:"qr_url"`
+	PaymentType   string              `json:"payment_type"`
+	TransactionID string              `json:"transaction_id"`
+	FeeAdmin      int64               `json:"fee_admin"`
+	GrossAmount   int64               `json:"gross_amount"`
+	ExpiredAt     *time.Time          `json:"expired_at"`
+	Actions       []map[string]string `json:"actions"`
+}
+
+type Pulsa24JamDepositQRISResponse struct {
+	RefID         string
+	ProviderRefID string
+	Amount        int64
+	FeeAdmin      int64
+	GrossAmount   int64
+	Status        string
+	PaymentType   string
+	TransactionID string
+	QRURL         string
+	ExpiredAt     *time.Time
+	Actions       []map[string]string
+	Balance       int64
 }
 
 func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayResponse, error) {
@@ -159,6 +183,74 @@ func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayRespon
 			"sn":           out.SN,
 			"body":         body,
 		},
+	}, nil
+}
+
+func (a *Pulsa24JamAdapter) CreateDepositQRIS(ctx context.Context, refID string, amount int64) (*Pulsa24JamDepositQRISResponse, error) {
+	if amount <= 0 {
+		return nil, fmt.Errorf("nominal deposit QRIS harus > 0")
+	}
+	return a.depositQRIS(ctx, "DEPOSIT-QRIS", refID, amount)
+}
+
+func (a *Pulsa24JamAdapter) DepositQRISStatus(ctx context.Context, refID string) (*Pulsa24JamDepositQRISResponse, error) {
+	return a.depositQRIS(ctx, "STATUS-DEPOSIT-QRIS", refID, 0)
+}
+
+func (a *Pulsa24JamAdapter) depositQRIS(ctx context.Context, command, refID string, amount int64) (*Pulsa24JamDepositQRISResponse, error) {
+	if !a.Configured() {
+		return nil, fmt.Errorf("pulsa24jam credential belum lengkap")
+	}
+	refID = strings.TrimSpace(refID)
+	if refID == "" {
+		return nil, fmt.Errorf("refid deposit QRIS wajib diisi")
+	}
+	payload := pulsa24JamPayRequest{
+		Commands: strings.ToUpper(strings.TrimSpace(command)),
+		Qty:      amount,
+		RefID:    refID,
+		PIN:      a.PIN,
+	}
+	rawPayload, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.trxURL(), bytes.NewReader(rawPayload))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Api-Key", a.APIKey)
+	res, err := a.Client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	bodyBytes, readErr := io.ReadAll(res.Body)
+	if readErr != nil {
+		return nil, readErr
+	}
+	var out pulsa24JamPayResponse
+	if err := json.Unmarshal(bodyBytes, &out); err != nil {
+		return nil, fmt.Errorf("response deposit QRIS Pulsa24Jam tidak valid: %w", err)
+	}
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices || !out.OK {
+		msg := firstNonEmpty(out.Message, out.Msg, out.Keterangan, string(bodyBytes))
+		return nil, fmt.Errorf("deposit QRIS Pulsa24Jam gagal: %s", msg)
+	}
+	return &Pulsa24JamDepositQRISResponse{
+		RefID:         firstNonEmpty(out.RefID, out.LegacyRefID, refID),
+		ProviderRefID: strings.TrimSpace(out.ProviderRefID),
+		Amount:        out.Amount,
+		FeeAdmin:      out.FeeAdmin,
+		GrossAmount:   out.GrossAmount,
+		Status:        strings.ToLower(strings.TrimSpace(out.Status)),
+		PaymentType:   strings.TrimSpace(out.PaymentType),
+		TransactionID: strings.TrimSpace(out.TransactionID),
+		QRURL:         strings.TrimSpace(out.QRURL),
+		ExpiredAt:     out.ExpiredAt,
+		Actions:       out.Actions,
+		Balance:       out.Balance,
 	}, nil
 }
 

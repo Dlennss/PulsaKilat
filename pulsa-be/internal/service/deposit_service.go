@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"pulsa2/internal/helper"
+	"pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 	"pulsa2/loketbayar"
 )
@@ -18,6 +19,7 @@ type DepositService struct {
 	repo     *repository.DepositRepository
 	bankRepo *repository.BankRepository
 	lbClient *loketbayar.Client
+	p24      *provider.Pulsa24JamAdapter
 }
 
 const (
@@ -44,6 +46,12 @@ var depositVABanks = map[string]depositVABank{
 
 func NewDepositService(repo *repository.DepositRepository, bankRepo *repository.BankRepository, lbClient *loketbayar.Client) *DepositService {
 	return &DepositService{repo: repo, bankRepo: bankRepo, lbClient: lbClient}
+}
+
+func (s *DepositService) SetPulsa24JamClient(client *provider.Pulsa24JamAdapter) {
+	if s != nil {
+		s.p24 = client
+	}
 }
 
 func depositTicketLocation() *time.Location {

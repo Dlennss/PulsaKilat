@@ -22,6 +22,13 @@ import (
 )
 
 func Register(mux *http.ServeMux, wrap Middleware, db *sql.DB, jwtSecret []byte, ysClient *yuscom.Client, jpClient *javapay.Client, tlClient *talenta.Client, mkClient *multikom.Client, sgClient *sagaramobile.Client, mnClient *minions.Client, trClient *trionik.Client, ajClient *ajs.Client, gmClient *gemilang.Client, smClient *smb.Client, lbClient *loketbayar.Client, chClient *chytron.Client, rjClient *rajabiller.Client, extraClients ...provider.Client) {
+	var p24Client *provider.Pulsa24JamAdapter
+	for _, client := range extraClients {
+		if typed, ok := client.(*provider.Pulsa24JamAdapter); ok {
+			p24Client = typed
+			break
+		}
+	}
 	AuthRouter(mux, wrap, db, jwtSecret)
 	AppKategoriRouter(mux, db)
 	AppBrandRouter(mux, db)
@@ -39,7 +46,7 @@ func Register(mux *http.ServeMux, wrap Middleware, db *sql.DB, jwtSecret []byte,
 	H2HRouter(mux, wrap, db)
 	UserRouter(mux, wrap, db)
 	BankRouter(mux, wrap, db)
-	DepositRouter(mux, wrap, db, lbClient)
+	DepositRouter(mux, wrap, db, lbClient, p24Client)
 	HistoryRouter(mux, wrap, HistoryDeps{
 		DB:       db,
 		YSClient: ysClient,

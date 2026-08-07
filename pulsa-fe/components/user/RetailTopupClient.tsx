@@ -254,7 +254,7 @@ export function RetailTopupClient({ authToken }: Props) {
                   <QrCode className="h-5 w-5" strokeWidth={2.3} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-black text-slate-950">QRIS Otomatis</span>
+                  <span className="block text-xs font-black text-slate-950">QRIS Pulsa24Jam</span>
                   <span className="mt-1 block text-[10px] font-semibold text-slate-500">Scan dari bank atau e-wallet apa pun</span>
                 </span>
                 <span className="rounded-full bg-lime-200 px-2 py-1 text-[9px] font-black text-[#052e26]">Gratis</span>
@@ -308,7 +308,7 @@ export function RetailTopupClient({ authToken }: Props) {
               </div>
             </div>
             <div className="mt-4 rounded-2xl bg-emerald-50 px-3 py-3 text-[11px] font-semibold leading-4 text-[#047857]">
-              Pembayaran diproses melalui QRIS PulsaKilat yang aman.
+              Pembayaran diproses melalui akun H2H Pulsa24Jam.
             </div>
           </section>
 
