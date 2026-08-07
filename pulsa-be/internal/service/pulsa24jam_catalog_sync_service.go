@@ -36,7 +36,7 @@ func (s *Pulsa24JamCatalogSyncService) Sync(ctx context.Context) (*repository.Pu
 		if _, ok := yuscomCodes[strings.ToUpper(strings.TrimSpace(product.SKU))]; !ok {
 			continue
 		}
-		if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(product.SKU)), "UDGD") {
+		if pulsa24JamCatalogProductUnavailable(product) {
 			continue
 		}
 		price := int64(0)
@@ -57,4 +57,13 @@ func (s *Pulsa24JamCatalogSyncService) Sync(ctx context.Context) (*repository.Pu
 		})
 	}
 	return s.repo.Sync(ctx, items)
+}
+
+func pulsa24JamCatalogProductUnavailable(product provider.Pulsa24JamProduct) bool {
+	sku := strings.ToUpper(strings.TrimSpace(product.SKU))
+	if strings.HasPrefix(sku, "UDGD") {
+		return true
+	}
+	return strings.EqualFold(strings.TrimSpace(product.BrandName), "indosat") &&
+		strings.EqualFold(strings.TrimSpace(product.CategoryName), "pulsa")
 }
