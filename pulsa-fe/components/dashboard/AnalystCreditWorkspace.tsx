@@ -193,7 +193,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const stats = [
     { label: view === "decision" ? "Berkas Masuk" : "Perlu Keputusan", value: String(analysisItems.length), hint: "Dikirim marketing", icon: ShieldCheck, tone: "from-emerald-500 to-lime-400" },
     { label: "Kredit Diterima", value: String(approvedItems.length), hint: formatIDR(nominalApproved), icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
-    { label: "Tagihan Aktif", value: String(usedCredits.length), hint: activeCredits.length - usedCredits.length ? `${activeCredits.length - usedCredits.length} limit belum dipakai` : "Masih dipantau", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
+    { label: "Tagihan Aktif", value: String(usedCredits.length), hint: "Pinjaman wajib dilunasi", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
     { label: "Ditolak", value: String(rejectedItems.length), hint: "Perlu catatan", icon: ShieldAlert, tone: "from-rose-500 to-orange-500" },
   ];
 
@@ -211,12 +211,12 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   ];
   const acceptedCards = [
     { label: "Total Diterima", value: approvedItems.length, hint: "Semua kredit yang disetujui", icon: BadgeCheck },
-    { label: "Limit Aktif", value: activeCredits.length, hint: usedCredits.length ? `${usedCredits.length} sudah terpakai` : "Belum ada tagihan", icon: WalletCards },
+    { label: "Limit Aktif", value: activeCredits.length, hint: usedCredits.length ? `${usedCredits.length} pinjaman berjalan` : "Belum ada tagihan", icon: WalletCards },
     { label: "Sudah Lunas", value: paidCredits.length, hint: "Pembayaran selesai", icon: ShieldCheck },
     { label: "Perlu Lengkap", value: approvedItems.filter((item) => !item.loan_due_date && !isPaid(item)).length, hint: "Butuh jatuh tempo/catatan", icon: MessageSquareText },
   ];
   const repaymentCards = [
-    { label: "Tagihan Aktif", value: usedCredits.length, hint: "Kredit yang sudah terpakai", icon: WalletCards },
+    { label: "Tagihan Aktif", value: usedCredits.length, hint: "Pinjaman yang belum lunas", icon: WalletCards },
     { label: "Sudah Lunas", value: paidCredits.length, hint: "Pembayaran selesai", icon: ShieldCheck },
     { label: "Total Dilunasi", value: formatIDR(totalPaidAmount), hint: "Pembayaran tercatat", icon: ReceiptText },
     { label: "Saldo Tertagih", value: formatIDR(totalOutstandingAmount), hint: "Perlu dipantau", icon: ShieldAlert },

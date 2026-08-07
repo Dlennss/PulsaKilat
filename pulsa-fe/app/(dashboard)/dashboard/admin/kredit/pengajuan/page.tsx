@@ -31,7 +31,7 @@ export default async function AdminCreditApplicationsPage() {
   const stats = [
     { label: "Perlu Keputusan", value: String(actionable.length), hint: "Bisa approve/reject manual", icon: ClipboardList },
     { label: "Kredit Diterima", value: String(approved.length), hint: formatIDR(approved.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0)), icon: BadgeCheck },
-    { label: "Piutang Aktif", value: formatIDR(outstanding), hint: "Kredit terpakai agent", icon: WalletCards },
+    { label: "Piutang Aktif", value: formatIDR(outstanding), hint: "Pinjaman aktif agent", icon: WalletCards },
     { label: "Ditolak", value: String(applications.filter((item) => isRejected(item.status)).length), hint: "Arsip keputusan", icon: ShieldCheck },
   ];
 

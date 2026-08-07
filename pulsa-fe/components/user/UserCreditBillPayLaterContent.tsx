@@ -292,7 +292,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-2">
                       <span className={itemPaid ? "rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-black text-emerald-700" : outstanding > 0 ? "rounded-full bg-amber-100 px-2.5 py-1 text-[9px] font-black text-amber-700" : "rounded-full bg-lime-100 px-2.5 py-1 text-[9px] font-black text-emerald-700"}>
-                        {itemPaid ? "Lunas" : outstanding > 0 ? "Belum Lunas" : "Belum Dipakai"}
+                        {itemPaid ? "Lunas" : outstanding > 0 ? "Belum Lunas" : "Aktif"}
                       </span>
                       {outstanding > 0 ? (
                         <button type="button" onClick={() => selectBill(item.id, true)} className="rounded-full bg-[#047857] px-3 py-2 text-[10px] font-black text-white">
@@ -323,7 +323,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                   </span>
                   <div>
                     <h2 className="text-base font-black text-slate-950">Rincian Pelunasan</h2>
-                    <p className="text-xs font-semibold text-slate-500">Nominal otomatis mengikuti kredit yang sudah terpakai.</p>
+                    <p className="text-xs font-semibold text-slate-500">Nominal mengikuti pinjaman yang sudah disetujui.</p>
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
@@ -336,7 +336,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                     <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(paid)}</p>
                   </div>
                   <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">
-                    <p className="text-[9px] font-black uppercase text-slate-400">Tagihan Terpakai</p>
+                    <p className="text-[9px] font-black uppercase text-slate-400">Tagihan Pinjaman</p>
                     <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(selectedOutstanding)}</p>
                   </div>
                   <div className="rounded-2xl bg-white px-3 py-2 ring-1 ring-emerald-100">

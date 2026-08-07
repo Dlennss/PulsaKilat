@@ -99,21 +99,10 @@ func (r *AppOrderPaymentRepository) CreateWithBalanceDebit(ctx context.Context, 
 	if err := tx.QueryRowContext(ctx, `SELECT saldo FROM public.dompet_member WHERE member_id = $1 FOR UPDATE`, memberID).Scan(&walletBefore); err != nil {
 		return err
 	}
+	if walletBefore < amount {
+		return errors.New("saldo utama tidak cukup")
+	}
 	walletDebit := amount
-	if walletDebit > walletBefore {
-		walletDebit = walletBefore
-	}
-	creditDebit := int64(0)
-	if walletDebit < amount {
-		if err := tx.QueryRowContext(ctx, `
-SELECT public.fn_agent_credit_debit_available($1,$2,$3,'APP_ORDER_CREDIT_DEBIT','pembayaran produk melalui Pulsa24Jam')
-`, memberID, in.OrderID, amount-walletDebit).Scan(&creditDebit); err != nil {
-			return err
-		}
-	}
-	if walletDebit+creditDebit < amount {
-		return errors.New("saldo utama dan saldo kredit tidak cukup")
-	}
 	if walletDebit > 0 {
 		walletAfter := walletBefore - walletDebit
 		if _, err := tx.ExecContext(ctx, `UPDATE public.dompet_member SET saldo=$2, diperbarui_pada=now() WHERE member_id=$1`, memberID, walletAfter); err != nil {
@@ -128,7 +117,7 @@ VALUES ($1,$2,'DEBIT',$3,'APP_ORDER_WALLET_DEBIT','pembayaran produk melalui Pul
 		}
 	}
 
-	in.RawRequest = BuildBalancePaymentRawRequest(walletDebit, creditDebit, amount)
+	in.RawRequest = BuildBalancePaymentRawRequest(walletDebit, 0, amount)
 	if err := tx.QueryRowContext(ctx, `
 INSERT INTO public.app_order_payment
   (app_order_id, order_id, transaction_id, gross_amount, payment_type, transaction_status, fraud_status, acquirer, qr_url, raw_request, raw_callback, paid_at, expired_at, settlement_time, dibuat_pada, diubah_pada)

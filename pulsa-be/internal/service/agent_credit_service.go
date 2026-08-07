@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"pulsa2/internal/helper"
 	"pulsa2/internal/repository"
@@ -48,6 +49,11 @@ type AgentCreditPaymentInput struct {
 	Note          string         `json:"note"`
 	PaymentMethod string         `json:"payment_method"`
 	PaymentProof  map[string]any `json:"payment_proof"`
+}
+
+type AgentCreditTransferInput struct {
+	ApplicationID int64 `json:"application_id"`
+	Amount        int64 `json:"amount"`
 }
 
 type AgentCreditRankChangeInput struct {
@@ -460,4 +466,18 @@ func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.Aut
 		PaymentMethod: strings.TrimSpace(in.PaymentMethod),
 		PaymentProof:  in.PaymentProof,
 	})
+}
+
+func (s *AgentCreditService) TransferToMainBalance(ctx context.Context, auth helper.AuthInfo, in AgentCreditTransferInput) (*repository.AgentCreditTransferResult, error) {
+	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAgent {
+		return nil, errors.New("hanya agent yang dapat memindahkan saldo kredit")
+	}
+	if in.ApplicationID <= 0 {
+		return nil, errors.New("pinjaman kredit tidak valid")
+	}
+	if in.Amount <= 0 {
+		return nil, errors.New("nominal mutasi wajib lebih dari Rp0")
+	}
+	refID := fmt.Sprintf("KRM-%s-%s", time.Now().Format("20060102150405"), strings.ToUpper(helper.RandHex(4)))
+	return s.repo.TransferCreditToMainBalance(ctx, in.ApplicationID, auth.MemberID, in.Amount, refID)
 }

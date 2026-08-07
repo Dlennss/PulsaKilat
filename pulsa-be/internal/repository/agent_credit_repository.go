@@ -105,6 +105,15 @@ type AgentCreditPayment struct {
 	PaymentProof  map[string]any `json:"payment_proof,omitempty"`
 }
 
+type AgentCreditTransferResult struct {
+	ApplicationID         int64  `json:"application_id"`
+	Amount                int64  `json:"amount"`
+	CreditAvailableAmount int64  `json:"credit_available_amount"`
+	OutstandingAmount     int64  `json:"outstanding_amount"`
+	MainBalance           int64  `json:"main_balance"`
+	RefID                 string `json:"ref_id"`
+}
+
 type AgentCreditRank struct {
 	ID          int64  `json:"id"`
 	Code        string `json:"code"`
@@ -236,34 +245,6 @@ INSERT INTO public.agent_credit_rank_history
   (member_id, old_rank_id, new_rank_id, reason, on_time_payment_count, late_payment_count, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0))
 `, memberID, oldRankID, newRank.ID, reason, onTimeCount, lateCount, actorID); err != nil {
-		return nil, err
-	}
-
-	if _, err := tx.ExecContext(ctx, `
-UPDATE public.agent_credit_loan
-SET rank_id = $2,
-    principal_amount = $3,
-    available_amount = GREATEST($3 - outstanding_amount, 0),
-    updated_at = now()
-WHERE member_id = $1
-  AND status IN ('active', 'due', 'overdue', 'suspended')
-`, memberID, newRank.ID, newRank.LimitAmount); err != nil {
-		return nil, err
-	}
-
-	if _, err := tx.ExecContext(ctx, `
-UPDATE public.agent_credit_application
-SET rank_id = $2,
-    approved_amount = CASE WHEN status = 'approved' THEN $3 ELSE approved_amount END,
-    updated_at = now()
-WHERE id = (
-  SELECT id
-  FROM public.agent_credit_application
-  WHERE member_id = $1
-  ORDER BY created_at DESC, id DESC
-  LIMIT 1
-)
-`, memberID, newRank.ID, newRank.LimitAmount); err != nil {
 		return nil, err
 	}
 
@@ -1321,7 +1302,7 @@ VALUES
 UPDATE public.agent_credit_loan
 SET
   outstanding_amount = GREATEST(outstanding_amount - $2, 0),
-  available_amount = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN principal_amount ELSE available_amount END,
+  available_amount = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN 0 ELSE available_amount END,
   status = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN 'paid' ELSE status END,
   paid_at = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN now() ELSE paid_at END,
   updated_at = now()
@@ -1339,4 +1320,90 @@ WHERE id = $1
 		return err
 	}
 	return tx.Commit()
+}
+
+func (r *AgentCreditRepository) TransferCreditToMainBalance(ctx context.Context, applicationID, memberID, amount int64, refID string) (*AgentCreditTransferResult, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var loanID, availableBefore, outstanding int64
+	err = tx.QueryRowContext(ctx, `
+SELECT id, available_amount, outstanding_amount
+FROM public.agent_credit_loan
+WHERE application_id = $1
+  AND member_id = $2
+  AND status = 'active'
+FOR UPDATE
+`, applicationID, memberID).Scan(&loanID, &availableBefore, &outstanding)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("saldo kredit aktif tidak ditemukan")
+		}
+		return nil, err
+	}
+	if amount > availableBefore {
+		return nil, fmt.Errorf("saldo kredit tidak cukup: tersedia=%d", availableBefore)
+	}
+
+	availableAfter := availableBefore - amount
+	if _, err := tx.ExecContext(ctx, `
+UPDATE public.agent_credit_loan
+SET available_amount = $2, updated_at = now()
+WHERE id = $1
+`, loanID, availableAfter); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_mutation
+  (loan_id, application_id, member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah)
+VALUES
+  ($1,$2,$3,$4,'DEBIT',$5,'TRANSFER_TO_MAIN_BALANCE','Mutasi saldo kredit ke saldo utama',$6,$7)
+`, loanID, applicationID, memberID, refID, amount, availableBefore, availableAfter); err != nil {
+		return nil, err
+	}
+
+	var mainBefore int64
+	if err := tx.QueryRowContext(ctx, `SELECT saldo FROM public.dompet_member WHERE member_id=$1 FOR UPDATE`, memberID).Scan(&mainBefore); err != nil {
+		return nil, err
+	}
+	mainAfter := mainBefore + amount
+	if _, err := tx.ExecContext(ctx, `UPDATE public.dompet_member SET saldo=$2, diperbarui_pada=now() WHERE member_id=$1`, memberID, mainAfter); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.mutasi_dompet
+  (member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, dibuat_pada)
+VALUES
+  ($1,$2,'CREDIT',$3,'AGENT_CREDIT_TRANSFER','Pencairan saldo kredit ke saldo utama',$4,$5,now())
+`, memberID, refID, amount, mainBefore, mainAfter); err != nil {
+		return nil, err
+	}
+
+	if err := insertAuditLogTx(ctx, tx, memberID, "agent", "agent_credit_transfer_to_main_balance", "agent_credit_loan", loanID, map[string]any{
+		"credit_available_amount": availableBefore,
+		"main_balance":            mainBefore,
+	}, map[string]any{
+		"credit_available_amount": availableAfter,
+		"main_balance":            mainAfter,
+		"amount":                  amount,
+		"ref_id":                  refID,
+	}, "Agent memindahkan saldo kredit ke saldo utama"); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &AgentCreditTransferResult{
+		ApplicationID:         applicationID,
+		Amount:                amount,
+		CreditAvailableAmount: availableAfter,
+		OutstandingAmount:     outstanding,
+		MainBalance:           mainAfter,
+		RefID:                 refID,
+	}, nil
 }

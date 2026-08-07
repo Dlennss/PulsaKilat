@@ -166,3 +166,26 @@ func (h *AgentCreditController) PayInstallment(w http.ResponseWriter, r *http.Re
 	}
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
+
+func (h *AgentCreditController) TransferToMainBalance(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
+		return
+	}
+	auth, ok := helper.GetAuth(r.Context())
+	if !ok {
+		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	var in service.AgentCreditTransferInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"})
+		return
+	}
+	item, err := h.svc.TransferToMainBalance(r.Context(), auth, in)
+	if err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "item": item})
+}

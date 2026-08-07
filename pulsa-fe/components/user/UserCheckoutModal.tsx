@@ -253,7 +253,6 @@ export function UserCheckoutModal({
   const [payment, setPayment] = React.useState<UserAppOrderPayment | null>(null);
   const [checkoutQris, setCheckoutQris] = React.useState<CheckoutQrisItem | null>(null);
   const [retailSaldo, setRetailSaldo] = React.useState<number | null>(null);
-  const [retailCreditSaldo, setRetailCreditSaldo] = React.useState(0);
   const [guestTurnstileToken, setGuestTurnstileToken] = React.useState("");
   const [waitingTurnstile, setWaitingTurnstile] = React.useState(false);
   const [turnstileError, setTurnstileError] = React.useState<string | null>(null);
@@ -283,7 +282,6 @@ export function UserCheckoutModal({
     setPayment(null);
     setCheckoutQris(null);
     setRetailSaldo(null);
-    setRetailCreditSaldo(0);
     setGuestTurnstileToken("");
     setWaitingTurnstile(false);
     setTurnstileError(null);
@@ -299,30 +297,17 @@ export function UserCheckoutModal({
     let cancelled = false;
     const loadSaldo = async () => {
       try {
-        const [profileRes, creditRes] = await Promise.all([
-          fetch("/api/me/profile", {
-            method: "GET",
-            headers: { Authorization: `Bearer ${effectiveAuthToken}` },
-          }),
-          fetch("/api/agent-credit/my-applications", { cache: "no-store" }),
-        ]);
+        const profileRes = await fetch("/api/me/profile", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${effectiveAuthToken}` },
+        });
         const profileJson = (await profileRes.json().catch(() => ({}))) as { ok?: boolean; profile?: { saldo?: number } };
-        const creditJson = (await creditRes.json().catch(() => ({}))) as {
-          ok?: boolean;
-          items?: Array<{ credit_available_amount?: number }>;
-        };
         if (!cancelled) {
           setRetailSaldo(profileRes.ok && profileJson.ok ? Number(profileJson.profile?.saldo || 0) : 0);
-          setRetailCreditSaldo(
-            creditRes.ok && creditJson.ok && Array.isArray(creditJson.items)
-              ? creditJson.items.reduce((sum, item) => sum + Math.max(0, Number(item.credit_available_amount || 0)), 0)
-              : 0,
-          );
         }
       } catch {
         if (!cancelled) {
           setRetailSaldo(0);
-          setRetailCreditSaldo(0);
         }
       }
     };
@@ -397,10 +382,8 @@ export function UserCheckoutModal({
       ? nominalValue + baseCharge + feeActive
       : 0;
   const walletSaldo = Math.max(0, retailSaldo || 0);
-  const creditSaldo = Math.max(0, retailCreditSaldo || 0);
   const estimatedWalletDebit = effectiveAuthToken ? Math.min(hargaSebelumFeeAdmin, walletSaldo) : 0;
-  const estimatedCreditDebit = effectiveAuthToken ? Math.min(Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0), creditSaldo) : 0;
-  const estimatedQrisAmount = effectiveAuthToken ? Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit - estimatedCreditDebit, 0) : 0;
+  const estimatedQrisAmount = effectiveAuthToken ? Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0) : 0;
   const feeAdminQris = 0;
   const totalBayar = hargaSebelumFeeAdmin;
   const billingDisplayTotalTagihan = billingBillAmount > 0 ? billingBillAmount : billingTotalAmount;
@@ -574,9 +557,9 @@ export function UserCheckoutModal({
       const payJson = (await payRes.json().catch(() => ({}))) as ApiItemResponse<UserAppOrderPayment> & ApiErrorResponse;
       if (!payRes.ok || !payJson.ok || !payJson.item) {
         const paymentError = payJson.error || "Gagal membuat pembayaran.";
-        if (/saldo utama dan saldo kredit tidak cukup/i.test(paymentError)) {
+        if (/saldo utama(?: dan saldo kredit)? tidak cukup/i.test(paymentError)) {
           const qrisAmount = Math.max(
-            Number(orderJson.item.harga_final || 0) - walletSaldo - creditSaldo,
+            Number(orderJson.item.harga_final || 0) - walletSaldo,
             1,
           );
           const qrisRes = await fetch("/api/me/deposit/request/qris", {
@@ -1197,12 +1180,6 @@ export function UserCheckoutModal({
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span>Pakai saldo</span>
                   <span className="font-semibold text-slate-900">{formatRupiah(estimatedWalletDebit)}</span>
-                </div>
-              ) : null}
-              {estimatedCreditDebit > 0 && effectiveAuthToken ? (
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <span>Saldo kredit</span>
-                  <span className="font-semibold text-slate-900">{formatRupiah(estimatedCreditDebit)}</span>
                 </div>
               ) : null}
               {estimatedQrisAmount > 0 && effectiveAuthToken ? (

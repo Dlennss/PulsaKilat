@@ -215,8 +215,8 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
               {[
                 { label: "Total Agent", value: summaries.length, hint: "Punya histori kredit", icon: ShieldCheck },
                 { label: "Kandidat Naik", value: upgradeCandidates, hint: "Lunas tepat waktu", icon: TrendingUp },
-                { label: "Tagihan Aktif", value: formatIDR(activeDebt), hint: "Kredit terpakai", icon: WalletCards },
-                { label: "Kredit Tersedia", value: formatIDR(availableCredit), hint: "Sisa limit lapangan", icon: BadgeCheck },
+                { label: "Tagihan Aktif", value: formatIDR(activeDebt), hint: "Pinjaman yang wajib dilunasi", icon: WalletCards },
+                { label: "Kredit Tersedia", value: formatIDR(availableCredit), hint: "Bisa dimutasi agent", icon: BadgeCheck },
               ].map((item) => {
                 const Icon = item.icon;
                 return (

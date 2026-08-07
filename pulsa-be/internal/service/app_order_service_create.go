@@ -149,7 +149,7 @@ func (s *AppOrderService) Create(ctx context.Context, in repository.AppOrderCrea
 	subtotal := hargaDasarFinal + fee
 	paymentFee := computeAppOrderPaymentFee(subtotal)
 	if buyerType == "user" && memberID != nil && *memberID > 0 && subtotal > 0 && s.paymentRepo != nil {
-		if wallet, credit, saldoErr := s.paymentRepo.GetMemberFundingBalance(ctx, *memberID); saldoErr == nil && wallet+credit >= subtotal {
+		if wallet, _, saldoErr := s.paymentRepo.GetMemberFundingBalance(ctx, *memberID); saldoErr == nil && wallet >= subtotal {
 			paymentFee = 0
 		}
 	}
