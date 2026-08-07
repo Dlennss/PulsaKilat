@@ -75,9 +75,9 @@ WHERE produk_id = $1
 	return n > 0, nil
 }
 
-// MarkProviderProductTemporarilyUnavailable removes a rejected product from
-// both app and H2H listings until the catalog cooldown expires.
-func (r *ProdukAppPricingRepository) MarkProviderProductTemporarilyUnavailable(ctx context.Context, produkID int64, provider string) error {
+// MarkProviderProductUnavailable removes a rejected product from app and H2H
+// listings until it is explicitly verified and enabled again.
+func (r *ProdukAppPricingRepository) MarkProviderProductUnavailable(ctx context.Context, produkID int64, provider string) error {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	if r == nil || r.db == nil || produkID <= 0 || provider == "" {
 		return sql.ErrNoRows

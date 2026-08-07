@@ -115,20 +115,17 @@ ON CONFLICT (produk_id) DO UPDATE SET
   yuscom_name = EXCLUDED.yuscom_name,
   yuscom_status = CASE
     WHEN produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
-      AND produk_app_pricing.diubah_pada > now() - interval '1 hour'
     THEN produk_app_pricing.yuscom_status
     ELSE 'ACTIVE'
   END,
   yuscom_display_brand = EXCLUDED.yuscom_display_brand,
   aktif = NOT (
     produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
-    AND produk_app_pricing.diubah_pada > now() - interval '1 hour'
   ),
   fetched_at = now(),
   updated_at = now(),
   diubah_pada = CASE
     WHEN produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
-      AND produk_app_pricing.diubah_pada > now() - interval '1 hour'
     THEN produk_app_pricing.diubah_pada
     ELSE now()
   END
