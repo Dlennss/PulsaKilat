@@ -78,11 +78,15 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 		_ = s.handleFailedOrder(ctx, order, 0, msg, "gagal dispatch provider")
 		return fmt.Errorf("%s", msg)
 	}
+	providerQty := order.Qty
+	if provider == providerpkg.Pulsa24JamProviderName {
+		providerProductCode, providerQty = resolvePulsa24JamAppRequest(providerProductCode, order)
+	}
 
 	reqPayload := map[string]any{
 		"provider": provider,
 		"product":  providerProductCode,
-		"qty":      order.Qty,
+		"qty":      providerQty,
 		"dest":     order.Dest,
 		"refid":    order.InvoiceID,
 	}
@@ -104,7 +108,7 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 		return err
 	}
 
-	hs, body, callErr, price, sn := s.callAppOrderProvider(ctx, provider, providerProductCode, order)
+	hs, body, callErr, price, sn := s.callAppOrderProvider(ctx, provider, providerProductCode, providerQty, order)
 
 	rawRespJSON, _ := json.Marshal(map[string]any{
 		"http_status": hs,
@@ -224,7 +228,7 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 	return nil
 }
 
-func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, provider, providerProductCode string, order *repository.AppOrderRow) (hs int, body string, callErr error, price int64, sn string) {
+func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, provider, providerProductCode string, providerQty int64, order *repository.AppOrderRow) (hs int, body string, callErr error, price int64, sn string) {
 	switch provider {
 	case "gemilang":
 		if s.gmClient == nil {
@@ -246,7 +250,7 @@ func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, p
 			Command: "PAY",
 			Product: providerProductCode,
 			Dest:    order.Dest,
-			Qty:     order.Qty,
+			Qty:     providerQty,
 			RefID:   order.InvoiceID,
 		})
 		callErr = nextErr

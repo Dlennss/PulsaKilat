@@ -36,6 +36,9 @@ func (s *Pulsa24JamCatalogSyncService) Sync(ctx context.Context) (*repository.Pu
 		if _, ok := yuscomCodes[strings.ToUpper(strings.TrimSpace(product.SKU))]; !ok {
 			continue
 		}
+		if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(product.SKU)), "UDGD") {
+			continue
+		}
 		price := int64(0)
 		if product.Price != nil {
 			price = *product.Price
