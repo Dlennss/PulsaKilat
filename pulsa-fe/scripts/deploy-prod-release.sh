@@ -11,6 +11,7 @@ TMP_LINK="$RELEASE_ROOT/.current-$BUILD_ID"
 DEPLOY_USER="pulsakilat"
 DEPLOY_GROUP="deployers"
 SCRIPT_PATH="$(readlink -f "$0")"
+SERVICE_NAME="${FRONTEND_SERVICE_NAME:-pulsakilat-fe.service}"
 
 restart_service() {
   if command -v sudo >/dev/null 2>&1 && [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
@@ -89,7 +90,7 @@ ln -sfn "$BUILD_DIR" "$TMP_LINK"
 mv -Tf "$TMP_LINK" "$CURRENT_LINK"
 chown -h "$DEPLOY_USER:$DEPLOY_GROUP" "$CURRENT_LINK"
 
-restart_service pulsakilat-fe-prod.service
+restart_service "$SERVICE_NAME"
 
 if [[ "$KEEP_RELEASES" =~ ^[0-9]+$ ]]; then
   mapfile -t old_builds < <(find "$RELEASE_ROOT" -maxdepth 1 -mindepth 1 -type d -name build-* | sort)

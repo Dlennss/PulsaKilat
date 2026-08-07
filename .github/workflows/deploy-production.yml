@@ -19,6 +19,8 @@ jobs:
       SSH_PORT: ${{ secrets.SERVER_PORT || '22' }}
       BACKEND_SOURCE_DIR: ${{ secrets.BACKEND_SOURCE_DIR || '/var/lib/syslog-ng/PulsaKilat/pulsa-be' }}
       FRONTEND_SOURCE_DIR: ${{ secrets.FRONTEND_SOURCE_DIR || '/var/lib/syslog-ng/PulsaKilat/pulsa-fe' }}
+      BACKEND_SERVICE_NAME: ${{ secrets.BACKEND_SERVICE_NAME || 'pulsakilat-be.service' }}
+      FRONTEND_SERVICE_NAME: ${{ secrets.FRONTEND_SERVICE_NAME || 'pulsakilat-fe.service' }}
 
     steps:
       - name: Checkout repository
@@ -154,7 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -p "$SSH_PORT" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
-            "cd '$BACKEND_SOURCE_DIR' && SOURCE_DIR='$BACKEND_SOURCE_DIR' bash scripts/deploy-prod-release.sh"
+            "cd '$BACKEND_SOURCE_DIR' && SOURCE_DIR='$BACKEND_SOURCE_DIR' BACKEND_SERVICE_NAME='$BACKEND_SERVICE_NAME' bash scripts/deploy-prod-release.sh"
 
       - name: Deploy frontend release
         if: steps.changes.outputs.frontend == 'true'
@@ -162,4 +164,4 @@ jobs:
         run: |
           set -euo pipefail
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -p "$SSH_PORT" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
-            "cd '$FRONTEND_SOURCE_DIR' && SOURCE_DIR='$FRONTEND_SOURCE_DIR' bash scripts/deploy-prod-release.sh"
+            "cd '$FRONTEND_SOURCE_DIR' && SOURCE_DIR='$FRONTEND_SOURCE_DIR' FRONTEND_SERVICE_NAME='$FRONTEND_SERVICE_NAME' bash scripts/deploy-prod-release.sh"

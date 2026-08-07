@@ -9,6 +9,7 @@ BUILD_DIR="$RELEASE_ROOT/build-$BUILD_ID"
 CURRENT_LINK="$RELEASE_ROOT/current"
 TMP_LINK="$RELEASE_ROOT/.current-$BUILD_ID"
 SHARED_LOG_DIR="${SHARED_LOG_DIR:-/var/lib/syslog-ng/PulsaKilat/logs}"
+SERVICE_NAME="${BACKEND_SERVICE_NAME:-pulsakilat-be.service}"
 
 restart_service() {
   if command -v sudo >/dev/null 2>&1 && [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
@@ -113,7 +114,7 @@ fi
 ln -sfn "$BUILD_DIR" "$TMP_LINK"
 mv -Tf "$TMP_LINK" "$CURRENT_LINK"
 
-restart_service pulsa-be_new.service
+restart_service "$SERVICE_NAME"
 
 if [[ "$KEEP_RELEASES" =~ ^[0-9]+$ ]]; then
   mapfile -t old_builds < <(find "$RELEASE_ROOT" -maxdepth 1 -mindepth 1 -type d -name 'build-*' | sort)
