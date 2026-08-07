@@ -50,7 +50,7 @@ ON CONFLICT (nama) DO UPDATE SET aktif = true, diubah_pada = now()
 `); err != nil {
 		return nil, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE public.produk_app_pricing SET aktif = false, updated_at = now(), diubah_pada = now() WHERE LOWER(TRIM(provider)) = 'pulsa24jam'`); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE public.produk_app_pricing SET aktif = false, updated_at = now() WHERE LOWER(TRIM(provider)) = 'pulsa24jam'`); err != nil {
 		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE public.produk_provider_map SET aktif = false, diubah_pada = now() WHERE LOWER(TRIM(provider)) = 'pulsa24jam'`); err != nil {
@@ -100,7 +100,8 @@ RETURNING id
 			return nil, err
 		}
 
-		if _, err := tx.ExecContext(ctx, `
+		var catalogActive bool
+		if err := tx.QueryRowContext(ctx, `
 INSERT INTO public.produk_app_pricing
   (produk_id, provider, harga, harga_dasar, yuscom_group, yuscom_category, yuscom_sku, yuscom_name, yuscom_status, yuscom_display_brand, aktif, fetched_at, created_at, updated_at, dibuat_pada, diubah_pada)
 VALUES ($1,'pulsa24jam',$2,$2,$3,$4,$5,$6,'ACTIVE',$7,true,now(),now(),now(),now(),now())
@@ -112,13 +113,27 @@ ON CONFLICT (produk_id) DO UPDATE SET
   yuscom_category = EXCLUDED.yuscom_category,
   yuscom_sku = EXCLUDED.yuscom_sku,
   yuscom_name = EXCLUDED.yuscom_name,
-  yuscom_status = 'ACTIVE',
+  yuscom_status = CASE
+    WHEN produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
+      AND produk_app_pricing.diubah_pada > now() - interval '1 hour'
+    THEN produk_app_pricing.yuscom_status
+    ELSE 'ACTIVE'
+  END,
   yuscom_display_brand = EXCLUDED.yuscom_display_brand,
-  aktif = true,
+  aktif = NOT (
+    produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
+    AND produk_app_pricing.diubah_pada > now() - interval '1 hour'
+  ),
   fetched_at = now(),
   updated_at = now(),
-  diubah_pada = now()
-`, productID, item.Price, item.GroupName, item.CategoryName, item.SKU, item.Name, item.BrandName); err != nil {
+  diubah_pada = CASE
+    WHEN produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
+      AND produk_app_pricing.diubah_pada > now() - interval '1 hour'
+    THEN produk_app_pricing.diubah_pada
+    ELSE now()
+  END
+RETURNING aktif
+`, productID, item.Price, item.GroupName, item.CategoryName, item.SKU, item.Name, item.BrandName).Scan(&catalogActive); err != nil {
 			return nil, err
 		}
 
@@ -129,13 +144,13 @@ ON CONFLICT (produk_id) DO UPDATE SET
 		if _, err := tx.ExecContext(ctx, `
 INSERT INTO public.produk_provider_map
   (produk_id, provider, kode_provider, mode, aktif, prioritas, minimal_nominal, maksimal_nominal, fee_rp, dibuat_pada, diubah_pada)
-VALUES ($1,'pulsa24jam',$2,'normal',true,1,$3,$4,0,now(),now())
+VALUES ($1,'pulsa24jam',$2,'normal',$5,1,$3,$4,0,now(),now())
 ON CONFLICT (produk_id, provider, kode_provider) DO UPDATE SET
-  mode = 'normal', aktif = true, prioritas = 1,
+  mode = 'normal', aktif = EXCLUDED.aktif, prioritas = 1,
   minimal_nominal = EXCLUDED.minimal_nominal,
   maksimal_nominal = EXCLUDED.maksimal_nominal,
   fee_rp = 0, diubah_pada = now()
-`, productID, item.SKU, minimumNominal, item.MaximumNominal); err != nil {
+`, productID, item.SKU, minimumNominal, item.MaximumNominal, catalogActive); err != nil {
 			return nil, err
 		}
 		synced++

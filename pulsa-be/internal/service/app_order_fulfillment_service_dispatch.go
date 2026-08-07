@@ -138,6 +138,13 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 
 	if appOrderProviderImmediateReject(provider, body) {
 		msg := strings.TrimSpace(body)
+		if appOrderProviderProductUnavailable(provider, body) {
+			if markErr := s.pricingRepo.MarkProviderProductTemporarilyUnavailable(ctx, order.ProdukID, provider); markErr != nil {
+				helper.AppendProviderServiceLog("provider_callback_service.log", "mark product unavailable failed provider=%s product_id=%d sku=%s err=%v", provider, order.ProdukID, order.ProdukSKUSnapshot, markErr)
+			} else {
+				helper.AppendProviderServiceLog("provider_callback_service.log", "product temporarily unavailable provider=%s product_id=%d sku=%s cooldown=1h", provider, order.ProdukID, order.ProdukSKUSnapshot)
+			}
+		}
 		harga := price
 		if err := s.providerTrxRepo.UpdateResult(ctx, repository.AppOrderProviderTrxUpdateInput{
 			ID:            row.ID,

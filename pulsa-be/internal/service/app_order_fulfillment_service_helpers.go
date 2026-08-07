@@ -7,6 +7,7 @@ import (
 
 	"pulsa2/gemilang"
 	"pulsa2/internal/helper"
+	providerpkg "pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 	"pulsa2/yuscom"
 )
@@ -73,6 +74,15 @@ func appOrderProviderImmediateReject(provider, body string) bool {
 	default:
 		return helper.LooksLikeYuscomImmediateReject(body)
 	}
+}
+
+func appOrderProviderProductUnavailable(provider, body string) bool {
+	if !strings.EqualFold(strings.TrimSpace(provider), providerpkg.Pulsa24JamProviderName) {
+		return false
+	}
+	upper := strings.ToUpper(strings.TrimSpace(body))
+	return strings.Contains(upper, "PRODUK KEHABISAN STOK") ||
+		strings.Contains(upper, "PRODUCT OUT OF STOCK")
 }
 
 func appOrderProviderLooksLikeAccepted(provider, body string) bool {

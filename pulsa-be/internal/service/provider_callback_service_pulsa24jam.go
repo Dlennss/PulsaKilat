@@ -223,6 +223,13 @@ func (s *ProviderCallbackService) processPulsa24JamAppCallback(ctx context.Conte
 		}
 		return 200, map[string]any{"ok": true, "refid": data.refid, "status": "success"}
 	}
+	if appOrderProviderProductUnavailable("pulsa24jam", data.msg) && s.appPricingRepo != nil {
+		if markErr := s.appPricingRepo.MarkProviderProductTemporarilyUnavailable(ctx, order.ProdukID, "pulsa24jam"); markErr != nil {
+			helper.AppendProviderServiceLog("provider_callback_service.log", "mark product unavailable from callback failed provider=pulsa24jam product_id=%d sku=%s err=%v", order.ProdukID, order.ProdukSKUSnapshot, markErr)
+		} else {
+			helper.AppendProviderServiceLog("provider_callback_service.log", "product temporarily unavailable from callback provider=pulsa24jam product_id=%d sku=%s cooldown=1h", order.ProdukID, order.ProdukSKUSnapshot)
+		}
+	}
 
 	if order.BuyerType == "user" && order.MemberID != nil && *order.MemberID > 0 && order.HargaFinal > 0 {
 		reason := "refund saldo otomatis karena transaksi Pulsa24Jam gagal"

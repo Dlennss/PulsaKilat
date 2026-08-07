@@ -56,6 +56,7 @@ type ProviderCallbackService struct {
 	loketTransferRepo   *repository.LoketBayarTransferRepository
 	clients             map[string]provider.Client
 	appProviderRepo     *repository.AppOrderProviderTrxRepository
+	appPricingRepo      *repository.ProdukAppPricingRepository
 	billingCheckRepo    *repository.AppBillingCheckRepository
 	appOrderRepo        *repository.AppOrderRepository
 	retailRepo          *repository.RetailRepository
@@ -345,6 +346,7 @@ func NewProviderCallbackService(repo *repository.ProviderCallbackRepository, jpC
 		loketTransferRepo:   repository.NewLoketBayarTransferRepository(repo.DB()),
 		clients:             clients,
 		appProviderRepo:     repository.NewAppOrderProviderTrxRepository(repo.DB()),
+		appPricingRepo:      repository.NewProdukAppPricingRepository(repo.DB()),
 		billingCheckRepo:    repository.NewAppBillingCheckRepository(repo.DB()),
 		appOrderRepo:        repository.NewAppOrderRepository(repo.DB()),
 		retailRepo:          repository.NewRetailRepository(repo.DB()),

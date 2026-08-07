@@ -33,3 +33,15 @@ func TestAppOrderProviderImmediateRejectPulsa24Jam(t *testing.T) {
 		})
 	}
 }
+
+func TestAppOrderProviderProductUnavailable(t *testing.T) {
+	if !appOrderProviderProductUnavailable("pulsa24jam", `{"message":"Produk kehabisan stok","status":3}`) {
+		t.Fatal("out-of-stock response should quarantine the product")
+	}
+	if appOrderProviderProductUnavailable("pulsa24jam", `{"message":"Nomor tujuan salah","status":3}`) {
+		t.Fatal("business rejection unrelated to stock must not quarantine the product")
+	}
+	if appOrderProviderProductUnavailable("yuscom", `{"message":"Produk kehabisan stok","status":3}`) {
+		t.Fatal("only Pulsa24Jam products should be quarantined")
+	}
+}

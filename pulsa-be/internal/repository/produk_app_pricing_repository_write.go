@@ -3,7 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
+
+const pulsa24JamUnavailableStatus = "PULSA24JAM_OUT_OF_STOCK"
 
 func (r *ProdukAppPricingRepository) Create(ctx context.Context, in ProdukAppPricingUpsertInput) (int64, error) {
 	var id int64
@@ -70,4 +73,47 @@ WHERE produk_id = $1
 		return false, err
 	}
 	return n > 0, nil
+}
+
+// MarkProviderProductTemporarilyUnavailable removes a rejected product from
+// both app and H2H listings until the catalog cooldown expires.
+func (r *ProdukAppPricingRepository) MarkProviderProductTemporarilyUnavailable(ctx context.Context, produkID int64, provider string) error {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if r == nil || r.db == nil || produkID <= 0 || provider == "" {
+		return sql.ErrNoRows
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.ExecContext(ctx, `
+UPDATE public.produk_app_pricing
+SET aktif = false,
+    yuscom_status = $3,
+    updated_at = now(),
+    diubah_pada = now()
+WHERE produk_id = $1
+  AND LOWER(TRIM(provider)) = $2
+`, produkID, provider, pulsa24JamUnavailableStatus)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	if _, err := tx.ExecContext(ctx, `
+UPDATE public.produk_provider_map
+SET aktif = false, diubah_pada = now()
+WHERE produk_id = $1
+  AND LOWER(TRIM(provider)) = $2
+`, produkID, provider); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
