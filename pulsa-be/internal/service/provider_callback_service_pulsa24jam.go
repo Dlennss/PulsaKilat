@@ -44,6 +44,13 @@ func (s *ProviderCallbackService) ProcessPulsa24JamCallback(ctx context.Context,
 		if appErr != nil && appErr != sql.ErrNoRows {
 			return 502, map[string]any{"ok": false, "error": appErr.Error()}
 		}
+		billingRow, billingErr := s.billingCheckRepo.GetByRefID(ctx, data.refid)
+		if billingErr == nil && billingRow != nil && strings.EqualFold(strings.TrimSpace(billingRow.Provider), "pulsa24jam") {
+			return s.processPulsa24JamBillingCheckCallback(ctx, data, billingRow, raw)
+		}
+		if billingErr != nil && billingErr != sql.ErrNoRows {
+			return 502, map[string]any{"ok": false, "error": billingErr.Error()}
+		}
 		helper.AppendProviderServiceLog("provider_anomali.log", "pulsa24jam callback unmatched refid=%s raw=%s", data.refid, raw)
 		return 200, map[string]any{"ok": true, "ignored": true, "refid": data.refid}
 	}
@@ -137,6 +144,30 @@ func (s *ProviderCallbackService) ProcessPulsa24JamCallback(ctx context.Context,
 		biayaAktualOut = trx.BiayaPerkiraan
 	}
 	return s.sendDirectMemberWebhook(ctx, "pulsa24jam", trx, webhookURL, data.refid, finalStatus, ket, firstText(data.providerRef, data.sn), firstText(data.sn, data.providerRef), memberSaldo, biayaAktualOut, data.price)
+}
+
+func (s *ProviderCallbackService) processPulsa24JamBillingCheckCallback(ctx context.Context, data pulsa24JamCallbackData, row *repository.AppBillingCheckRow, raw string) (int, map[string]any) {
+	status := "processing_provider"
+	switch pulsa24JamFinalStatus(data) {
+	case "success":
+		status = "success"
+	case "failed":
+		status = "failed"
+	}
+	rc := strings.TrimSpace(data.rc)
+	msg := strings.TrimSpace(data.msg)
+	price := data.price
+	if err := s.billingCheckRepo.UpdateResult(ctx, repository.AppBillingCheckUpdateInput{
+		ID:            row.ID,
+		HargaProvider: &price,
+		Status:        status,
+		KodeRespon:    &rc,
+		Pesan:         &msg,
+		RawCallback:   raw,
+	}); err != nil {
+		return 502, map[string]any{"ok": false, "error": err.Error()}
+	}
+	return 200, map[string]any{"ok": true, "refid": data.refid, "status": status}
 }
 
 func (s *ProviderCallbackService) processPulsa24JamAppCallback(ctx context.Context, data pulsa24JamCallbackData, row *repository.AppOrderProviderTrxRow) (int, map[string]any) {

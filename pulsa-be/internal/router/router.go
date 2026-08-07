@@ -29,6 +29,7 @@ func Register(mux *http.ServeMux, wrap Middleware, db *sql.DB, jwtSecret []byte,
 			break
 		}
 	}
+	startPulsa24JamCatalogSync(db, p24Client)
 	AuthRouter(mux, wrap, db, jwtSecret)
 	AppKategoriRouter(mux, db)
 	AppBrandRouter(mux, db)

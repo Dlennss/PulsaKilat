@@ -13,6 +13,13 @@ import (
 )
 
 func AppOrderRouter(mux *http.ServeMux, db *sql.DB, jwtSecret []byte, ysClient *yuscom.Client, gmClient *gemilang.Client, extraClients ...provider.Client) {
+	var p24Client provider.Client
+	for _, client := range extraClients {
+		if client != nil && client.Name() == provider.Pulsa24JamProviderName {
+			p24Client = client
+			break
+		}
+	}
 	orderRepo := repository.NewAppOrderRepository(db)
 	produkRepo := repository.NewProdukRepository(db)
 	pricingRepo := repository.NewProdukAppPricingRepository(db)
@@ -22,7 +29,7 @@ func AppOrderRouter(mux *http.ServeMux, db *sql.DB, jwtSecret []byte, ysClient *
 	appProviderRepo := repository.NewAppOrderProviderTrxRepository(db)
 	billingCheckRepo := repository.NewAppBillingCheckRepository(db)
 	svc := service.NewAppOrderService(orderRepo, paymentRepo, produkRepo, pricingRepo, feeRepo, appProviderRepo, billingCheckRepo)
-	billingCheckSvc := service.NewAppBillingCheckService(billingCheckRepo, produkRepo, pricingRepo, ysClient)
+	billingCheckSvc := service.NewAppBillingCheckService(billingCheckRepo, produkRepo, pricingRepo, p24Client)
 	callbackRepo := repository.NewProviderCallbackRepository(db)
 	fulfillmentSvc := service.NewAppOrderFulfillmentService(orderRepo, appProviderRepo, callbackRepo, pricingRepo, ysClient, gmClient, extraClients...)
 	paymentSvc := service.NewAppOrderPaymentService(paymentRepo, orderRepo, bankRepo, fulfillmentSvc)

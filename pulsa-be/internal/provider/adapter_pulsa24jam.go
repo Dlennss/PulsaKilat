@@ -110,6 +110,69 @@ type Pulsa24JamDepositQRISResponse struct {
 	Balance       int64
 }
 
+type Pulsa24JamProduct struct {
+	ID             int64      `json:"id"`
+	SKU            string     `json:"sku"`
+	Name           string     `json:"nama"`
+	GroupName      string     `json:"group_name"`
+	CategoryName   string     `json:"kategori_nama"`
+	BrandName      string     `json:"brand_nama"`
+	PriceType      string     `json:"tipe_harga"`
+	Price          *int64     `json:"harga,omitempty"`
+	AdditionalFee  *int64     `json:"fee_tambahan,omitempty"`
+	MaximumNominal *int64     `json:"maksimal_nominal,omitempty"`
+	CreatedAt      *time.Time `json:"dibuat_pada,omitempty"`
+	UpdatedAt      *time.Time `json:"diubah_pada,omitempty"`
+}
+
+type pulsa24JamProductsResponse struct {
+	OK       bool                `json:"ok"`
+	Commands string              `json:"commands"`
+	Message  string              `json:"message"`
+	Msg      string              `json:"msg"`
+	Items    []Pulsa24JamProduct `json:"items"`
+}
+
+// Products mengambil katalog H2H langsung dari command PRODUK Pulsa24Jam.
+func (a *Pulsa24JamAdapter) Products(ctx context.Context, product string) ([]Pulsa24JamProduct, error) {
+	if !a.Configured() {
+		return nil, fmt.Errorf("pulsa24jam credential belum lengkap")
+	}
+	payload := pulsa24JamPayRequest{
+		Commands: "PRODUK",
+		Product:  strings.TrimSpace(product),
+		PIN:      a.PIN,
+	}
+	rawPayload, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.trxURL(), bytes.NewReader(rawPayload))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Api-Key", a.APIKey)
+
+	res, err := a.Client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	body, readErr := io.ReadAll(res.Body)
+	if readErr != nil {
+		return nil, readErr
+	}
+	var out pulsa24JamProductsResponse
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, fmt.Errorf("response produk Pulsa24Jam tidak valid: %w", err)
+	}
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices || !out.OK {
+		return nil, fmt.Errorf("produk Pulsa24Jam gagal: %s", firstNonEmpty(out.Message, out.Msg, string(body)))
+	}
+	return out.Items, nil
+}
+
 func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayResponse, error) {
 	if !a.Configured() {
 		return nil, fmt.Errorf("pulsa24jam credential belum lengkap")

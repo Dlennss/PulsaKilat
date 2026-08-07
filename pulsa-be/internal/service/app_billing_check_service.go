@@ -3,28 +3,29 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"pulsa2/internal/helper"
+	"pulsa2/internal/provider"
 	"pulsa2/internal/repository"
-	"pulsa2/yuscom"
 )
 
 type AppBillingCheckService struct {
 	checkRepo   *repository.AppBillingCheckRepository
 	produkRepo  *repository.ProdukRepository
 	pricingRepo *repository.ProdukAppPricingRepository
-	ysClient    *yuscom.Client
+	p24Client   provider.Client
 }
 
-func NewAppBillingCheckService(checkRepo *repository.AppBillingCheckRepository, produkRepo *repository.ProdukRepository, pricingRepo *repository.ProdukAppPricingRepository, ysClient *yuscom.Client) *AppBillingCheckService {
-	return &AppBillingCheckService{checkRepo: checkRepo, produkRepo: produkRepo, pricingRepo: pricingRepo, ysClient: ysClient}
+func NewAppBillingCheckService(checkRepo *repository.AppBillingCheckRepository, produkRepo *repository.ProdukRepository, pricingRepo *repository.ProdukAppPricingRepository, p24Client provider.Client) *AppBillingCheckService {
+	return &AppBillingCheckService{checkRepo: checkRepo, produkRepo: produkRepo, pricingRepo: pricingRepo, p24Client: p24Client}
 }
 
 func (s *AppBillingCheckService) Create(ctx context.Context, in repository.AppBillingCheckCreateInput) (*repository.AppBillingCheckRow, error) {
-	if s == nil || s.checkRepo == nil || s.produkRepo == nil || s.pricingRepo == nil || s.ysClient == nil {
+	if s == nil || s.checkRepo == nil || s.produkRepo == nil || s.pricingRepo == nil || s.p24Client == nil || s.p24Client.Name() != provider.Pulsa24JamProviderName {
 		return nil, fmt.Errorf("service billing check belum siap")
 	}
 	buyerType, memberID, err := normalizeBuyer(in.BuyerType, in.MemberID)
@@ -41,7 +42,7 @@ func (s *AppBillingCheckService) Create(ctx context.Context, in repository.AppBi
 	if !isAppCheckProduct(produk) {
 		return nil, fmt.Errorf("produk ini bukan produk cek tagihan")
 	}
-	pricingRow, err := s.pricingRepo.GetByProdukIDProviderActive(ctx, in.ProdukID, "yuscom")
+	pricingRow, err := s.pricingRepo.GetByProdukIDProviderActive(ctx, in.ProdukID, provider.Pulsa24JamProviderName)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("produk cek belum tersedia untuk app commerce")
@@ -72,7 +73,15 @@ func (s *AppBillingCheckService) Create(ctx context.Context, in repository.AppBi
 	}
 
 	refID := buildAppBillingCheckRefID()
-	rawReq := fmt.Sprintf(`{"provider":"yuscom","product":"%s","dest":"%s","qty":1,"refid":"%s"}`, produk.SKU, dest, refID)
+	rawReqBytes, _ := json.Marshal(map[string]any{
+		"provider": provider.Pulsa24JamProviderName,
+		"commands": "INQ",
+		"product":  produk.SKU,
+		"dest":     dest,
+		"qty":      1,
+		"refid":    refID,
+	})
+	rawReq := string(rawReqBytes)
 	createIn := repository.AppBillingCheckCreateInput{
 		RefID:              refID,
 		MemberID:           memberID,
@@ -85,7 +94,7 @@ func (s *AppBillingCheckService) Create(ctx context.Context, in repository.AppBi
 		ProdukNamaSnapshot: produk.Nama,
 		Dest:               dest,
 		BuyerType:          buyerType,
-		Provider:           "yuscom",
+		Provider:           provider.Pulsa24JamProviderName,
 		HargaProvider:      0,
 		Status:             "processing_provider",
 		RawRequest:         rawReq,
@@ -98,7 +107,17 @@ func (s *AppBillingCheckService) Create(ctx context.Context, in repository.AppBi
 		return nil, err
 	}
 
-	acc, _, body, callErr := s.ysClient.TrxNoSign(ctx, produk.SKU, 1, dest, refID)
+	resp, callErr := s.p24Client.Pay(ctx, provider.PayRequest{
+		Command: "INQ",
+		Product: produk.SKU,
+		Dest:    dest,
+		Qty:     1,
+		RefID:   refID,
+	})
+	body := ""
+	if resp != nil {
+		body = resp.Body
+	}
 	if callErr != nil {
 		msg := callErr.Error()
 		_ = s.checkRepo.UpdateResult(ctx, repository.AppBillingCheckUpdateInput{
@@ -109,13 +128,35 @@ func (s *AppBillingCheckService) Create(ctx context.Context, in repository.AppBi
 		})
 		return nil, fmt.Errorf("gagal mengirim cek ke provider")
 	}
-	var pricePtr *int64
-	if acc.Price != 0 {
-		pricePtr = helper.PtrI64(acc.Price)
+	if resp == nil {
+		msg := "respons cek tagihan Pulsa24Jam kosong"
+		_ = s.checkRepo.UpdateResult(ctx, repository.AppBillingCheckUpdateInput{
+			ID:     createdRow.ID,
+			Status: "failed",
+			Pesan:  &msg,
+		})
+		return nil, fmt.Errorf("respons cek tagihan Pulsa24Jam kosong")
 	}
-	msg := strings.TrimSpace(acc.Body)
-	rc := ""
+	var pricePtr *int64
+	if resp.Price != 0 {
+		pricePtr = helper.PtrI64(resp.Price)
+	}
+	msg := strings.TrimSpace(resp.Message)
+	if msg == "" {
+		msg = strings.TrimSpace(resp.Body)
+	}
+	rc := strings.TrimSpace(resp.RC)
 	status := "processing_provider"
+	stateInput := msg
+	if rawStatus, ok := resp.Raw["status"].(string); ok && strings.TrimSpace(rawStatus) != "" {
+		stateInput = rawStatus
+	}
+	switch helper.ProviderResponseStateOf(provider.Pulsa24JamProviderName, rc, stateInput) {
+	case helper.ProviderResponseSuccess:
+		status = "success"
+	case helper.ProviderResponseFailed:
+		status = "failed"
+	}
 	_ = s.checkRepo.UpdateResult(ctx, repository.AppBillingCheckUpdateInput{
 		ID:            createdRow.ID,
 		HargaProvider: pricePtr,
