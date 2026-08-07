@@ -75,7 +75,6 @@ rsync -a \
   --exclude scripts/deploy-prod-release.sh \
   "$SOURCE_DIR/" "$BUILD_DIR/"
 
-cp -al "$SOURCE_DIR/node_modules" "$BUILD_DIR/node_modules"
 if [[ -f "$SOURCE_DIR/.env" ]]; then
   cp "$SOURCE_DIR/.env" "$BUILD_DIR/.env"
 fi
@@ -83,6 +82,7 @@ fi
 ensure_deploy_owner "$BUILD_DIR"
 
 cd "$BUILD_DIR"
+run_as_deploy_user npm ci
 run_as_deploy_user npm run build
 ensure_deploy_owner "$BUILD_DIR"
 
