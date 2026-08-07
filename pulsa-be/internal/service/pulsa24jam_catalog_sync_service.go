@@ -64,6 +64,5 @@ func pulsa24JamCatalogProductUnavailable(product provider.Pulsa24JamProduct) boo
 	if strings.HasPrefix(sku, "UDGD") {
 		return true
 	}
-	return strings.EqualFold(strings.TrimSpace(product.BrandName), "indosat") &&
-		strings.EqualFold(strings.TrimSpace(product.CategoryName), "pulsa")
+	return strings.EqualFold(strings.TrimSpace(product.BrandName), "indosat")
 }

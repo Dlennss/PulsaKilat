@@ -18,9 +18,9 @@ func TestPulsa24JamCatalogProductUnavailable(t *testing.T) {
 			want:    true,
 		},
 		{
-			name:    "indosat data remains available",
+			name:    "indosat data is unavailable",
 			product: provider.Pulsa24JamProduct{SKU: "IDY1", BrandName: "indosat", CategoryName: "Paket Data"},
-			want:    false,
+			want:    true,
 		},
 		{
 			name:    "gopay driver is unavailable",
