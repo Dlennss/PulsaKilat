@@ -113,22 +113,12 @@ ON CONFLICT (produk_id) DO UPDATE SET
   yuscom_category = EXCLUDED.yuscom_category,
   yuscom_sku = EXCLUDED.yuscom_sku,
   yuscom_name = EXCLUDED.yuscom_name,
-  yuscom_status = CASE
-    WHEN produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
-    THEN produk_app_pricing.yuscom_status
-    ELSE 'ACTIVE'
-  END,
+  yuscom_status = 'ACTIVE',
   yuscom_display_brand = EXCLUDED.yuscom_display_brand,
-  aktif = NOT (
-    produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
-  ),
+  aktif = true,
   fetched_at = now(),
   updated_at = now(),
-  diubah_pada = CASE
-    WHEN produk_app_pricing.yuscom_status = 'PULSA24JAM_OUT_OF_STOCK'
-    THEN produk_app_pricing.diubah_pada
-    ELSE now()
-  END
+  diubah_pada = now()
 RETURNING aktif
 `, productID, item.Price, item.GroupName, item.CategoryName, item.SKU, item.Name, item.BrandName).Scan(&catalogActive); err != nil {
 			return nil, err
