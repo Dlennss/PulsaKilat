@@ -116,7 +116,7 @@ func (h *RetailController) WithdrawRequests(w http.ResponseWriter, r *http.Reque
 			helper.QueryInt(r, "offset", 0),
 		)
 		if err != nil {
-			helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
+			helper.SafeErrorResponse(w, http.StatusInternalServerError, "Gagal memuat riwayat penarikan.", err, "list own retail withdraw requests")
 			return
 		}
 		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": rows})
