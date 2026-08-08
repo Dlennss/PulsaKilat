@@ -256,8 +256,8 @@ export function RetailWithdrawClient({ authToken }: Props) {
       </section>
 
       {showCreateModal ? (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/50 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="flex max-h-[100dvh] w-full max-w-md flex-col overflow-hidden rounded-t-lg bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-lg">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-4">
+          <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
               <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:py-4">
                 <div>
                   <p className="text-[10px] font-black uppercase text-emerald-700">Pengajuan Baru</p>
