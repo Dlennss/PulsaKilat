@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/nextauth";
 import { getBrandsByKategori, getCategories } from "@/lib/api.products";
@@ -6,7 +8,6 @@ import type { UserBrandItem, UserCategoryItem, UserSession } from "@/components/
 import { GuestBottomNav } from "@/components/guest/GuestBottomNav";
 import { getDedicatedGuestBrandPath } from "@/lib/dedicated-category-brand-routes";
 import { buildBreadcrumbJsonLd, buildCollectionJsonLd, buildPageMetadata } from "@/lib/site-search";
-import { EwalletProviderPicker } from "@/components/site/EwalletProviderPicker";
 
 type SessionShape = {
   user?: UserSession;
@@ -53,27 +54,6 @@ function getEwalletImageSrc(key: string) {
   }
 }
 
-function getEwalletAccent(key: string) {
-  switch (key) {
-    case "dana":
-      return "from-sky-500 to-blue-700";
-    case "gopay":
-      return "from-cyan-400 to-sky-600";
-    case "ovo":
-      return "from-violet-500 to-purple-800";
-    case "shopeepay":
-      return "from-orange-400 to-red-500";
-    case "linkaja":
-      return "from-red-500 to-rose-700";
-    case "astrapay":
-      return "from-blue-500 to-indigo-700";
-    case "isaku":
-      return "from-rose-500 to-red-700";
-    default:
-      return "from-emerald-500 to-lime-500";
-  }
-}
-
 export const metadata: Metadata = buildPageMetadata({
   title: "Top Up E-Wallet | PulsaKilat",
   description: "Top up DANA, OVO, GoPay, LinkAja, dan ShopeePay di PulsaKilat dengan nominal tetap maupun bebas nominal.",
@@ -100,13 +80,6 @@ export default async function GuestEwalletPage() {
     title: string;
     brand: UserBrandItem;
   }>;
-  const pickerItems = cards.map((card) => ({
-    key: card.key,
-    title: card.title,
-    href: getDedicatedGuestBrandPath(String(ewalletCategory?.id ?? 2), card.brand) || `/kategori/${ewalletCategory?.id ?? 2}/brand/${card.brand.id}?name=${encodeURIComponent(card.brand.nama)}`,
-    imageSrc: getEwalletImageSrc(card.key),
-    accent: getEwalletAccent(card.key),
-  }));
   const collectionJsonLd = buildCollectionJsonLd({
     title: "Top Up E-Wallet | PulsaKilat",
     description: "Top up DANA, OVO, GoPay, LinkAja, dan ShopeePay di PulsaKilat dengan nominal tetap maupun bebas nominal.",
@@ -132,7 +105,29 @@ export default async function GuestEwalletPage() {
             Provider e-wallet belum tersedia.
           </section>
         ) : (
-          <EwalletProviderPicker items={pickerItems} />
+          <section className="grid grid-cols-2 gap-3">
+            {cards.map((card) => {
+              const imageSrc = getEwalletImageSrc(card.key);
+              const href = getDedicatedGuestBrandPath(String(ewalletCategory.id), card.brand)
+                || `/kategori/${ewalletCategory.id}/brand/${card.brand.id}?name=${encodeURIComponent(card.brand.nama)}`;
+              return (
+                <Link
+                  key={card.key}
+                  href={href}
+                  aria-label={card.title}
+                  className="group rounded-md bg-white px-2 py-3 text-center shadow-[0_10px_28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100 transition-transform duration-300 hover:-translate-y-1"
+                >
+                  <div className="grid h-[100px] place-items-center overflow-hidden">
+                    {imageSrc ? (
+                      <Image src={imageSrc} alt={card.title} title={card.title} width={100} height={100} className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-sm font-black uppercase tracking-tight text-sky-700">{card.title.slice(0, 2)}</span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </section>
         )}
       </div>
 
