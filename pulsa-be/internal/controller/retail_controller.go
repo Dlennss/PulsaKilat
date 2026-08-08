@@ -123,6 +123,7 @@ func (h *RetailController) WithdrawRequests(w http.ResponseWriter, r *http.Reque
 	case http.MethodPost:
 		var req struct {
 			Amount        int64  `json:"amount"`
+			SourceType    string `json:"source_type"`
 			BankName      string `json:"bank_name"`
 			AccountName   string `json:"account_name"`
 			AccountNumber string `json:"account_number"`
@@ -134,6 +135,7 @@ func (h *RetailController) WithdrawRequests(w http.ResponseWriter, r *http.Reque
 		}
 		item, err := h.svc.CreateWithdrawRequest(r.Context(), a.MemberID, service.RetailWithdrawCreateInput{
 			Amount:        req.Amount,
+			SourceType:    req.SourceType,
 			BankName:      req.BankName,
 			AccountName:   req.AccountName,
 			AccountNumber: req.AccountNumber,

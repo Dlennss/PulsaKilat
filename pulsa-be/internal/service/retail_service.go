@@ -27,6 +27,7 @@ type RetailRegisterDownlineInput struct {
 
 type RetailWithdrawCreateInput struct {
 	Amount        int64
+	SourceType    string
 	BankName      string
 	AccountName   string
 	AccountNumber string
@@ -142,6 +143,16 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 	in.AccountName = strings.TrimSpace(in.AccountName)
 	in.AccountNumber = strings.TrimSpace(in.AccountNumber)
 	in.Note = strings.TrimSpace(in.Note)
+	in.SourceType = strings.TrimSpace(strings.ToLower(in.SourceType))
+	if in.SourceType == "" {
+		in.SourceType = "main_balance"
+	}
+	if in.SourceType != "main_balance" && in.SourceType != "credit" {
+		return nil, errors.New("sumber penarikan tidak valid")
+	}
+	if in.SourceType == "credit" && helper.NormalizeRole(actor.Role) != helper.RoleRetailAgent {
+		return nil, errors.New("saldo kredit hanya tersedia untuk agent")
+	}
 	if in.Amount <= 0 {
 		return nil, errors.New("amount harus > 0")
 	}
@@ -149,7 +160,7 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 		return nil, errors.New("data rekening wajib lengkap")
 	}
 	refID := fmt.Sprintf("RWD-%s-%s", time.Now().Format("20060102150405"), strings.ToUpper(helper.RandHex(4)))
-	return s.repo.CreateWithdrawRequest(ctx, actorID, in.Amount, in.BankName, in.AccountName, in.AccountNumber, refID, in.Note)
+	return s.repo.CreateWithdrawRequest(ctx, actorID, in.Amount, in.SourceType, in.BankName, in.AccountName, in.AccountNumber, refID, in.Note)
 }
 
 func (s *RetailService) ListOwnWithdrawRequests(ctx context.Context, actorID int64, limit, offset int) ([]repository.RetailWithdrawRequestRow, error) {
@@ -165,6 +176,13 @@ func (s *RetailService) ListOwnWithdrawRequests(ctx context.Context, actorID int
 
 func (s *RetailService) AdminListWithdrawRequests(ctx context.Context, status, q string, limit, offset int) ([]repository.RetailWithdrawRequestRow, error) {
 	return s.repo.AdminListWithdrawRequests(ctx, status, q, limit, offset)
+}
+
+func (s *RetailService) ListWithdrawSourceBanks(ctx context.Context) ([]repository.BankRow, error) {
+	if s.bankRepo == nil {
+		return nil, errors.New("repository bank tidak tersedia")
+	}
+	return s.bankRepo.List(ctx, false)
 }
 
 func (s *RetailService) AdminApproveWithdrawRequest(ctx context.Context, reqID, actorID int64, actorRole string, bankID, fee int64, note string) error {

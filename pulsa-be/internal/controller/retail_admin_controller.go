@@ -37,6 +37,19 @@ func (h *RetailAdminController) ListWithdrawRequests(w http.ResponseWriter, r *h
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": rows})
 }
 
+func (h *RetailAdminController) ListWithdrawSourceBanks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, commondto.MapError("method not allowed"))
+		return
+	}
+	rows, err := h.svc.ListWithdrawSourceBanks(r.Context())
+	if err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": rows})
+}
+
 func (h *RetailAdminController) ApproveWithdrawRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		helper.WriteJSON(w, http.StatusMethodNotAllowed, commondto.MapError("method not allowed"))

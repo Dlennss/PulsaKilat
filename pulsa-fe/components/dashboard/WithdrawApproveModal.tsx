@@ -26,6 +26,7 @@ type WithdrawApproveModalProps = {
   sourceAccountNumber?: string;
   sourceAccountLabel?: string;
   submitting?: boolean;
+  banksEndpoint?: string;
   onClose: () => void;
   onSubmit: (payload: SubmitPayload) => Promise<void>;
 };
@@ -50,6 +51,7 @@ export default function WithdrawApproveModal({
   sourceAccountNumber = "",
   sourceAccountLabel = "",
   submitting = false,
+  banksEndpoint = "/api/admin/master/bank",
   onClose,
   onSubmit,
 }: WithdrawApproveModalProps) {
@@ -83,7 +85,7 @@ export default function WithdrawApproveModal({
     async function loadBanks() {
       setLoadingBanks(true);
       try {
-        const r = await fetch("/api/admin/master/bank", {
+        const r = await fetch(banksEndpoint, {
           headers: authHeader(),
           cache: "no-store",
         });
@@ -115,7 +117,7 @@ export default function WithdrawApproveModal({
     return () => {
       cancelled = true;
     };
-  }, [open, sourceAccountDigits, sourceAccountLabel, sourceAccountNumber]);
+  }, [banksEndpoint, open, sourceAccountDigits, sourceAccountLabel, sourceAccountNumber]);
 
   async function handleSubmit() {
     const parsedBankID = Number(bankID || "0");

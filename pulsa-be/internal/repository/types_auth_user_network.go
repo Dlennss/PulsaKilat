@@ -303,6 +303,9 @@ type RetailWithdrawRequestRow struct {
 	MemberNama    *string    `json:"member_nama,omitempty"`
 	MemberEmail   *string    `json:"member_email,omitempty"`
 	Amount        int64      `json:"amount"`
+	SourceType    string     `json:"source_type"`
+	CreditLoanID  *int64     `json:"credit_loan_id,omitempty"`
+	ApplicationID *int64     `json:"credit_application_id,omitempty"`
 	BankName      string     `json:"bank_name"`
 	AccountName   string     `json:"account_name"`
 	AccountNumber string     `json:"account_number"`

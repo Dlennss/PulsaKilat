@@ -1,20 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { BadgeCheck, Clock3, RefreshCw, Search, ShieldX, WalletCards } from "lucide-react";
 import { alertError, alertSuccess } from "@/components/ui/alerts";
 import WithdrawApproveModal from "@/components/dashboard/WithdrawApproveModal";
-import { DateField } from "@/components/ui/date-field";
-
-function todayDate() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function sevenDaysAgo() {
-  const d = new Date();
-  d.setDate(d.getDate() - 7);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 type WithdrawRow = {
   id: number;
@@ -22,6 +11,7 @@ type WithdrawRow = {
   member_nama?: string | null;
   member_email?: string | null;
   amount: number;
+  source_type?: "main_balance" | "credit";
   bank_name: string;
   account_name: string;
   account_number: string;
@@ -32,36 +22,48 @@ type WithdrawRow = {
 };
 
 function authHeader(): Record<string, string> {
-  const t = localStorage.getItem("auth_token") || "";
-  return t ? { Authorization: `Bearer ${t}` } : {};
+  const token = localStorage.getItem("auth_token") || "";
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function fmtIDR(v: number) {
-  return new Intl.NumberFormat("id-ID").format(Number(v || 0));
+function fmtIDR(value: number) {
+  return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
+}
+
+function sourceLabel(source?: string) {
+  return source === "credit" ? "Saldo Kredit" : "Saldo Utama";
+}
+
+function statusBadge(status: string) {
+  if (status === "approved") return "bg-emerald-100 text-emerald-700";
+  if (status === "rejected") return "bg-rose-100 text-rose-700";
+  return "bg-amber-100 text-amber-700";
 }
 
 export default function RetailWithdrawRequestsPage() {
   const [items, setItems] = useState<WithdrawRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("pending");
-  const [q, setQ] = useState("");
+  const [query, setQuery] = useState("");
   const [approveTarget, setApproveTarget] = useState<WithdrawRow | null>(null);
   const [approving, setApproving] = useState(false);
-  const [dateFrom, setDateFrom] = useState(sevenDaysAgo());
-  const [dateTo, setDateTo] = useState(todayDate());
 
   async function load() {
     setLoading(true);
-    const qs = new URLSearchParams({ status, q, limit: "50", offset: "0" });
-    if (dateFrom) qs.set("from", dateFrom);
-    if (dateTo) qs.set("to", dateTo);
-    const r = await fetch(`/api/admin/retail/withdraw-requests?${qs.toString()}`, {
-      headers: authHeader(),
-      cache: "no-store",
-    });
-    const j = await r.json().catch(() => ({}));
-    setItems(Array.isArray(j?.items) ? j.items : []);
-    setLoading(false);
+    try {
+      const params = new URLSearchParams({ status, q: query, limit: "100", offset: "0" });
+      const response = await fetch(`/api/admin/retail/withdraw-requests?${params.toString()}`, {
+        headers: authHeader(),
+        cache: "no-store",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body?.ok) throw new Error(body?.error || "Gagal memuat penarikan agent.");
+      setItems(Array.isArray(body.items) ? body.items : []);
+    } catch (loadError) {
+      await alertError(loadError instanceof Error ? loadError.message : "Gagal memuat penarikan agent.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -72,103 +74,126 @@ export default function RetailWithdrawRequestsPage() {
     if (!approveTarget) return;
     setApproving(true);
     try {
-      const r = await fetch(`/api/admin/retail/withdraw-requests/approve?id=${approveTarget.id}`, {
+      const response = await fetch(`/api/admin/retail/withdraw-requests/approve?id=${approveTarget.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify(payload),
       });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.ok) {
-        await alertError(j?.error || "Gagal approve withdraw.");
-        return;
-      }
-      await alertSuccess("Withdraw retail berhasil di-approve.");
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body?.ok) throw new Error(body?.error || "Penarikan gagal disetujui.");
+      await alertSuccess("Penarikan agent berhasil disetujui.");
       setApproveTarget(null);
       await load();
-    } catch {
-      await alertError("Gagal approve withdraw.");
+    } catch (approveError) {
+      await alertError(approveError instanceof Error ? approveError.message : "Penarikan gagal disetujui.");
     } finally {
       setApproving(false);
     }
   }
 
-  async function reject(id: number) {
-    const reason = window.prompt("Masukkan alasan reject withdraw retail:");
-    if (!reason || !reason.trim()) return;
-    const r = await fetch(`/api/admin/retail/withdraw-requests/reject?id=${id}`, {
+  async function reject(item: WithdrawRow) {
+    const reason = window.prompt(`Alasan menolak penarikan ${item.ref_id}:`);
+    if (!reason?.trim()) return;
+    const response = await fetch(`/api/admin/retail/withdraw-requests/reject?id=${item.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeader() },
       body: JSON.stringify({ reason: reason.trim() }),
     });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) {
-      await alertError(j?.error || "Gagal reject withdraw.");
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || !body?.ok) {
+      await alertError(body?.error || "Penarikan gagal ditolak.");
       return;
     }
-    await alertSuccess("Withdraw retail berhasil ditolak dan saldo dikembalikan.");
+    await alertSuccess(`Penarikan ditolak dan dana kembali ke ${sourceLabel(item.source_type).toLowerCase()}.`);
     await load();
   }
 
-  return (
-    <div className="space-y-4 p-2">
-      <div className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,.95),rgba(30,41,59,.82))] px-5 py-5 shadow-[0_18px_60px_rgba(2,6,23,.28)]">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">Retail Withdraw</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-300">Pantau dan proses request pencairan fee retail dari master atau agent.</p>
-      </div>
+  const stats = useMemo(() => ({
+    pending: items.filter((item) => item.status === "pending").length,
+    approved: items.filter((item) => item.status === "approved").length,
+    rejected: items.filter((item) => item.status === "rejected").length,
+    amount: items.filter((item) => item.status === "pending").reduce((total, item) => total + Number(item.amount || 0), 0),
+  }), [items]);
 
-      <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-        <div className="flex flex-col gap-3 md:flex-row">
-          <select className="h-11 rounded-xl border border-white/10 bg-slate-900 px-3 text-sm text-white outline-none" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
+  return (
+    <main className="min-h-screen bg-[#eef7f2] p-3 text-slate-950 sm:p-5 lg:p-7">
+      <section className="mx-auto w-full max-w-7xl space-y-4">
+        <header className="border-b border-emerald-200 bg-white px-4 py-5 sm:px-6">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Operator Kredit</p>
+          <h1 className="mt-1 text-2xl font-black sm:text-3xl">Penarikan Agent</h1>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">Periksa sumber saldo, rekening tujuan, dan nominal sebelum dana dikirim.</p>
+        </header>
+
+        <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {[
+            { label: "Menunggu", value: stats.pending, hint: fmtIDR(stats.amount), icon: Clock3, color: "text-amber-700 bg-amber-50" },
+            { label: "Disetujui", value: stats.approved, hint: "Sudah diproses", icon: BadgeCheck, color: "text-emerald-700 bg-emerald-50" },
+            { label: "Ditolak", value: stats.rejected, hint: "Dana dikembalikan", icon: ShieldX, color: "text-rose-700 bg-rose-50" },
+            { label: "Total Data", value: items.length, hint: "Sesuai filter", icon: WalletCards, color: "text-sky-700 bg-sky-50" },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4">
+                <span className={`grid h-9 w-9 place-items-center rounded-lg ${item.color}`}><Icon className="h-4 w-4" /></span>
+                <p className="mt-3 text-[10px] font-black uppercase text-slate-400">{item.label}</p>
+                <p className="mt-1 text-xl font-black">{item.value}</p>
+                <p className="mt-1 truncate text-[10px] font-semibold text-slate-500">{item.hint}</p>
+              </div>
+            );
+          })}
+        </section>
+
+        <section className="flex flex-col gap-2 border border-slate-200 bg-white p-3 sm:flex-row">
+          <div className="flex h-11 flex-1 items-center gap-2 rounded-lg border border-slate-200 px-3">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void load(); }} placeholder="Cari agent, referensi, atau bank" className="min-w-0 flex-1 text-sm font-semibold outline-none" />
+          </div>
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold outline-none">
+            <option value="pending">Menunggu</option>
+            <option value="approved">Disetujui</option>
+            <option value="rejected">Ditolak</option>
             <option value="all">Semua</option>
           </select>
-          <input className="h-11 flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 text-sm text-white outline-none" placeholder="Cari ref, nama, email, bank" value={q} onChange={(e) => setQ(e.target.value)} />
-          <DateField label="Dari" className="h-11 w-44" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <DateField label="Sampai" className="h-11 w-44" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          <button className="h-11 rounded-xl bg-cyan-500 px-4 text-sm font-semibold text-slate-950" onClick={() => void load()}>Refresh</button>
-        </div>
-      </div>
+          <button type="button" onClick={() => void load()} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />Muat Ulang</button>
+        </section>
 
-      <div className="space-y-3">
-        {loading ? <div className="rounded-2xl bg-white p-4 text-sm text-slate-500">Memuat withdraw retail...</div> : null}
-        {!loading && items.length === 0 ? <div className="rounded-2xl bg-white p-4 text-sm text-slate-500">Tidak ada request withdraw untuk filter ini.</div> : null}
-        {items.map((item) => (
-          <div key={item.id} className="rounded-3xl bg-white p-5 shadow-[0_8px_22px_rgba(15,23,42,0.13)]">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-slate-900">{item.ref_id}</div>
-                <div className="text-xs text-slate-500">{item.member_nama || "-"} • {item.member_email || "-"}</div>
-                <div className="mt-1 text-xs text-slate-500">{item.bank_name} • {item.account_name} • {item.account_number}</div>
-                <div className="mt-1 text-xs text-slate-500">{item.note || item.reject_reason || "-"}</div>
-              </div>
-              <div className="md:text-right">
-                <div className="text-base font-bold text-sky-700">Rp {fmtIDR(item.amount)}</div>
-                <div className="mt-1 text-xs uppercase tracking-wide text-slate-400">{item.status}</div>
-                <div className="mt-1 text-xs text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleString("id-ID") : "-"}</div>
-              </div>
-            </div>
-            {item.status === "pending" ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white" onClick={() => setApproveTarget(item)}>Approve</button>
-                <button className="h-10 rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white" onClick={() => void reject(item.id)}>Reject</button>
-              </div>
-            ) : null}
+        <section className="overflow-hidden border border-slate-200 bg-white">
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[900px] border-collapse text-left">
+              <thead className="bg-emerald-50 text-[10px] font-black uppercase text-emerald-800">
+                <tr><th className="px-4 py-3">Agent</th><th className="px-4 py-3">Sumber</th><th className="px-4 py-3">Rekening Tujuan</th><th className="px-4 py-3">Nominal</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Aksi</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {items.map((item) => (
+                  <tr key={item.id} className="align-top">
+                    <td className="px-4 py-4"><p className="font-black">{item.member_nama || "Agent PulsaKilat"}</p><p className="mt-1 text-[10px] font-semibold text-slate-500">{item.member_email || item.ref_id}</p></td>
+                    <td className="px-4 py-4"><span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-black text-sky-700">{sourceLabel(item.source_type)}</span></td>
+                    <td className="px-4 py-4"><p className="font-bold">{item.bank_name} · {item.account_number}</p><p className="mt-1 text-[10px] font-semibold text-slate-500">{item.account_name}</p></td>
+                    <td className="px-4 py-4 font-black text-emerald-700">{fmtIDR(item.amount)}</td>
+                    <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusBadge(item.status)}`}>{item.status === "approved" ? "Berhasil" : item.status === "rejected" ? "Ditolak" : "Menunggu"}</span></td>
+                    <td className="px-4 py-4"><div className="flex justify-end gap-2">{item.status === "pending" ? <><button onClick={() => setApproveTarget(item)} className="h-9 rounded-lg bg-emerald-700 px-3 text-[10px] font-black text-white">Setujui</button><button onClick={() => void reject(item)} className="h-9 rounded-lg border border-rose-200 px-3 text-[10px] font-black text-rose-600">Tolak</button></> : <span className="text-[10px] font-semibold text-slate-400">Selesai</span>}</div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
 
-      <WithdrawApproveModal
-        open={Boolean(approveTarget)}
-        title="Approve Withdraw Retail"
-        amount={approveTarget?.amount || 0}
-        submitting={approving}
-        onClose={() => {
-          if (!approving) setApproveTarget(null);
-        }}
-        onSubmit={approve}
-      />
-    </div>
+          <div className="divide-y divide-slate-100 md:hidden">
+            {items.map((item) => (
+              <article key={item.id} className="p-4">
+                <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-black">{item.member_nama || "Agent PulsaKilat"}</p><p className="mt-1 text-[10px] font-bold text-sky-700">{sourceLabel(item.source_type)}</p></div><p className="text-sm font-black text-emerald-700">{fmtIDR(item.amount)}</p></div>
+                <p className="mt-3 text-xs font-semibold text-slate-600">{item.bank_name} · {item.account_number} · {item.account_name}</p>
+                <div className="mt-3 flex items-center justify-between gap-2"><span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${statusBadge(item.status)}`}>{item.status}</span>{item.status === "pending" ? <div className="flex gap-2"><button onClick={() => setApproveTarget(item)} className="h-9 rounded-lg bg-emerald-700 px-3 text-[10px] font-black text-white">Setujui</button><button onClick={() => void reject(item)} className="h-9 rounded-lg border border-rose-200 px-3 text-[10px] font-black text-rose-600">Tolak</button></div> : null}</div>
+              </article>
+            ))}
+          </div>
+
+          {!loading && items.length === 0 ? <div className="px-4 py-12 text-center text-sm font-semibold text-slate-500">Belum ada penarikan untuk filter ini.</div> : null}
+          {loading ? <div className="px-4 py-12 text-center text-sm font-semibold text-slate-500">Memuat antrean penarikan...</div> : null}
+        </section>
+      </section>
+
+      <WithdrawApproveModal open={Boolean(approveTarget)} title="Setujui Penarikan Agent" amount={approveTarget?.amount || 0} banksEndpoint="/api/admin/retail/withdraw-requests/banks" submitting={approving} onClose={() => { if (!approving) setApproveTarget(null); }} onSubmit={approve} />
+    </main>
   );
 }

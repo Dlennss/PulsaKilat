@@ -16,8 +16,9 @@ func RetailAdminRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB) {
 	svc := service.NewRetailService(repo, bankRepo)
 	ctrl := controller.NewRetailAdminController(svc)
 
-	adminOrWallet := helper.RequireRoles("admin", "operator_wallet")
+	adminOrWallet := helper.RequireRoles("admin", "operator_wallet", "analis")
 	mux.HandleFunc("/v1/admin/retail/withdraw-requests", wrap(adminOrWallet(ctrl.ListWithdrawRequests)))
+	mux.HandleFunc("/v1/admin/retail/withdraw-requests/banks", wrap(adminOrWallet(ctrl.ListWithdrawSourceBanks)))
 	mux.HandleFunc("/v1/admin/retail/withdraw-requests/approve", wrap(adminOrWallet(ctrl.ApproveWithdrawRequest)))
 	mux.HandleFunc("/v1/admin/retail/withdraw-requests/reject", wrap(adminOrWallet(ctrl.RejectWithdrawRequest)))
 }

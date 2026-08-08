@@ -9,48 +9,85 @@ import (
 	"strings"
 )
 
-func (r *RetailRepository) CreateWithdrawRequest(ctx context.Context, memberID, amount int64, bankName, accountName, accountNumber, refID, note string) (*RetailWithdrawRequestRow, error) {
+func (r *RetailRepository) CreateWithdrawRequest(ctx context.Context, memberID, amount int64, sourceType, bankName, accountName, accountNumber, refID, note string) (*RetailWithdrawRequestRow, error) {
 	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var before int64
-	if err := tx.QueryRowContext(ctx, `
+	var creditLoanID, creditApplicationID any
+	if sourceType == "credit" {
+		var loanID, applicationID, before int64
+		if err := tx.QueryRowContext(ctx, `
+SELECT id, application_id, available_amount
+FROM public.agent_credit_loan
+WHERE member_id = $1
+  AND status = 'active'
+  AND available_amount > 0
+ORDER BY due_date ASC, id ASC
+LIMIT 1
+FOR UPDATE
+`, memberID).Scan(&loanID, &applicationID, &before); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, errors.New("saldo kredit aktif tidak ditemukan")
+			}
+			return nil, err
+		}
+		if before < amount {
+			return nil, errors.New("saldo kredit tidak cukup")
+		}
+		after := before - amount
+		if _, err := tx.ExecContext(ctx, `UPDATE public.agent_credit_loan SET available_amount=$2, updated_at=now() WHERE id=$1`, loanID, after); err != nil {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_mutation
+  (loan_id, application_id, member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah)
+VALUES
+  ($1,$2,$3,$4,'DEBIT',$5,'AGENT_CREDIT_WITHDRAW_HOLD',NULLIF($6,''),$7,$8)
+`, loanID, applicationID, memberID, refID, amount, note, before, after); err != nil {
+			return nil, err
+		}
+		creditLoanID = loanID
+		creditApplicationID = applicationID
+	} else {
+		var before int64
+		if err := tx.QueryRowContext(ctx, `
 SELECT saldo
 FROM public.dompet_member
 WHERE member_id = $1
 FOR UPDATE
 `, memberID).Scan(&before); err != nil {
-		return nil, err
-	}
-	if before < amount {
-		return nil, errors.New("saldo tidak cukup")
-	}
-	after := before - amount
+			return nil, err
+		}
+		if before < amount {
+			return nil, errors.New("saldo utama tidak cukup")
+		}
+		after := before - amount
 
-	if _, err := tx.ExecContext(ctx, `
+		if _, err := tx.ExecContext(ctx, `
 UPDATE public.dompet_member
 SET saldo = $2, diperbarui_pada = now()
 WHERE member_id = $1
 `, memberID, after); err != nil {
-		return nil, err
-	}
-	if _, err := tx.ExecContext(ctx, `
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `
 INSERT INTO public.mutasi_dompet
   (member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, dibuat_pada)
 VALUES
   ($1,$2,'DEBIT',$3,'RETAIL_WITHDRAW_HOLD',NULLIF($4,''),$5,$6,now())
 `, memberID, refID, amount, note, before, after); err != nil {
-		return nil, err
+			return nil, err
+		}
 	}
 	if _, err := tx.ExecContext(ctx, `
 INSERT INTO public.retail_withdraw_request
-  (member_id, amount, bank_name, account_name, account_number, status, note, reject_reason, ref_id, created_at, updated_at)
+  (member_id, amount, source_type, credit_loan_id, credit_application_id, bank_name, account_name, account_number, status, note, reject_reason, ref_id, created_at, updated_at)
 VALUES
-  ($1,$2,$3,$4,$5,'pending',NULLIF($6,''),'',$7,now(),now())
-`, memberID, amount, bankName, accountName, accountNumber, note, refID); err != nil {
+  ($1,$2,$3,$4,$5,$6,$7,$8,'pending',NULLIF($9,''),'',$10,now(),now())
+`, memberID, amount, sourceType, creditLoanID, creditApplicationID, bankName, accountName, accountNumber, note, refID); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -114,7 +151,8 @@ func (r *RetailRepository) listWithdrawRequests(ctx context.Context, whereSQL st
 SELECT
   rw.id, rw.member_id, m.nama, m.email, rw.amount, rw.bank_name, rw.account_name, rw.account_number,
   rw.status, COALESCE(rw.note, ''), COALESCE(rw.reject_reason, ''), rw.ref_id,
-  rw.processed_by, p.nama, rw.processed_at, rw.created_at, rw.updated_at
+  rw.processed_by, p.nama, rw.processed_at, rw.created_at, rw.updated_at,
+  COALESCE(rw.source_type, 'main_balance'), rw.credit_loan_id, rw.credit_application_id
 FROM public.retail_withdraw_request rw
 JOIN public.member m ON m.id = rw.member_id
 LEFT JOIN public.member p ON p.id = rw.processed_by
@@ -139,11 +177,14 @@ LIMIT $%d OFFSET $%d
 			processedAt   sql.NullTime
 			createdAt     sql.NullTime
 			updatedAt     sql.NullTime
+			creditLoanID  sql.NullInt64
+			applicationID sql.NullInt64
 		)
 		if err := rows.Scan(
 			&item.ID, &item.MemberID, &memberNama, &memberEmail, &item.Amount, &item.BankName, &item.AccountName,
 			&item.AccountNumber, &item.Status, &item.Note, &item.RejectReason, &item.RefID,
 			&processedBy, &processedName, &processedAt, &createdAt, &updatedAt,
+			&item.SourceType, &creditLoanID, &applicationID,
 		); err != nil {
 			return nil, err
 		}
@@ -174,6 +215,14 @@ LIMIT $%d OFFSET $%d
 		if updatedAt.Valid {
 			v := updatedAt.Time
 			item.UpdatedAt = &v
+		}
+		if creditLoanID.Valid {
+			v := creditLoanID.Int64
+			item.CreditLoanID = &v
+		}
+		if applicationID.Valid {
+			v := applicationID.Int64
+			item.ApplicationID = &v
 		}
 		out = append(out, item)
 	}
@@ -284,47 +333,75 @@ func (r *RetailRepository) RejectWithdrawRequest(ctx context.Context, reqID, act
 	defer func() { _ = tx.Rollback() }()
 
 	var (
-		memberID int64
-		amount   int64
-		refID    string
-		status   string
+		memberID     int64
+		amount       int64
+		refID        string
+		status       string
+		sourceType   string
+		creditLoanID sql.NullInt64
 	)
 	if err := tx.QueryRowContext(ctx, `
-SELECT member_id, amount, ref_id, status
+SELECT member_id, amount, ref_id, status, COALESCE(source_type, 'main_balance'), credit_loan_id
 FROM public.retail_withdraw_request
 WHERE id = $1
 FOR UPDATE
-`, reqID).Scan(&memberID, &amount, &refID, &status); err != nil {
+`, reqID).Scan(&memberID, &amount, &refID, &status, &sourceType, &creditLoanID); err != nil {
 		return err
 	}
 	if strings.TrimSpace(strings.ToLower(status)) != "pending" {
 		return errors.New("status withdraw tidak valid")
 	}
 
-	var before int64
-	if err := tx.QueryRowContext(ctx, `
+	if sourceType == "credit" {
+		if !creditLoanID.Valid {
+			return errors.New("referensi pinjaman kredit tidak ditemukan")
+		}
+		var before, principal int64
+		if err := tx.QueryRowContext(ctx, `SELECT available_amount, principal_amount FROM public.agent_credit_loan WHERE id=$1 FOR UPDATE`, creditLoanID.Int64).Scan(&before, &principal); err != nil {
+			return err
+		}
+		after := before + amount
+		if after > principal {
+			after = principal
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE public.agent_credit_loan SET available_amount=$2, updated_at=now() WHERE id=$1`, creditLoanID.Int64, after); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_mutation
+  (loan_id, application_id, member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah)
+SELECT
+  id, application_id, member_id, $2, 'CREDIT', $3, 'AGENT_CREDIT_WITHDRAW_REJECT_REFUND', NULLIF($4,''), $5, $6
+FROM public.agent_credit_loan WHERE id=$1
+`, creditLoanID.Int64, refID, amount, reason, before, after); err != nil {
+			return err
+		}
+	} else {
+		var before int64
+		if err := tx.QueryRowContext(ctx, `
 SELECT saldo
 FROM public.dompet_member
 WHERE member_id = $1
 FOR UPDATE
 `, memberID).Scan(&before); err != nil {
-		return err
-	}
-	after := before + amount
-	if _, err := tx.ExecContext(ctx, `
+			return err
+		}
+		after := before + amount
+		if _, err := tx.ExecContext(ctx, `
 UPDATE public.dompet_member
 SET saldo = $2, diperbarui_pada = now()
 WHERE member_id = $1
 `, memberID, after); err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, `
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `
 INSERT INTO public.mutasi_dompet
   (member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, dibuat_pada)
 VALUES
   ($1,$2,'CREDIT',$3,'RETAIL_WITHDRAW_REJECT_REFUND',NULLIF($4,''),$5,$6,now())
 `, memberID, refID, amount, reason, before, after); err != nil {
-		return err
+			return err
+		}
 	}
 
 	if _, err := tx.ExecContext(ctx, `
