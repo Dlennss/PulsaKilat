@@ -14,10 +14,6 @@ import {
   X,
 } from "lucide-react";
 
-type Summary = {
-  total_pending_withdraw: number;
-};
-
 type WithdrawRow = {
   id: number;
   ref_id: string;
@@ -58,7 +54,6 @@ function statusInfo(status: string) {
 }
 
 export function RetailWithdrawClient({ authToken }: Props) {
-  const [summary, setSummary] = useState<Summary | null>(null);
   const [mainBalance, setMainBalance] = useState(0);
   const [creditBalance, setCreditBalance] = useState(0);
   const [items, setItems] = useState<WithdrawRow[]>([]);
@@ -81,21 +76,17 @@ export function RetailWithdrawClient({ authToken }: Props) {
     setLoading(true);
     setError("");
     try {
-      const [summaryRes, listRes, profileRes, creditRes] = await Promise.all([
-        fetch("/api/me/retail/commissions/summary", { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" }),
+      const [listRes, profileRes, creditRes] = await Promise.all([
         fetch("/api/me/retail/withdraw-requests?limit=50&offset=0", { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" }),
         fetch("/api/me/profile", { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" }),
         fetch("/api/agent-credit/my-applications", { cache: "no-store" }),
       ]);
-      const summaryJSON = await summaryRes.json().catch(() => ({}));
       const listJSON = await listRes.json().catch(() => ({}));
       const profileJSON = await profileRes.json().catch(() => ({}));
       const creditJSON = await creditRes.json().catch(() => ({}));
-      if (!summaryRes.ok || !summaryJSON?.ok) throw new Error(summaryJSON?.error || "Gagal memuat ringkasan penarikan.");
       if (!listRes.ok || !listJSON?.ok) throw new Error(listJSON?.error || "Gagal memuat riwayat penarikan.");
 
       const applications = Array.isArray(creditJSON?.items) ? creditJSON.items : [];
-      setSummary(summaryJSON.item || null);
       setItems(Array.isArray(listJSON.items) ? listJSON.items : []);
       setMainBalance(profileRes.ok && profileJSON?.ok ? Number(profileJSON?.profile?.saldo || 0) : 0);
       setCreditBalance(applications.reduce((total: number, item: { credit_available_amount?: number; loan_status?: string }) => {
@@ -104,7 +95,12 @@ export function RetailWithdrawClient({ authToken }: Props) {
           : total + Math.max(0, Number(item.credit_available_amount || 0));
       }, 0));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Gagal memuat data penarikan.");
+      const message = loadError instanceof Error ? loadError.message : "";
+      setError(
+        !message || message.toLowerCase() === "internal error"
+          ? "Data penarikan belum dapat dimuat. Silakan muat ulang."
+          : message,
+      );
     } finally {
       setLoading(false);
     }
@@ -175,6 +171,10 @@ export function RetailWithdrawClient({ authToken }: Props) {
   }
 
   const pendingCount = useMemo(() => items.filter((item) => item.status === "pending").length, [items]);
+  const pendingAmount = useMemo(
+    () => items.filter((item) => item.status === "pending").reduce((total, item) => total + Number(item.amount || 0), 0),
+    [items],
+  );
 
   return (
     <div className="space-y-4 text-slate-950">
@@ -202,15 +202,6 @@ export function RetailWithdrawClient({ authToken }: Props) {
           <p className="mt-3 text-[10px] font-black uppercase text-slate-400">Saldo Kredit</p>
           <p className="mt-1 text-lg font-black text-sky-700">{fmtIDR(creditBalance)}</p>
         </div>
-        <div className="col-span-2 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
-          <div>
-            <p className="text-[10px] font-black uppercase text-amber-700">Sedang Diproses</p>
-            <p className="mt-1 text-lg font-black text-slate-950">{fmtIDR(summary?.total_pending_withdraw || 0)}</p>
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-amber-700">
-            <Clock3 className="h-3.5 w-3.5" /> {pendingCount} pengajuan
-          </span>
-        </div>
       </section>
 
       {success ? <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-4 w-4" />{success}</div> : null}
@@ -221,6 +212,10 @@ export function RetailWithdrawClient({ authToken }: Props) {
           <div>
             <h2 className="text-base font-black">Riwayat Penarikan</h2>
             <p className="mt-0.5 text-[11px] font-semibold text-slate-500">Status pencairan terbaru.</p>
+            <span className={pendingCount > 0 ? "mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700" : "mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500"}>
+              <Clock3 className="h-3.5 w-3.5" />
+              {pendingCount > 0 ? `${pendingCount} diproses · ${fmtIDR(pendingAmount)}` : "Tidak ada yang diproses"}
+            </span>
           </div>
           <button type="button" onClick={openCreate} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-3 text-xs font-black text-white">
             <Plus className="h-4 w-4" /> Ajukan
