@@ -71,7 +71,9 @@ export function RetailTopupClient({ authToken }: Props) {
       if (!bankRes.ok || !bankJson?.ok) throw new Error(bankJson?.error || "Rekening tujuan belum dapat dimuat.");
       if (!historyRes.ok || !historyJson?.ok) throw new Error(historyJson?.error || "Riwayat topup belum dapat dimuat.");
 
-      const nextBanks = (Array.isArray(bankJson.items) ? bankJson.items : []).filter((item: BankOption) => item.aktif);
+      const nextBanks = (Array.isArray(bankJson.items) ? bankJson.items : []).filter(
+        (item: BankOption) => item.aktif && item.nomor_rekening.trim() && item.atas_nama.trim(),
+      );
       setBanks(nextBanks);
       setBankID((current) => current || String(nextBanks[0]?.id || ""));
 
@@ -220,10 +222,14 @@ export function RetailTopupClient({ authToken }: Props) {
             <div className="mt-4 rounded-[20px] border border-slate-200 bg-slate-50 p-3 opacity-70">
               <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-slate-400"><QrCode className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="block text-xs font-black text-slate-700">QRIS Pulsa24Jam</span><span className="mt-1 block text-[10px] font-semibold text-slate-400">Menunggu aktivasi API QRIS H2H</span></span><span className="rounded-full bg-amber-100 px-2 py-1 text-[9px] font-black text-amber-700">Belum aktif</span></div>
             </div>
+            <div className="mt-3 rounded-[20px] border border-slate-200 bg-slate-50 p-3 opacity-70">
+              <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-slate-400"><Clipboard className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="block text-xs font-black text-slate-700">E-Wallet</span><span className="mt-1 block text-[10px] font-semibold text-slate-400">DANA, GoPay, OVO, dan ShopeePay melalui QRIS</span></span><span className="rounded-full bg-amber-100 px-2 py-1 text-[9px] font-black text-amber-700">Menunggu P24</span></div>
+            </div>
             <div className="mt-3 rounded-[20px] border border-[#047857] bg-emerald-50 p-3">
               <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-[#047857]"><Building2 className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="block text-xs font-black text-slate-950">Transfer Bank</span><span className="mt-1 block text-[10px] font-semibold text-slate-500">Saldo masuk setelah pembayaran terverifikasi</span></span><span className="grid h-7 w-7 place-items-center rounded-full bg-[#047857] text-white"><Check className="h-4 w-4" /></span></div>
             </div>
             {banks.length > 1 ? <select value={bankID} onChange={(e) => setBankID(e.target.value)} className="mt-3 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700">{banks.map((bank) => <option key={bank.id} value={bank.id}>{bank.nama} - {bank.atas_nama}</option>)}</select> : null}
+            {!banks.length ? <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-[11px] font-semibold leading-4 text-amber-700">Rekening penerima transfer belum dikonfigurasi. Gunakan metode ini setelah admin menambahkan rekening tujuan.</p> : null}
           </section>
 
           <section className="rounded-[28px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.11)]">
