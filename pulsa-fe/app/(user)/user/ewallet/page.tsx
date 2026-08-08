@@ -1,8 +1,7 @@
-import Image from "next/image";
-import Link from "next/link";
 import { getBrandsByKategori, getCategories } from "@/lib/api.products";
 import type { UserBrandItem, UserCategoryItem } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
+import { EwalletProviderPicker } from "@/components/site/EwalletProviderPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +45,27 @@ function getEwalletImageSrc(key: string) {
   }
 }
 
+function getEwalletAccent(key: string) {
+  switch (key) {
+    case "dana":
+      return "from-sky-500 to-blue-700";
+    case "gopay":
+      return "from-cyan-400 to-sky-600";
+    case "ovo":
+      return "from-violet-500 to-purple-800";
+    case "shopeepay":
+      return "from-orange-400 to-red-500";
+    case "linkaja":
+      return "from-red-500 to-rose-700";
+    case "astrapay":
+      return "from-blue-500 to-indigo-700";
+    case "isaku":
+      return "from-rose-500 to-red-700";
+    default:
+      return "from-emerald-500 to-lime-500";
+  }
+}
+
 export default async function UserEwalletPage() {
   const categories = (await getCategories()) as UserCategoryItem[];
   const ewalletCategory = pickEwalletCategory(categories);
@@ -54,12 +74,19 @@ export default async function UserEwalletPage() {
   const cards = [
     { key: "dana", title: "DANA", brand: pickBrand(brands, ["dana"]) },
     { key: "gopay", title: "GoPay", brand: pickBrand(brands, ["gopay", "go pay"]) },
+    { key: "ovo", title: "OVO", brand: pickBrand(brands, ["ovo"]) },
     { key: "shopeepay", title: "ShopeePay", brand: pickBrand(brands, ["shopeepay", "shopee pay"]) },
     { key: "linkaja", title: "LinkAja", brand: pickBrand(brands, ["linkaja", "link aja"]) },
-    { key: "ovo", title: "OVO", brand: pickBrand(brands, ["ovo"]) },
     { key: "astrapay", title: "AstraPay", brand: pickBrand(brands, ["astrapay", "astra pay"]) },
     { key: "isaku", title: "i.saku", brand: pickBrand(brands, ["i.saku", "isaku"]) },
   ].filter((item) => item.brand) as Array<{ key: string; title: string; brand: UserBrandItem }>;
+  const pickerItems = cards.map((card) => ({
+    key: card.key,
+    title: card.title,
+    href: `/user/kategori/${ewalletCategory?.id ?? 2}/brand/${card.brand.id}?name=${encodeURIComponent(card.brand.nama)}`,
+    imageSrc: getEwalletImageSrc(card.key),
+    accent: getEwalletAccent(card.key),
+  }));
 
   return (
     <main className="bg-sky-50">
@@ -73,29 +100,7 @@ export default async function UserEwalletPage() {
             Provider e-wallet belum tersedia.
           </section>
         ) : (
-          <section className="grid grid-cols-2 gap-3">
-            {cards.map((card) => {
-              const imageSrc = getEwalletImageSrc(card.key);
-              return (
-                <Link
-                  key={card.key}
-                  href={`/user/kategori/${ewalletCategory.id}/brand/${card.brand.id}?name=${encodeURIComponent(card.brand.nama)}`}
-                  aria-label={card.title}
-                  className="group rounded-md bg-white px-2 py-3 text-center shadow-[0_10px_28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100 transition-transform duration-300 hover:-translate-y-1"
-                >
-                  <div className="flex flex-col items-center">
-                    <div className="grid h-[100px] w-[100px] place-items-center overflow-hidden">
-                      {imageSrc ? (
-                        <Image src={imageSrc} alt={card.title} title={card.title} width={100} height={100} className="h-full w-full object-contain" />
-                      ) : (
-                        <span className="text-sm font-black uppercase tracking-tight text-sky-700">{card.title.slice(0, 2)}</span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </section>
+          <EwalletProviderPicker items={pickerItems} />
         )}
       </div>
 
