@@ -24,8 +24,7 @@ function normalizeDigits(value: string) {
 function withDest(href: string, dest: string) {
   const cleanDest = normalizeDigits(dest);
   if (!cleanDest) return href;
-  const separator = href.includes("?") ? "&" : "?";
-  return `${href}${separator}dest=${encodeURIComponent(cleanDest)}`;
+  return `${href}?dest=${encodeURIComponent(cleanDest)}`;
 }
 
 function getInitials(value: string) {
