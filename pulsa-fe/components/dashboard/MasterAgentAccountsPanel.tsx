@@ -14,6 +14,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import type { AgentCreditApplication } from "@/lib/api.auth";
 
 type AgentRow = {
   id: number;
@@ -53,6 +54,12 @@ type AgentFormState = {
   aktif: boolean;
 };
 
+type PortfolioFilter = "all" | "survey" | "operator" | "active" | "paid";
+
+type Props = {
+  applications: AgentCreditApplication[];
+};
+
 const emptyForm = (): AgentFormState => ({
   name: "",
   email: "",
@@ -80,24 +87,62 @@ function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
-export function MasterAgentAccountsPanel() {
+function applicationTime(item: AgentCreditApplication) {
+  return new Date(item.updated_at || item.created_at).getTime();
+}
+
+function applicationStage(item?: AgentCreditApplication): Exclude<PortfolioFilter, "all"> | "none" | "rejected" {
+  if (!item) return "none";
+  const status = String(item.status || "").toLowerCase();
+  const loanStatus = String(item.loan_status || "").toLowerCase();
+  if (status.includes("reject")) return "rejected";
+  if (status === "submitted" || status === "marketing_review") return "survey";
+  if (status === "analysis_review" || status === "master_review") return "operator";
+  if (status === "approved" && loanStatus === "paid") return "paid";
+  if (status === "approved") return "active";
+  return "none";
+}
+
+const stageMeta = {
+  none: { label: "Belum mengajukan", className: "bg-slate-100 text-slate-600" },
+  survey: { label: "Perlu survei", className: "bg-amber-100 text-amber-700" },
+  operator: { label: "Di operator", className: "bg-sky-100 text-sky-700" },
+  active: { label: "Kredit aktif", className: "bg-emerald-100 text-emerald-700" },
+  paid: { label: "Lunas", className: "bg-lime-100 text-lime-800" },
+  rejected: { label: "Ditolak", className: "bg-rose-100 text-rose-700" },
+} as const;
+
+export function MasterAgentAccountsPanel({ applications }: Props) {
   const [items, setItems] = useState<AgentRow[]>([]);
   const [query, setQuery] = useState("");
+  const [portfolioFilter, setPortfolioFilter] = useState<PortfolioFilter>("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [form, setForm] = useState<AgentFormState>(() => emptyForm());
 
+  const latestApplicationByMember = useMemo(() => {
+    const latest = new Map<number, AgentCreditApplication>();
+    applications.forEach((application) => {
+      const memberId = Number(application.member_id || 0);
+      const current = latest.get(memberId);
+      if (memberId && (!current || applicationTime(application) > applicationTime(current))) latest.set(memberId, application);
+    });
+    return latest;
+  }, [applications]);
+
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((item) =>
-      [item.nama, item.email, item.phone, String(item.id)].some((value) => String(value || "").toLowerCase().includes(q)),
-    );
-  }, [items, query]);
+    return items.filter((item) => {
+      const application = latestApplicationByMember.get(item.id);
+      const stage = applicationStage(application);
+      const matchesFilter = portfolioFilter === "all" || stage === portfolioFilter;
+      const storeName = String(application?.store_name || application?.applicant_data?.store_name || "");
+      const matchesQuery = !q || [item.nama, item.email, item.phone, storeName, String(item.id)].some((value) => String(value || "").toLowerCase().includes(q));
+      return matchesFilter && matchesQuery;
+    });
+  }, [items, latestApplicationByMember, portfolioFilter, query]);
 
-  const activeCount = items.filter((item) => item.aktif).length;
-  const inactiveCount = items.length - activeCount;
   const isEditing = Boolean(form.id);
 
   async function loadAgents() {
@@ -226,78 +271,97 @@ export function MasterAgentAccountsPanel() {
 
   return (
     <div className={isEditing ? "grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]" : "block"}>
-      <section className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.08)] sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">Database Agent</p>
-            <h2 className="mt-1 text-2xl font-black text-slate-950">Akun Agent</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">Kelola agent retail PulsaKilat dari satu panel.</p>
+      <section className="overflow-hidden rounded-lg border border-emerald-200 bg-white shadow-[0_16px_36px_rgba(6,78,59,0.08)]">
+        <div className="flex items-center justify-between gap-4 bg-[linear-gradient(135deg,#052e26,#075f46)] px-4 py-4 text-white sm:px-5">
+          <div className="min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-lime-200">Portofolio Kredit</p>
+            <h1 className="mt-1 text-xl font-black sm:text-2xl">Daftar Kredit Agent Binaan</h1>
+            <p className="mt-1 text-xs font-semibold leading-5 text-emerald-100/75">Pantau akun, status kredit, saldo, dan tindak lanjut setiap agent.</p>
           </div>
-          <label className="flex h-12 min-w-0 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-500 focus-within:border-emerald-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-emerald-100 lg:w-72">
-            <Search className="h-4 w-4" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full bg-transparent outline-none" placeholder="Cari agent" />
-          </label>
+          <div className="shrink-0 text-center">
+            <p className="text-2xl font-black text-lime-200">{items.length}</p>
+            <p className="text-[9px] font-bold text-emerald-100/70">Agent</p>
+          </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          {[
-            ["Total", items.length, "bg-slate-50 text-slate-700"],
-            ["Aktif", activeCount, "bg-emerald-50 text-emerald-700"],
-            ["Nonaktif", inactiveCount, "bg-rose-50 text-rose-600"],
-          ].map(([label, value, className]) => (
-            <div key={label} className={`rounded-2xl px-3 py-3 ${className}`}>
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] opacity-70">{label}</p>
-              <p className="mt-1 text-xl font-black">{value}</p>
+        <div className="border-b border-emerald-100 bg-[#f8fffb] p-3 sm:p-4">
+          <div className="flex flex-col gap-2 lg:flex-row">
+            <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-500 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100">
+              <Search className="h-4 w-4 text-emerald-600" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full bg-transparent outline-none" placeholder="Cari agent, toko, WhatsApp, atau ID..." />
+            </label>
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
+              {([
+                ["all", "Semua"],
+                ["survey", "Survei"],
+                ["operator", "Operator"],
+                ["active", "Aktif"],
+                ["paid", "Lunas"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPortfolioFilter(value)}
+                  className={portfolioFilter === value
+                    ? "h-11 shrink-0 rounded-lg border border-emerald-700 bg-emerald-700 px-4 text-xs font-black text-white"
+                    : "h-11 shrink-0 rounded-lg border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
 
-        <div className="mt-5 space-y-2">
+        {message ? (
+          <div className={message.type === "success" ? "m-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-700" : "m-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black text-rose-600"}>
+            {message.text}
+          </div>
+        ) : null}
+
+        <div className="p-3 sm:p-4">
           {loading ? (
-            Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-[22px] bg-slate-100" />)
-          ) : filteredItems.length ? (
-            filteredItems.map((item) => (
-              <article key={item.id} className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-200 hover:bg-emerald-50/30">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px_170px] lg:items-center">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-950 text-sm font-black text-lime-300">
-                      {(item.nama || item.email || "AG").slice(0, 2).toUpperCase()}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-sm font-black text-slate-950">{item.nama || "Agent"}</h3>
-                        <span className={item.aktif ? "rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-black uppercase text-emerald-700" : "rounded-full bg-rose-100 px-2.5 py-1 text-[9px] font-black uppercase text-rose-600"}>
-                          {item.aktif ? "Aktif" : "Nonaktif"}
-                        </span>
-                      </div>
-                      <p className="mt-1 truncate text-xs font-semibold text-slate-500">{item.email}</p>
-                      <p className="mt-0.5 truncate text-[11px] font-bold text-slate-400">HP {item.phone || "-"}</p>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl bg-slate-50 px-3 py-2">
-                    <p className="text-[9px] font-black uppercase text-slate-400">Saldo</p>
-                    <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(Number(item.saldo || 0))}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => editAgent(item)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 text-[11px] font-black text-emerald-700 ring-1 ring-emerald-100">
-                      <Edit3 className="h-3.5 w-3.5" />
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => toggleAgent(item)} disabled={saving} className={item.aktif ? "h-10 rounded-xl bg-rose-50 text-[11px] font-black text-rose-600 ring-1 ring-rose-100" : "h-10 rounded-xl bg-emerald-950 text-[11px] font-black text-white"}>
-                      {item.aktif ? "Hapus" : "Aktifkan"}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))
-          ) : (
-            <div className="grid min-h-56 place-items-center rounded-[24px] border border-dashed border-emerald-200 bg-emerald-50/40 px-5 text-center">
-              <div>
-                <UserRound className="mx-auto h-10 w-10 text-emerald-700" />
-                <h3 className="mt-3 text-base font-black text-slate-950">Belum ada agent</h3>
-                <p className="mt-1 text-sm font-semibold text-slate-500">Agent yang dibuat akan tampil di sini.</p>
-              </div>
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-16 animate-pulse rounded-lg bg-slate-100" />)}
             </div>
+          ) : filteredItems.length ? (
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <div className="hidden grid-cols-[minmax(220px,1.5fr)_130px_135px_165px_160px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500 lg:grid">
+                <span>Agent</span><span>Status Kredit</span><span>Saldo Utama</span><span>Pengajuan / Tagihan</span><span className="text-center">Aksi</span>
+              </div>
+              {filteredItems.map((item) => {
+                const application = latestApplicationByMember.get(item.id);
+                const stage = applicationStage(application);
+                const status = stageMeta[stage];
+                const requested = Number(application?.approved_amount || application?.requested_amount || 0);
+                const outstanding = Number(application?.outstanding_amount || 0);
+                const storeName = String(application?.store_name || application?.applicant_data?.store_name || "Toko belum diisi");
+
+                return (
+                  <article key={item.id} className="border-b border-slate-100 bg-white p-4 last:border-b-0 hover:bg-emerald-50/30">
+                    <div className="grid gap-3 lg:grid-cols-[minmax(220px,1.5fr)_130px_135px_165px_160px] lg:items-center">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-emerald-950 text-xs font-black text-lime-300">{(item.nama || "AG").slice(0, 2).toUpperCase()}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2"><p className="truncate text-sm font-black text-slate-950">{item.nama || "Agent"}</p>{!item.aktif ? <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9px] font-black text-rose-700">Nonaktif</span> : null}</div>
+                          <p className="mt-1 truncate text-xs font-semibold text-slate-500">{storeName}</p>
+                          <p className="mt-0.5 truncate text-[11px] font-bold text-slate-400">{item.phone || "-"} - ID {item.id}</p>
+                        </div>
+                      </div>
+                      <div><span className={`inline-flex rounded-md px-2.5 py-1.5 text-[10px] font-black ${status.className}`}>{status.label}</span></div>
+                      <p className="text-sm font-black text-slate-950">{formatIDR(Number(item.saldo || 0))}</p>
+                      <div><p className="text-sm font-black text-slate-950">{formatIDR(requested)}</p><p className={outstanding > 0 ? "mt-1 text-[11px] font-bold text-amber-700" : "mt-1 text-[11px] font-bold text-slate-400"}>Tagihan {formatIDR(outstanding)}</p></div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => editAgent(item)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-[11px] font-black text-emerald-700"><Edit3 className="h-3.5 w-3.5" />Edit</button>
+                        <button type="button" onClick={() => toggleAgent(item)} disabled={saving} className={item.aktif ? "h-9 rounded-lg border border-rose-200 bg-rose-50 text-[11px] font-black text-rose-600" : "h-9 rounded-lg bg-emerald-950 text-[11px] font-black text-white"}>{item.aktif ? "Nonaktifkan" : "Aktifkan"}</button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid min-h-28 place-items-center rounded-lg border border-dashed border-emerald-300 bg-emerald-50/35 px-4 text-center text-sm font-semibold text-slate-500">Agent binaan tidak ditemukan.</div>
           )}
         </div>
       </section>
