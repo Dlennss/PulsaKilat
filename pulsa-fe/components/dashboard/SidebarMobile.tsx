@@ -16,7 +16,7 @@ type Props = {
 export function SidebarMobile({ sections, open, onClose, onLogout }: Props) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const isMarketingSidebar = sections.some((section) => section.title === "Marketing");
+  const isMarketingSidebar = sections.some((section) => section.title === "Operasional Lapangan");
 
   if (!open) return null;
 

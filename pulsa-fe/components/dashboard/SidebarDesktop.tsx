@@ -14,11 +14,11 @@ type Props = {
 export function SidebarDesktop({ sections, onLogout }: Props) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const isMarketingSidebar = sections.some((section) => section.title === "Marketing");
+  const isMarketingSidebar = sections.some((section) => section.title === "Operasional Lapangan");
 
   if (isMarketingSidebar) {
     return (
-      <aside className="hidden w-72 shrink-0 self-start overflow-hidden border-r border-emerald-950/20 md:sticky md:top-0 md:flex md:h-screen md:flex-col">
+      <aside className="hidden w-64 shrink-0 self-start overflow-hidden border-r border-emerald-950/20 md:sticky md:top-0 md:flex md:h-screen md:flex-col">
         <MarketingSidebarContent sections={sections} onLogout={onLogout} />
       </aside>
     );

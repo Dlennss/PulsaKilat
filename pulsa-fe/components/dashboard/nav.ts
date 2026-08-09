@@ -224,18 +224,23 @@ export const auditorNavSections: NavSection[] = [
 export const masterNavSections: NavSection[] = [
   {
     items: [
-      { href: "/dashboard/master", label: "Ringkasan Kerja" },
+      { href: "/dashboard/master", label: "Dashboard" },
     ],
   },
   {
-    title: "Marketing",
+    title: "Operasional Lapangan",
     items: [
-      { href: "/dashboard/master/tambah-agent", label: "Daftar Agent" },
-      { href: "/dashboard/master/akun-agent", label: "Kelola Agent" },
-      { href: "/dashboard/master/input-pinjaman-manual", label: "Bantu Pengajuan" },
-      { href: "/dashboard/master/pinjaman", label: "Pertemuan & Selfie" },
-      { href: "/dashboard/master/profil-agent", label: "Profil Agent" },
-      { href: "/dashboard/master/riwayat-pinjaman", label: "Pelunasan Kredit" },
+      { href: "/dashboard/master/tambah-agent", label: "Tambah Agent" },
+      { href: "/dashboard/master/input-pinjaman-manual", label: "Pengajuan & Dokumen" },
+      { href: "/dashboard/master/pinjaman", label: "Antrean Survei" },
+    ],
+  },
+  {
+    title: "Portofolio Agent",
+    items: [
+      { href: "/dashboard/master/akun-agent", label: "Agent Binaan" },
+      { href: "/dashboard/master/profil-agent", label: "Aktivitas Agent" },
+      { href: "/dashboard/master/riwayat-pinjaman", label: "Penagihan Kredit" },
     ],
   },
 ];
