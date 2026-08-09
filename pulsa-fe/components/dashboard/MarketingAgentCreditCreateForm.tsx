@@ -1,112 +1,256 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, PlusCircle } from "lucide-react";
+import { Camera, Check, FileSignature, Loader2, PlusCircle, Save, X } from "lucide-react";
 
 type ApiBody = {
   ok?: boolean;
   error?: string;
 };
 
+type AgentMember = {
+  id: number;
+  nama?: string;
+  email?: string;
+  phone?: string;
+  aktif?: boolean;
+};
+
+type StoredImage = {
+  name: string;
+  type: string;
+  size: number;
+  data_url: string;
+};
+
+type DocumentKey = "ktp" | "store" | "selfie_ktp" | "selfie_marketing";
+
 type MarketingAgentCreditCreateFormProps = {
   defaultOpen?: boolean;
 };
+
+const emptyApplicant = {
+  memberId: "",
+  agentName: "",
+  storeName: "",
+  nik: "",
+  whatsapp: "",
+  email: "",
+  monthlyTransactions: "",
+  requestedAmount: "500000",
+  familyName: "",
+  familyRelation: "",
+  familyWhatsapp: "",
+  homeAddress: "",
+  storeAddress: "",
+};
+
+const documentOptions: Array<{ key: DocumentKey; label: string; helper: string }> = [
+  { key: "ktp", label: "Foto KTP", helper: "KTP asli agent terlihat jelas" },
+  { key: "store", label: "Foto Toko", helper: "Tampak depan toko atau usaha" },
+  { key: "selfie_ktp", label: "Selfie Agent Pegang KTP", helper: "Wajah agent dan KTP terlihat" },
+  { key: "selfie_marketing", label: "Foto Agent & Marketing", helper: "Agent dan marketing dalam satu foto" },
+];
+
+function authHeader(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = window.localStorage.getItem("auth_token") || "";
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function readImage(file: File): Promise<StoredImage> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Gagal membaca ${file.name}`));
+    reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, data_url: String(reader.result || "") });
+    reader.readAsDataURL(file);
+  });
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="block min-w-0"><span className="mb-1.5 block text-[10px] font-black text-slate-600">{label}</span>{children}</label>;
+}
+
+const inputClassName = "h-11 w-full rounded-lg border border-slate-200 bg-[#fbfffd] px-3 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100";
+const textAreaClassName = "w-full resize-none rounded-lg border border-slate-200 bg-[#fbfffd] px-3 py-3 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100";
 
 export function MarketingAgentCreditCreateForm({ defaultOpen = false }: MarketingAgentCreditCreateFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(defaultOpen);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [loadingAgents, setLoadingAgents] = useState(true);
+  const [agents, setAgents] = useState<AgentMember[]>([]);
+  const [applicant, setApplicant] = useState(emptyApplicant);
+  const [documents, setDocuments] = useState<Partial<Record<DocumentKey, StoredImage>>>({});
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAgents() {
+      try {
+        const query = new URLSearchParams({ scope: "retail", role: "agent", limit: "200", offset: "0" });
+        const response = await fetch(`/api/admin/members?${query.toString()}`, { headers: authHeader(), cache: "no-store" });
+        const body = (await response.json().catch(() => ({}))) as { ok?: boolean; items?: AgentMember[]; rows?: AgentMember[]; error?: string };
+        if (!response.ok || !body.ok) throw new Error(body.error || "Data agent gagal dimuat");
+        if (!cancelled) setAgents((Array.isArray(body.items) ? body.items : body.rows || []).filter((item) => item.aktif !== false));
+      } catch (error) {
+        if (!cancelled) setMessage({ type: "error", text: error instanceof Error ? error.message : "Data agent gagal dimuat" });
+      } finally {
+        if (!cancelled) setLoadingAgents(false);
+      }
+    }
+    void loadAgents();
+    return () => { cancelled = true; };
+  }, []);
+
+  function updateApplicant(key: keyof typeof emptyApplicant, value: string) {
+    setApplicant((current) => ({ ...current, [key]: value }));
+  }
+
+  function selectAgent(memberId: string) {
+    const selected = agents.find((item) => String(item.id) === memberId);
+    setApplicant((current) => ({
+      ...current,
+      memberId,
+      agentName: selected?.nama || "",
+      email: selected?.email || "",
+      whatsapp: selected?.phone || "",
+    }));
+  }
+
+  async function captureDocument(key: DocumentKey, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setMessage({ type: "error", text: "Dokumen harus berupa foto." });
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Ukuran setiap foto maksimal 6 MB." });
+      return;
+    }
+    try {
+      const image = await readImage(file);
+      setDocuments((current) => ({ ...current, [key]: image }));
+      setMessage(null);
+    } catch (error) {
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "Foto gagal dibaca" });
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const requiredText = [applicant.memberId, applicant.agentName, applicant.storeName, applicant.nik, applicant.whatsapp, applicant.monthlyTransactions, applicant.familyName, applicant.familyRelation, applicant.familyWhatsapp, applicant.homeAddress, applicant.storeAddress];
+    if (requiredText.some((value) => !value.trim())) {
+      setMessage({ type: "error", text: "Lengkapi seluruh data wajib agent, usaha, dan kontak keluarga." });
+      return;
+    }
+    if (!/^\d{16}$/.test(applicant.nik.replace(/\D/g, ""))) {
+      setMessage({ type: "error", text: "NIK wajib terdiri dari 16 angka." });
+      return;
+    }
+    if (documentOptions.some((item) => !documents[item.key])) {
+      setMessage({ type: "error", text: "Empat dokumen foto lapangan wajib dilengkapi marketing." });
+      return;
+    }
+
     setBusy(true);
-    setError("");
+    setMessage(null);
     try {
       const response = await fetch("/api/agent-credit/manual-applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          member_id: Number(form.get("member_id") || 0),
-          requested_amount: Number(String(form.get("requested_amount") || "0").replace(/[^\d]/g, "")),
+          member_id: Number(applicant.memberId),
+          requested_amount: Number(applicant.requestedAmount.replace(/[^\d]/g, "")),
           applicant_data: {
-            agent_name: String(form.get("agent_name") || ""),
-            store_name: String(form.get("store_name") || ""),
-            nik: String(form.get("nik") || ""),
-            whatsapp: String(form.get("whatsapp") || ""),
-            email: String(form.get("email") || ""),
-            home_address: String(form.get("home_address") || ""),
-            store_address: String(form.get("store_address") || ""),
+            agent_name: applicant.agentName.trim(),
+            store_name: applicant.storeName.trim(),
+            nik: applicant.nik.replace(/\D/g, ""),
+            whatsapp: applicant.whatsapp.trim(),
+            email: applicant.email.trim(),
+            monthly_transactions: Number(applicant.monthlyTransactions.replace(/[^\d]/g, "")),
+            family_name: applicant.familyName.trim(),
+            family_relation: applicant.familyRelation.trim(),
+            family_whatsapp: applicant.familyWhatsapp.trim(),
+            home_address: applicant.homeAddress.trim(),
+            store_address: applicant.storeAddress.trim(),
             input_by: "marketing",
           },
-          document_data: {},
+          document_data: documents,
           agent_signature: "",
           terms_accepted: false,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as ApiBody;
-      if (!response.ok || !body.ok) throw new Error(body.error || "Pengajuan gagal dibuat");
-      event.currentTarget.reset();
-      setOpen(false);
+      if (!response.ok || !body.ok) throw new Error(body.error || "Pengajuan gagal disimpan");
+      setApplicant(emptyApplicant);
+      setDocuments({});
+      setMessage({ type: "success", text: "Pengajuan dan dokumen lapangan berhasil disimpan. Lanjutkan verifikasi melalui Antrean Survei." });
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Pengajuan gagal dibuat");
+    } catch (error) {
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "Pengajuan gagal disimpan" });
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.07)]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-600">Marketing</p>
-          <h2 className="mt-1 text-lg font-black text-slate-950">Tambah Pengajuan Manual</h2>
-          <p className="mt-1 text-xs font-semibold text-slate-500">Untuk user/agent yang ingin meminjam lewat marketing.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-4 text-xs font-black text-white shadow-[0_12px_24px_rgba(6,78,59,0.18)] transition hover:-translate-y-0.5"
-        >
-          <PlusCircle className="h-4 w-4" />
-          {open ? "Tutup" : "Tambah"}
-        </button>
-      </div>
+    <section className="overflow-hidden rounded-lg border border-emerald-200 bg-white shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
+      <header className="flex flex-col gap-4 bg-[linear-gradient(135deg,#052e26,#047857)] px-4 py-5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-lime-200">Operasional Lapangan</p><h1 className="mt-1 text-2xl font-black">Pengajuan & Dokumen Kredit</h1><p className="mt-1 text-xs font-semibold text-emerald-100/75">Isi data agent dan ambil dokumen langsung saat kunjungan marketing.</p></div>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-emerald-700"><FileSignature className="h-5 w-5" /></span>
+      </header>
 
-      {open ? (
-        <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
-          {[
-            ["member_id", "Member ID", "ID akun peminjam"],
-            ["agent_name", "Nama", "Nama peminjam"],
-            ["store_name", "Nama Toko", "Nama toko/usaha"],
-            ["nik", "NIK", "16 digit NIK"],
-            ["whatsapp", "Nomor WA", "08xxxxxxxxxx"],
-            ["email", "Email", "email@domain.com"],
-            ["requested_amount", "Nominal", "Minimal 100000, maksimal limit"],
-          ].map(([name, label, placeholder]) => (
-            <label key={name} className="block">
-              <span className="text-[10px] font-black text-slate-500">{label}</span>
-              <input name={name} placeholder={placeholder} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-black text-slate-950 outline-none focus:border-emerald-400 focus:bg-white" />
-            </label>
-          ))}
-          <label className="block sm:col-span-2">
-            <span className="text-[10px] font-black text-slate-500">Alamat Rumah</span>
-            <textarea name="home_address" rows={2} placeholder="Alamat rumah" className="mt-1 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-950 outline-none focus:border-emerald-400 focus:bg-white" />
-          </label>
-          <label className="block sm:col-span-2">
-            <span className="text-[10px] font-black text-slate-500">Alamat Toko</span>
-            <textarea name="store_address" rows={2} placeholder="Alamat toko" className="mt-1 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-950 outline-none focus:border-emerald-400 focus:bg-white" />
-          </label>
-          {error ? <p className="rounded-2xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-600 sm:col-span-2">{error}</p> : null}
-          <button type="submit" disabled={busy} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#047857,#84cc16)] text-sm font-black text-white shadow-[0_14px_28px_rgba(5,150,105,0.22)] disabled:opacity-60 sm:col-span-2">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
-            Buat Pengajuan
-          </button>
-        </form>
-      ) : null}
+      <div className="p-3 sm:p-4">
+        <button type="button" onClick={() => setOpen((value) => !value)} className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white transition hover:bg-emerald-800">
+          {open ? <X className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}{open ? "Tutup Form Pengajuan" : "Buka Form Pengajuan"}
+        </button>
+
+        {open ? (
+          <form onSubmit={submit} className="mt-4 space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Field label="Nama Agent"><select value={applicant.memberId} onChange={(event) => selectAgent(event.target.value)} disabled={loadingAgents} className={inputClassName}><option value="">{loadingAgents ? "Memuat agent..." : "Pilih akun agent"}</option>{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.nama || agent.email} - ID {agent.id}</option>)}</select></Field>
+              <Field label="Nama Toko"><input value={applicant.storeName} onChange={(event) => updateApplicant("storeName", event.target.value)} placeholder="Nama toko/usaha" className={inputClassName} /></Field>
+              <Field label="NIK"><input value={applicant.nik} onChange={(event) => updateApplicant("nik", event.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="16 digit NIK" inputMode="numeric" className={inputClassName} /></Field>
+              <Field label="Nomor WhatsApp"><input value={applicant.whatsapp} onChange={(event) => updateApplicant("whatsapp", event.target.value)} placeholder="08xxxxxxxxxx" inputMode="tel" className={inputClassName} /></Field>
+              <Field label="Email"><input value={applicant.email} onChange={(event) => updateApplicant("email", event.target.value)} placeholder="Opsional" type="email" className={inputClassName} /></Field>
+              <Field label="Transaksi per Bulan"><input value={applicant.monthlyTransactions} onChange={(event) => updateApplicant("monthlyTransactions", event.target.value.replace(/\D/g, ""))} placeholder="Contoh: 150" inputMode="numeric" className={inputClassName} /></Field>
+              <Field label="Nominal Kredit Diajukan"><input value={applicant.requestedAmount} onChange={(event) => updateApplicant("requestedAmount", event.target.value.replace(/\D/g, ""))} placeholder="500000" inputMode="numeric" className={inputClassName} /></Field>
+              <Field label="Nama Kontak Keluarga"><input value={applicant.familyName} onChange={(event) => updateApplicant("familyName", event.target.value)} placeholder="Nama keluarga" className={inputClassName} /></Field>
+              <Field label="Hubungan Keluarga"><input value={applicant.familyRelation} onChange={(event) => updateApplicant("familyRelation", event.target.value)} placeholder="Orang tua / saudara" className={inputClassName} /></Field>
+              <Field label="WhatsApp Keluarga"><input value={applicant.familyWhatsapp} onChange={(event) => updateApplicant("familyWhatsapp", event.target.value)} placeholder="08xxxxxxxxxx" inputMode="tel" className={inputClassName} /></Field>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="grid gap-3">
+                <Field label="Alamat Rumah"><textarea value={applicant.homeAddress} onChange={(event) => updateApplicant("homeAddress", event.target.value)} rows={3} placeholder="Alamat rumah lengkap" className={textAreaClassName} /></Field>
+                <Field label="Alamat Toko"><textarea value={applicant.storeAddress} onChange={(event) => updateApplicant("storeAddress", event.target.value)} rows={4} placeholder="Alamat toko atau usaha" className={textAreaClassName} /></Field>
+              </div>
+
+              <fieldset className="rounded-lg border border-emerald-200 bg-emerald-50/35 p-3">
+                <legend className="px-2 text-xs font-black text-slate-950">Dokumen Survei Marketing</legend>
+                <p className="mb-3 text-[11px] font-semibold leading-5 text-slate-500">Foto wajib diambil langsung saat kunjungan dan harus terlihat jelas.</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {documentOptions.map((item) => {
+                    const saved = documents[item.key];
+                    return <label key={item.key} className={saved ? "flex min-h-28 cursor-pointer flex-col justify-between rounded-lg border border-emerald-300 bg-emerald-50 p-3" : "flex min-h-28 cursor-pointer flex-col justify-between rounded-lg border border-dashed border-emerald-300 bg-white p-3 transition hover:bg-emerald-50"}>
+                      <input type="file" accept="image/*" capture={item.key === "selfie_ktp" || item.key === "selfie_marketing" ? "user" : "environment"} className="sr-only" onChange={(event) => void captureDocument(item.key, event)} />
+                      <span className={saved ? "grid h-8 w-8 place-items-center rounded-lg bg-emerald-700 text-white" : "grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700"}>{saved ? <Check className="h-4 w-4" /> : <Camera className="h-4 w-4" />}</span>
+                      <span><span className="block text-xs font-black text-slate-950">{item.label}</span><span className="mt-1 block truncate text-[10px] font-semibold text-slate-500">{saved ? saved.name : item.helper}</span><span className="mt-2 block text-[10px] font-black text-emerald-700">{saved ? "Tersimpan - ketuk untuk ganti" : "Buka kamera"}</span></span>
+                    </label>;
+                  })}
+                </div>
+              </fieldset>
+            </div>
+
+            {message ? <div className={message.type === "success" ? "rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-700" : "rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black text-rose-600"}>{message.text}</div> : null}
+            <button type="submit" disabled={busy || loadingAgents} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[linear-gradient(135deg,#047857,#65a30d)] text-sm font-black text-white shadow-[0_14px_28px_rgba(5,150,105,0.20)] disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{busy ? "Menyimpan Pengajuan..." : "Simpan Pengajuan & Dokumen"}</button>
+          </form>
+        ) : null}
+      </div>
     </section>
   );
 }
