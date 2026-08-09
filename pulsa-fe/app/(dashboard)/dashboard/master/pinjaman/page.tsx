@@ -1,12 +1,4 @@
-import {
-  BadgeCheck,
-  Camera,
-  Clock3,
-  FileSignature,
-  ShieldCheck,
-  Sparkles,
-  UsersRound,
-} from "lucide-react";
+import { Sparkles, UsersRound } from "lucide-react";
 import { getAppServerSession } from "@/lib/server-auth";
 import { getAgentCreditApplications } from "@/lib/api.auth";
 import { attachAgentCreditPaymentsFallback } from "@/lib/agent-credit-payment-fallback.server";
@@ -30,15 +22,6 @@ export default async function MasterDashboardPage() {
     return loanStatus === "active" || loanStatus === "overdue" || Number(item.outstanding_amount || 0) > 0;
   });
   const reviewMode = role === "marketing" ? "marketing" : "master";
-  const waiting = masterItems.filter((item) => item.status === "submitted" || item.status === "marketing_review" || item.status === "master_review").length;
-  const inAnalysis = applications.filter((item) => item.status === "analysis_review").length;
-  const approved = masterItems.filter((item) => item.status === "approved").length;
-  const stats = [
-    { label: "Total Pengajuan", value: String(masterItems.length), hint: "Data masuk marketing", icon: FileSignature, tone: "from-emerald-500 to-lime-400" },
-    { label: "Perlu Didampingi", value: String(waiting), hint: "Cek dokumen dan selfie", icon: Camera, tone: "from-amber-400 to-orange-500" },
-    { label: "Dikirim Operator", value: String(inAnalysis), hint: "Menunggu keputusan final", icon: ShieldCheck, tone: "from-cyan-500 to-sky-500" },
-    { label: "Disetujui", value: String(approved), hint: "Kredit aktif dipantau", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
-  ];
 
   return (
     <main className="-m-2 min-h-screen bg-[#eef7f2] p-3 text-slate-950 sm:p-5 lg:p-7">
@@ -72,42 +55,7 @@ export default async function MasterDashboardPage() {
             </div>
           </div>
 
-          <div className="space-y-5 p-4 sm:p-6 lg:p-7">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {stats.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-slate-500">{item.label}</p>
-                        <p className="mt-1 text-2xl font-black text-slate-950">{item.value}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</p>
-                      </div>
-                      <div className={`grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br ${item.tone} text-white shadow-lg`}>
-                        <Icon className="h-6 w-6" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="rounded-[26px] border border-emerald-100 bg-[linear-gradient(135deg,#f7fffb_0%,#eefbf4_100%)] p-4 shadow-[0_16px_36px_rgba(5,122,69,0.06)] sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
-                  <Clock3 className="h-7 w-7" strokeWidth={2.4} />
-                </div>
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">Fokus Pendampingan</p>
-                  <h2 className="mt-1 text-xl font-black text-slate-950">{waiting} pengajuan perlu ditangani</h2>
-                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                    Buka detail pengajuan untuk memastikan data agent, dokumen, tanda tangan agent, dan selfie bersama marketing sudah lengkap.
-                  </p>
-                </div>
-              </div>
-            </div>
-
+          <div className="p-4 sm:p-6 lg:p-7">
             <div className="grid gap-5">
               <MasterAgentCreditApplicationList
                 applications={masterItems}
