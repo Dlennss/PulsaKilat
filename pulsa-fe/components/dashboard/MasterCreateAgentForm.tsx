@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   RefreshCcw,
-  Sparkles,
   Store,
   UserPlus,
   UserRound,
@@ -64,7 +63,6 @@ export function MasterCreateAgentForm() {
   const [phone, setPhone] = useState("");
   const [storeName, setStoreName] = useState("");
   const [password, setPassword] = useState(makePassword);
-  const [commission, setCommission] = useState("0");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -93,7 +91,7 @@ export function MasterCreateAgentForm() {
           phone: phone.trim(),
           password: password.trim(),
           role: "agent",
-          retail_agent_commission_rp: Math.max(0, Math.floor(Number(commission || 0))),
+          retail_agent_commission_rp: 0,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as CreateResp;
@@ -106,7 +104,6 @@ export function MasterCreateAgentForm() {
       setName("");
       setPhone("");
       setStoreName("");
-      setCommission("0");
       setPassword(makePassword());
       router.refresh();
     } catch (err) {
@@ -189,15 +186,6 @@ export function MasterCreateAgentForm() {
                 <Copy className="h-4 w-4" />
               </button>
             </div>
-          </Field>
-          <Field label="Komisi Agent" icon={Sparkles} helper="Isi 0 jika belum memakai komisi retail.">
-            <input
-              value={commission}
-              onChange={(event) => setCommission(event.target.value)}
-              placeholder="0"
-              inputMode="numeric"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-            />
           </Field>
         </div>
 

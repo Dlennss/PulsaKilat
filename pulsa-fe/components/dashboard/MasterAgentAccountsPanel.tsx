@@ -11,7 +11,6 @@ import {
   Phone,
   RefreshCcw,
   Search,
-  ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -226,7 +225,7 @@ export function MasterAgentAccountsPanel() {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div className={isEditing ? "grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]" : "block"}>
       <section className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.08)] sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -336,9 +335,6 @@ export function MasterAgentAccountsPanel() {
               </button>
             </div>
           </InputShell>
-          <InputShell label="Komisi / Transaksi" icon={<ShieldCheck className="h-4 w-4" />}>
-            <input value={form.commission} onChange={(event) => setForm((state) => ({ ...state, commission: event.target.value }))} placeholder="0" inputMode="numeric" className={inputClassName} />
-          </InputShell>
           <label className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <span>
               <span className="block text-xs font-black text-slate-950">Status akun</span>
@@ -359,34 +355,7 @@ export function MasterAgentAccountsPanel() {
           {saving ? "Menyimpan..." : "Simpan Agent"}
         </button>
       </form>
-      ) : (
-        <aside className="rounded-[28px] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f3fff8_100%)] p-5 shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
-          <div className="rounded-[24px] bg-[linear-gradient(135deg,#052e26,#047857)] p-5 text-white">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/12 ring-1 ring-white/15">
-              <UserRound className="h-6 w-6" />
-            </span>
-            <h2 className="mt-4 text-xl font-black">Pilih Akun Agent</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-white/75">
-              Data agent diambil langsung dari database. Klik tombol Edit pada salah satu akun untuk mengubah data.
-            </p>
-          </div>
-          <div className="mt-4 space-y-3">
-            {[
-              ["Edit", "Ubah nama, email, nomor HP, password, komisi, dan status akun."],
-              ["Hapus", "Akun agent akan dinonaktifkan agar histori database tetap aman."],
-              ["Tambah Agent", "Gunakan sidebar Tambah Agent untuk membuat akun baru."],
-            ].map(([title, desc], index) => (
-              <div key={title} className="flex gap-3 rounded-2xl border border-emerald-100 bg-white px-3 py-3">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-emerald-50 text-xs font-black text-emerald-700">{index + 1}</span>
-                <div>
-                  <p className="text-xs font-black text-slate-950">{title}</p>
-                  <p className="mt-0.5 text-[11px] font-semibold leading-4 text-slate-500">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
-      )}
+      ) : null}
     </div>
   );
 }
