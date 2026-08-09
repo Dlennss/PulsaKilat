@@ -440,7 +440,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const operatorFinished = statusIsApproved || statusIsRejected;
   const statusSteps = [
     { label: "Formulir agent diterima", done: true },
-    { label: systemValidationPassed ? "Validasi awal sistem lolos" : "Validasi awal oleh sistem", done: systemValidationPassed },
     { label: "Pemeriksaan dokumen oleh marketing", done: marketingFinished },
     { label: statusIsRejected ? "Keputusan operator: perlu perbaikan" : "Keputusan akhir operator", done: operatorFinished },
   ];
