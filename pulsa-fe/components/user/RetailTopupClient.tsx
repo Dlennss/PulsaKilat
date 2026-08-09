@@ -22,7 +22,10 @@ type QrisItem = {
   expired_at?: string;
 };
 
-type Props = { authToken: string };
+type Props = {
+  authToken: string;
+  initialAmount?: number;
+};
 
 const QUICK_AMOUNTS = [20000, 50000, 100000, 200000, 500000, 1000000] as const;
 
@@ -39,8 +42,8 @@ function statusLabel(value: string) {
   }
 }
 
-export function RetailTopupClient({ authToken }: Props) {
-  const [amount, setAmount] = useState("");
+export function RetailTopupClient({ authToken, initialAmount = 0 }: Props) {
+  const [amount, setAmount] = useState(initialAmount > 0 ? String(Math.floor(initialAmount)) : "");
   const [activeQris, setActiveQris] = useState<QrisItem | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [saving, setSaving] = useState(false);

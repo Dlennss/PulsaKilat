@@ -203,6 +203,19 @@ function parsePaymentBreakdown(rawRequest?: string | null) {
   }
 }
 
+function isEwalletProduct(product: UserProductItem | null) {
+  const category = String(product?.kategori_nama || "").toUpperCase();
+  return category.includes("E-MONEY") || category.includes("E-WALLET");
+}
+
+function friendlyCheckoutError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (/deposit qris|pulsa24jam|commands tidak didukung|internal error|\{\s*"?ok"?\s*:/i.test(message)) {
+    return "Layanan pembayaran sedang tidak tersedia. Transaksi belum diproses dan saldo Anda tidak terpotong.";
+  }
+  return message || "Terjadi kesalahan saat memproses checkout.";
+}
+
 function checkoutQrisPayment(order: UserAppOrder, qris: CheckoutQrisItem): UserAppOrderPayment {
   return {
     id: 0,
@@ -403,8 +416,12 @@ export function UserCheckoutModal({
   const estimatedWalletDebit = effectiveAuthToken ? Math.min(hargaSebelumFeeAdmin, walletSaldo) : 0;
   const estimatedQrisAmount = effectiveAuthToken ? Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0) : 0;
   const needsCreditTransfer = effectiveRole === "agent" && estimatedQrisAmount > 0 && creditAvailable > 0;
+  const needsTopup = Boolean(effectiveAuthToken) && estimatedQrisAmount > 0 && !needsCreditTransfer;
   const feeAdminQris = 0;
   const totalBayar = hargaSebelumFeeAdmin;
+  const ewalletProduct = isEwalletProduct(product);
+  const ewalletNominal = ewalletProduct ? Math.max(0, isFixed ? Number(product?.nominal || 0) : nominalValue) : 0;
+  const ewalletServiceFee = ewalletProduct ? Math.max(0, totalBayar - ewalletNominal) : 0;
   const billingDisplayTotalTagihan = billingBillAmount > 0 ? billingBillAmount : billingTotalAmount;
   const billingDisplayAdminFee = billingTotalAmount > 0
     ? Math.max(totalBayar - billingDisplayTotalTagihan, 0)
@@ -414,7 +431,11 @@ export function UserCheckoutModal({
   const guestIdentity = buildGuestIdentity(dest);
   const requiresMobilePhoneDest = React.useMemo(() => {
     const category = String(product?.kategori_nama || "").toUpperCase();
-    return category.includes("PULSA") || category.includes("DATA") || category.includes("PAKET");
+    return category.includes("PULSA")
+      || category.includes("DATA")
+      || category.includes("PAKET")
+      || category.includes("E-MONEY")
+      || category.includes("E-WALLET");
   }, [product?.kategori_nama]);
 
   React.useEffect(() => {
@@ -580,27 +601,7 @@ export function UserCheckoutModal({
           if (effectiveRole === "agent" && creditAvailable > 0) {
             throw new Error("Saldo utama tidak cukup. Mutasikan saldo kredit ke saldo utama terlebih dahulu.");
           }
-          const qrisAmount = Math.max(
-            Number(orderJson.item.harga_final || 0) - walletSaldo,
-            1,
-          );
-          const qrisRes = await fetch("/api/me/deposit/request/qris", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${effectiveAuthToken}`,
-            },
-            body: JSON.stringify({ amount: qrisAmount }),
-          });
-          const qrisJson = (await qrisRes.json().catch(() => ({}))) as ApiItemResponse<CheckoutQrisItem> & ApiErrorResponse;
-          if (!qrisRes.ok || !qrisJson.ok || !qrisJson.item?.ref_id) {
-            throw new Error(qrisJson.error || "Gagal membuat QRIS Pulsa24Jam.");
-          }
-          setOrder(orderJson.item);
-          setCheckoutQris(qrisJson.item);
-          setPayment(checkoutQrisPayment(orderJson.item, qrisJson.item));
-          setTurnstileHint(null);
-          return;
+          throw new Error("Saldo utama tidak cukup. Isi saldo terlebih dahulu untuk melanjutkan transaksi.");
         }
         throw new Error(paymentError);
       }
@@ -634,7 +635,7 @@ export function UserCheckoutModal({
       if (err instanceof Error && /turnstile/i.test(err.message)) {
         setGuestTurnstileToken("");
       }
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat memproses checkout.");
+      setError(friendlyCheckoutError(err));
     } finally {
       setLoading(false);
     }
@@ -1192,6 +1193,17 @@ export function UserCheckoutModal({
                   <span>Admin fee</span>
                   <span className="font-semibold text-slate-900">{formatRupiah(billingDisplayAdminFee)}</span>
                 </div>
+              ) : ewalletProduct ? (
+                <>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <span>Nominal masuk ke {product.brand_nama || "e-wallet"}</span>
+                    <span className="font-semibold text-slate-900">{formatRupiah(ewalletNominal)}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <span>Biaya layanan</span>
+                    <span className="font-semibold text-slate-900">{formatRupiah(ewalletServiceFee)}</span>
+                  </div>
+                </>
               ) : (
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span>Harga</span>
@@ -1200,14 +1212,14 @@ export function UserCheckoutModal({
               )}
               {estimatedWalletDebit > 0 ? (
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <span>Pakai saldo</span>
+                  <span>Dibayar dari saldo utama</span>
                   <span className="font-semibold text-slate-900">{formatRupiah(estimatedWalletDebit)}</span>
                 </div>
               ) : null}
-              {estimatedQrisAmount > 0 && effectiveAuthToken && !needsCreditTransfer ? (
+              {needsTopup ? (
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <span>Bayar QRIS</span>
-                  <span className="font-semibold text-slate-900">{formatRupiah(estimatedQrisAmount)}</span>
+                  <span>Kekurangan saldo utama</span>
+                  <span className="font-semibold text-amber-700">{formatRupiah(estimatedQrisAmount)}</span>
                 </div>
               ) : null}
               {needsCreditTransfer ? (
@@ -1310,6 +1322,11 @@ export function UserCheckoutModal({
                 Saldo kredit tersedia {formatRupiah(creditAvailable)}. Pindahkan nominal yang dibutuhkan ke saldo utama sebelum membeli produk.
               </div>
             ) : null}
+            {needsTopup ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Saldo utama tidak mencukupi. Isi saldo sebesar {formatRupiah(estimatedQrisAmount)} untuk melanjutkan {ewalletProduct ? `top up ${product.brand_nama || "e-wallet"}` : "transaksi"}.
+              </div>
+            ) : null}
             {error ? <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
             {turnstileHint ? <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700">{turnstileHint}</div> : null}
             {turnstileError ? <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">{turnstileError}</div> : null}
@@ -1324,6 +1341,17 @@ export function UserCheckoutModal({
                 className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-amber-500 px-5 text-xs font-black text-white shadow-[0_10px_20px_rgba(245,158,11,0.22)] transition hover:bg-amber-600"
               >
                 Mutasi Saldo Kredit
+              </button>
+            ) : needsTopup ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push(`/user/account/topup?amount=${Math.ceil(estimatedQrisAmount)}`);
+                }}
+                className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-[#047857] px-5 text-xs font-black text-white shadow-[0_10px_20px_rgba(4,120,87,0.22)] transition hover:bg-[#036b4d]"
+              >
+                Isi Saldo
               </button>
             ) : (
               <button
