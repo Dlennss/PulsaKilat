@@ -133,7 +133,7 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	if validateFullSubmission {
 		validateDocuments := role == helper.RoleRetailMarketing || role == helper.RoleRetailMaster
 		if err := validateAgentCreditSubmission(&in, validateDocuments); err != nil {
-			return nil, fmt.Errorf("validasi awal sistem: %w", err)
+			return nil, fmt.Errorf(" %w", err)
 		}
 	}
 	if role == helper.RoleRetailAgent {
