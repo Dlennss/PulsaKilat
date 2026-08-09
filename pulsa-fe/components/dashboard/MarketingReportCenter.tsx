@@ -75,7 +75,7 @@ function signatureDate(item: AgentCreditApplication, role: "agent" | "marketing"
     : role === "marketing"
       ? item.applicant_data?.marketing_signature_at
       : item.applicant_data?.master_signature_at;
-  return typeof value === "string" ? formatDate(value) : "Belum ditandatangani";
+  return typeof value === "string" ? formatDate(value) : "-";
 }
 
 function imageTypeFromDataUrl(value: string) {
@@ -218,68 +218,69 @@ export function MarketingReportCenter({ applications }: Props) {
         head: [headers],
         body: rows.map((row) => headers.map((header) => String(row[header] ?? "-"))),
         startY: 62,
-        margin: { left: 32, right: 32 },
+        margin: { left: 32, right: 32, bottom: 175 },
         styles: { fontSize: 7, cellPadding: 4 },
         headStyles: { fillColor: [4, 120, 87], textColor: 255 },
       });
 
-      signatureApplications.forEach((item) => {
-        doc.addPage("a4", "landscape");
+      const approvalItem = signatureApplications[0];
+      if (approvalItem) {
         const pageWidth = doc.internal.pageSize.getWidth();
-        doc.setFillColor(4, 120, 87);
-        doc.rect(0, 0, pageWidth, 72, "F");
-        doc.setTextColor(255, 255, 255);
+        const tableEndY = (doc as typeof doc & { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY || 210;
+        const approvalY = tableEndY + 18;
+        doc.setTextColor(4, 120, 87);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(17);
-        doc.text("Pengesahan Otomatis Kredit Agent", 36, 32);
+        doc.setFontSize(12);
+        doc.text("Persetujuan Laporan", 36, approvalY);
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.text(`${agentName(item)} | Pengajuan #${item.id} | ${statusLabel(item)}`, 36, 50);
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(8);
+        doc.text("Ditandatangani secara elektronik sesuai tahapan verifikasi kredit.", 36, approvalY + 13);
 
         const signers = [
-          { role: "agent" as const, label: "Agent", name: agentName(item) },
-          { role: "marketing" as const, label: "Marketing", name: "Marketing PulsaKilat" },
-          { role: "operator" as const, label: "Operator Kredit", name: "Operator Kredit PulsaKilat" },
+          { role: "agent" as const, label: "Agent", name: agentName(approvalItem) },
+          { role: "marketing" as const, label: "Marketing", name: "Petugas Marketing" },
+          { role: "operator" as const, label: "Operator Kredit", name: "Operator Kredit" },
         ];
         const cardWidth = 235;
         const gap = 22;
         const startX = (pageWidth - (cardWidth * 3 + gap * 2)) / 2;
         signers.forEach((signer, index) => {
           const x = startX + index * (cardWidth + gap);
-          const signature = storedSignature(item, signer.role);
+          const signature = storedSignature(approvalItem, signer.role);
           doc.setDrawColor(203, 213, 225);
-          doc.setFillColor(248, 250, 252);
-          doc.roundedRect(x, 105, cardWidth, 210, 6, 6, "FD");
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(x, approvalY + 25, cardWidth, 118, 5, 5, "FD");
           doc.setTextColor(4, 120, 87);
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(11);
-          doc.text(signer.label, x + cardWidth / 2, 130, { align: "center" });
+          doc.setFontSize(9);
+          doc.text(signer.label, x + cardWidth / 2, approvalY + 42, { align: "center" });
           if (signature) {
             try {
-              doc.addImage(signature, imageTypeFromDataUrl(signature), x + 38, 150, cardWidth - 76, 82, undefined, "FAST");
+              doc.addImage(signature, imageTypeFromDataUrl(signature), x + 62, approvalY + 48, cardWidth - 124, 42, undefined, "FAST");
             } catch {
               doc.setTextColor(148, 163, 184);
-              doc.setFontSize(9);
-              doc.text("Tanda tangan tidak dapat dibaca", x + cardWidth / 2, 194, { align: "center" });
+              doc.setFontSize(7);
+              doc.text("Tanda tangan tidak dapat dibaca", x + cardWidth / 2, approvalY + 72, { align: "center" });
             }
           } else {
             doc.setTextColor(148, 163, 184);
             doc.setFont("helvetica", "normal");
-            doc.setFontSize(9);
-            doc.text("Belum ditandatangani", x + cardWidth / 2, 194, { align: "center" });
+            doc.setFontSize(7);
+            doc.text("Menunggu tanda tangan", x + cardWidth / 2, approvalY + 72, { align: "center" });
           }
           doc.setDrawColor(100, 116, 139);
-          doc.line(x + 28, 250, x + cardWidth - 28, 250);
+          doc.line(x + 32, approvalY + 96, x + cardWidth - 32, approvalY + 96);
           doc.setTextColor(15, 23, 42);
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(10);
-          doc.text(signer.name, x + cardWidth / 2, 268, { align: "center", maxWidth: cardWidth - 30 });
+          doc.setFontSize(8);
+          doc.text(signer.name, x + cardWidth / 2, approvalY + 108, { align: "center", maxWidth: cardWidth - 30 });
           doc.setTextColor(100, 116, 139);
           doc.setFont("helvetica", "normal");
-          doc.setFontSize(8);
-          doc.text(signatureDate(item, signer.role), x + cardWidth / 2, 288, { align: "center" });
+          doc.setFontSize(7);
+          doc.text(signatureDate(approvalItem, signer.role), x + cardWidth / 2, approvalY + 122, { align: "center" });
         });
-      });
+      }
       doc.save(`laporan-marketing-${tab}.pdf`);
     } finally {
       setExporting(false);
@@ -291,15 +292,16 @@ export function MarketingReportCenter({ applications }: Props) {
     const headers = Object.keys(rows[0]);
     const printWindow = window.open("", "_blank", "width=1200,height=800");
     if (!printWindow) return;
-    const approvalSheets = signatureApplications.map((item) => {
+    const approvalItem = signatureApplications[0];
+    const approvalSection = approvalItem ? (() => {
       const signers = [
-        { role: "agent" as const, label: "Agent", name: agentName(item) },
-        { role: "marketing" as const, label: "Marketing", name: "Marketing PulsaKilat" },
-        { role: "operator" as const, label: "Operator Kredit", name: "Operator Kredit PulsaKilat" },
+        { role: "agent" as const, label: "Agent", name: agentName(approvalItem) },
+        { role: "marketing" as const, label: "Marketing", name: "Petugas Marketing" },
+        { role: "operator" as const, label: "Operator Kredit", name: "Operator Kredit" },
       ];
-      return `<section class="approval"><h2>Pengesahan Otomatis Kredit Agent</h2><p>${escapeHtml(agentName(item))} | Pengajuan #${item.id} | ${escapeHtml(statusLabel(item))}</p><div class="signatures">${signers.map((signer) => { const signature = storedSignature(item, signer.role); return `<div class="signature-card"><strong>${escapeHtml(signer.label)}</strong><div class="signature-image">${signature ? `<img src="${signature}" alt="Tanda tangan ${escapeHtml(signer.label)}">` : `<span>Belum ditandatangani</span>`}</div><div class="line">${escapeHtml(signer.name)}</div><small>${escapeHtml(signatureDate(item, signer.role))}</small></div>`; }).join("")}</div></section>`;
-    }).join("");
-    printWindow.document.write(`<!doctype html><html><head><title>${escapeHtml(reportTitle)}</title><style>body{font-family:Arial,sans-serif;color:#111827;margin:28px}header{border-bottom:3px solid #047857;padding-bottom:12px;margin-bottom:18px}h1{font-size:22px;margin:0;color:#065f46}h2{font-size:19px;color:#065f46;margin:0 0 6px}p{font-size:11px;margin:5px 0;color:#475569}table{width:100%;border-collapse:collapse;font-size:9px}th{background:#047857;color:#fff;text-align:left}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}.approval{break-before:page;page-break-before:always;padding-top:12px}.signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:28px;text-align:center}.signature-card{border:1px solid #cbd5e1;border-radius:8px;padding:16px}.signature-card strong{color:#047857}.signature-image{height:110px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px}.signature-image img{max-width:180px;max-height:90px;object-fit:contain}.line{border-top:1px solid #334155;padding-top:7px;font-weight:700}.signature-card small{display:block;margin-top:5px;color:#64748b}@page{size:landscape;margin:14mm}</style></head><body><header><h1>PulsaKilat - ${escapeHtml(reportTitle)}</h1><p>Periode: ${escapeHtml(periodLabel)} | Dibuat: ${escapeHtml(new Date().toLocaleString("id-ID"))}</p><p>Total data: ${rows.length} | Total pengajuan: ${escapeHtml(formatIDR(totalRequested))} | Total tagihan: ${escapeHtml(formatIDR(totalOutstanding))}</p></header><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(row[header] ?? "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>${approvalSheets}<script>window.onload=()=>window.print();</script></body></html>`);
+      return `<section class="approval"><h2>Persetujuan Laporan</h2><p>Ditandatangani secara elektronik sesuai tahapan verifikasi kredit.</p><div class="signatures">${signers.map((signer) => { const signature = storedSignature(approvalItem, signer.role); return `<div class="signature-card"><strong>${escapeHtml(signer.label)}</strong><div class="signature-image">${signature ? `<img src="${signature}" alt="Tanda tangan ${escapeHtml(signer.label)}">` : `<span>Menunggu tanda tangan</span>`}</div><div class="line">${escapeHtml(signer.name)}</div><small>${escapeHtml(signatureDate(approvalItem, signer.role))}</small></div>`; }).join("")}</div></section>`;
+    })() : "";
+    printWindow.document.write(`<!doctype html><html><head><title>${escapeHtml(reportTitle)}</title><style>body{font-family:Arial,sans-serif;color:#111827;margin:28px}header{border-bottom:3px solid #047857;padding-bottom:12px;margin-bottom:18px}h1{font-size:22px;margin:0;color:#065f46}h2{font-size:15px;color:#065f46;margin:0 0 4px}p{font-size:11px;margin:5px 0;color:#475569}table{width:100%;border-collapse:collapse;font-size:9px}th{background:#047857;color:#fff;text-align:left}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}.approval{margin-top:16px;break-inside:avoid;page-break-inside:avoid}.signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:14px;text-align:center}.signature-card{border:1px solid #cbd5e1;border-radius:6px;padding:10px}.signature-card strong{color:#047857;font-size:11px}.signature-image{height:58px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px}.signature-image img{max-width:120px;max-height:52px;object-fit:contain}.line{border-top:1px solid #334155;padding-top:5px;font-size:10px;font-weight:700}.signature-card small{display:block;margin-top:3px;color:#64748b;font-size:8px}@page{size:landscape;margin:14mm}</style></head><body><header><h1>PulsaKilat - ${escapeHtml(reportTitle)}</h1><p>Periode: ${escapeHtml(periodLabel)} | Dibuat: ${escapeHtml(new Date().toLocaleString("id-ID"))}</p><p>Total data: ${rows.length} | Total pengajuan: ${escapeHtml(formatIDR(totalRequested))} | Total tagihan: ${escapeHtml(formatIDR(totalOutstanding))}</p></header><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(row[header] ?? "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>${approvalSection}<script>window.onload=()=>window.print();</script></body></html>`);
     printWindow.document.close();
   }
 
