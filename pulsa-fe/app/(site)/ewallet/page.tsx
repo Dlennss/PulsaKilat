@@ -117,12 +117,14 @@ export default async function GuestEwalletPage() {
                   aria-label={card.title}
                   className="group rounded-md bg-white px-2 py-3 text-center shadow-[0_10px_28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100 transition-transform duration-300 hover:-translate-y-1"
                 >
-                  <div className="grid h-[100px] place-items-center overflow-hidden">
-                    {imageSrc ? (
-                      <Image src={imageSrc} alt={card.title} title={card.title} width={100} height={100} className="h-full w-full object-contain" />
-                    ) : (
-                      <span className="text-sm font-black uppercase tracking-tight text-sky-700">{card.title.slice(0, 2)}</span>
-                    )}
+                  <div className="flex flex-col items-center">
+                    <div className="grid h-[100px] w-[100px] place-items-center overflow-hidden">
+                      {imageSrc ? (
+                        <Image src={imageSrc} alt={card.title} title={card.title} width={100} height={100} className="h-full w-full object-contain" />
+                      ) : (
+                        <span className="text-sm font-black uppercase tracking-tight text-sky-700">{card.title.slice(0, 2)}</span>
+                      )}
+                    </div>
                   </div>
                 </Link>
               );
