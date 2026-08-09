@@ -11,6 +11,7 @@ import {
   Camera,
   Check,
   ChevronRight,
+  Clock3,
   FileText,
   HandCoins,
   Home,
@@ -410,6 +411,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const statusIsPaid = statusIsApproved && latestApplication ? isPaidStatus(latestApplication) : false;
   const statusIsRejected = isRejectedStatus(latestApplication?.status);
   const statusIsWaiting = Boolean(latestApplication && !statusIsApproved && !statusIsRejected);
+  const systemValidationPassed = latestApplication?.applicant_data?.system_validation_status === "passed";
   const statusPaymentDue = statusIsPaid ? 0 : statusOutstanding;
   const statusHasActiveUnusedCredit = statusIsApproved && !statusIsPaid && statusPaymentDue <= 0;
   const statusApplicationCode = latestApplication?.id ? `KSA-${String(latestApplication.id).padStart(8, "0")}` : "KSA-PENDING";
@@ -428,9 +430,20 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
       : statusIsPaid
         ? "Tidak ada tagihan berjalan"
         : "Diterima tim verifikasi";
-  const statusSteps = statusIsRejected
-    ? ["Formulir agent diterima", "Dokumen sudah diperiksa", "Ditemukan data yang perlu diperbaiki", "Keputusan operator"]
-    : ["Formulir agent diterima", "Validasi foto KTP, toko, dan selfie", "Pengecekan tanda tangan online", "Keputusan operator"];
+  const marketingFinished = Boolean(latestApplication && (
+    latestApplication.status === "analysis_review" ||
+    latestApplication.status === "master_review" ||
+    latestApplication.status === "ready_to_disburse" ||
+    statusIsApproved ||
+    statusIsRejected
+  ));
+  const operatorFinished = statusIsApproved || statusIsRejected;
+  const statusSteps = [
+    { label: "Formulir agent diterima", done: true },
+    { label: systemValidationPassed ? "Validasi awal sistem lolos" : "Validasi awal oleh sistem", done: systemValidationPassed },
+    { label: "Pemeriksaan dokumen oleh marketing", done: marketingFinished },
+    { label: statusIsRejected ? "Keputusan operator: perlu perbaikan" : "Keputusan akhir operator", done: operatorFinished },
+  ];
   const paymentMethods = [
     {
       id: "transfer" as const,
@@ -820,7 +833,9 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                 {statusIsRejected
                   ? "Data belum bisa diproses. Perbaiki catatan dari operator lalu ajukan kembali."
                   : statusIsWaiting
-                    ? "Pengajuan sudah tercatat dan sedang diproses oleh tim PulsaKilat. Status akan berubah setelah keputusan selesai."
+                    ? systemValidationPassed
+                      ? "Data lolos pemeriksaan awal sistem dan sudah masuk ke antrean Marketing untuk verifikasi lapangan."
+                      : "Pengajuan sedang diperiksa sistem sebelum diteruskan ke Marketing."
                     : "Nominal yang diterima masuk ke saldo kredit agent. Saldo ini terpisah dari saldo transaksi biasa dan pelunasannya dilakukan sekaligus."}
               </p>
 
@@ -845,11 +860,11 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
               <div className="relative mt-4 space-y-3">
                 {statusSteps.map((step) => (
-                  <div key={step} className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3">
-                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-[#047857] bg-white text-[#047857]">
-                      <Check className="h-3 w-3" strokeWidth={3} />
+                  <div key={step.label} className={step.done ? "flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3" : "flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"}>
+                    <span className={step.done ? "grid h-5 w-5 shrink-0 place-items-center rounded-full border border-[#047857] bg-white text-[#047857]" : "grid h-5 w-5 shrink-0 place-items-center rounded-full border border-slate-300 bg-white text-slate-400"}>
+                      {step.done ? <Check className="h-3 w-3" strokeWidth={3} /> : <Clock3 className="h-3 w-3" strokeWidth={2.5} />}
                     </span>
-                    <p className="text-[11px] font-black leading-4 text-slate-800">{step}</p>
+                    <p className={step.done ? "text-[11px] font-black leading-4 text-slate-800" : "text-[11px] font-black leading-4 text-slate-500"}>{step.label}</p>
                   </div>
                 ))}
               </div>

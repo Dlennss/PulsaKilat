@@ -129,6 +129,13 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	if in.DocumentData == nil {
 		in.DocumentData = map[string]any{}
 	}
+	validateFullSubmission := role == helper.RoleRetailAgent || (isCreditReviewer(role) && in.ID <= 0)
+	if validateFullSubmission {
+		validateDocuments := role == helper.RoleRetailMarketing || role == helper.RoleRetailMaster
+		if err := validateAgentCreditSubmission(&in, validateDocuments); err != nil {
+			return nil, fmt.Errorf("validasi awal sistem: %w", err)
+		}
+	}
 	if role == helper.RoleRetailAgent {
 		if strings.TrimSpace(in.AgentSignature) == "" {
 			return nil, errors.New("tanda tangan wajib diisi")
@@ -162,6 +169,12 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 			if _, ok := in.DocumentData["selfie_ktp"]; !ok {
 				in.DocumentData["selfie_ktp"] = selfie
 			}
+		}
+		if role == helper.RoleRetailMarketing || role == helper.RoleRetailMaster {
+			if err := validateAgentCreditDocuments(in.DocumentData); err != nil {
+				return nil, fmt.Errorf("validasi dokumen sistem: %w", err)
+			}
+			stampAgentCreditDocumentValidation(in.ApplicantData)
 		}
 		return s.repo.CompleteApplicationConsent(ctx, repository.AgentCreditApplicationInput{
 			ID:              in.ID,
