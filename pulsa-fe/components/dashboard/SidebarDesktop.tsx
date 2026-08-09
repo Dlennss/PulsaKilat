@@ -2,8 +2,6 @@ import { ChevronDown, LogOut } from "lucide-react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "./BrandLogo";
-import { MarketingSidebarContent } from "./MarketingSidebarContent";
-import { OperatorSidebarContent } from "./OperatorSidebarContent";
 import { NavItem } from "./NavItem";
 import { type NavSection } from "./nav";
 
@@ -15,25 +13,6 @@ type Props = {
 export function SidebarDesktop({ sections, onLogout }: Props) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const isMarketingSidebar = sections.some((section) => section.title === "Operasional Lapangan");
-  const isOperatorSidebar = sections.some((section) => section.items.some((item) => item.href === "/dashboard/master/operator"));
-
-  if (isMarketingSidebar) {
-    return (
-      <aside className="hidden w-64 shrink-0 self-start overflow-hidden border-r border-emerald-950/20 md:sticky md:top-0 md:flex md:h-screen md:flex-col">
-        <MarketingSidebarContent sections={sections} onLogout={onLogout} />
-      </aside>
-    );
-  }
-
-  if (isOperatorSidebar) {
-    return (
-      <aside className="hidden w-64 shrink-0 self-start overflow-hidden border-r border-emerald-950/20 md:sticky md:top-0 md:flex md:h-screen md:flex-col">
-        <OperatorSidebarContent sections={sections} onLogout={onLogout} />
-      </aside>
-    );
-  }
-
   return (
     <aside className="hidden w-72 shrink-0 self-start border-r border-emerald-950/20 bg-[radial-gradient(circle_at_20%_0%,rgba(190,242,100,0.18),transparent_30%),linear-gradient(180deg,#052e26_0%,#064e3b_46%,#047857_100%)] md:sticky md:top-0 md:flex md:h-screen md:flex-col">
       <div className="border-b border-white/15 px-5 py-5">
