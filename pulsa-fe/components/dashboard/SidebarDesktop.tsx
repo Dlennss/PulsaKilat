@@ -3,6 +3,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "./BrandLogo";
 import { MarketingSidebarContent } from "./MarketingSidebarContent";
+import { OperatorSidebarContent } from "./OperatorSidebarContent";
 import { NavItem } from "./NavItem";
 import { type NavSection } from "./nav";
 
@@ -15,11 +16,20 @@ export function SidebarDesktop({ sections, onLogout }: Props) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const isMarketingSidebar = sections.some((section) => section.title === "Operasional Lapangan");
+  const isOperatorSidebar = sections.some((section) => section.items.some((item) => item.href === "/dashboard/master/operator"));
 
   if (isMarketingSidebar) {
     return (
       <aside className="hidden w-64 shrink-0 self-start overflow-hidden border-r border-emerald-950/20 md:sticky md:top-0 md:flex md:h-screen md:flex-col">
         <MarketingSidebarContent sections={sections} onLogout={onLogout} />
+      </aside>
+    );
+  }
+
+  if (isOperatorSidebar) {
+    return (
+      <aside className="hidden w-64 shrink-0 self-start overflow-hidden border-r border-emerald-950/20 md:sticky md:top-0 md:flex md:h-screen md:flex-col">
+        <OperatorSidebarContent sections={sections} onLogout={onLogout} />
       </aside>
     );
   }
