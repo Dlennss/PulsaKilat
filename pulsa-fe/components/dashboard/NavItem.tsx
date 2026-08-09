@@ -3,14 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   Archive,
+  ArrowUpCircle,
   BadgeCheck,
+  Camera,
   CheckCircle2,
   ClipboardList,
+  Download,
   FileCheck2,
   FileText,
   LayoutDashboard,
+  ReceiptText,
   ShieldCheck,
+  UserPlus,
+  Users,
   WalletCards,
   XCircle,
 } from "lucide-react";
@@ -24,6 +31,13 @@ type Props = {
 
 const iconByHref = {
   "/dashboard/master": LayoutDashboard,
+  "/dashboard/master/tambah-agent": UserPlus,
+  "/dashboard/master/input-pinjaman-manual": FileText,
+  "/dashboard/master/pinjaman": Camera,
+  "/dashboard/master/akun-agent": Users,
+  "/dashboard/master/profil-agent": Activity,
+  "/dashboard/master/riwayat-pinjaman": ReceiptText,
+  "/dashboard/master/laporan": FileCheck2,
   "/dashboard/master/analis": ShieldCheck,
   "/dashboard/master/analis/antrean": ClipboardList,
   "/dashboard/master/analis/kredit-diterima": BadgeCheck,
@@ -33,6 +47,8 @@ const iconByHref = {
   "/dashboard/master/analis/arsip-keputusan": Archive,
   "/dashboard/master/operator": ShieldCheck,
   "/dashboard/master/operator/antrean": ClipboardList,
+  "/dashboard/master/operator/kenaikan-limit": ArrowUpCircle,
+  "/dashboard/master/operator/penarikan-agent": Download,
   "/dashboard/master/operator/kredit-diterima": BadgeCheck,
   "/dashboard/master/operator/monitor-pelunasan": WalletCards,
   "/dashboard/master/operator/bukti-pelunasan": FileCheck2,
