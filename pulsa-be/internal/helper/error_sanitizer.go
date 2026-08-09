@@ -13,7 +13,6 @@ type errorSanitizer struct {
 	http.ResponseWriter
 	buf        *bytes.Buffer
 	statusCode int
-	written    bool
 }
 
 func SanitizeErrors(next http.Handler) http.Handler {

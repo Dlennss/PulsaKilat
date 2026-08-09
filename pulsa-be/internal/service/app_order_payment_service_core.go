@@ -80,47 +80,6 @@ func firstQRURLFromPayload(payload map[string]any) string {
 	return ""
 }
 
-func buildMidtransChargeRequest(order *repository.AppOrderRow, qrisAmount int64) *coreapi.ChargeReq {
-	items := []midtranssdk.ItemDetails{{
-		ID:    order.ProdukSKUSnapshot,
-		Price: qrisAmount,
-		Qty:   1,
-		Name:  trimMidtransItemName(order.ProdukNamaSnapshot),
-	}}
-	req := &coreapi.ChargeReq{
-		PaymentType: coreapi.PaymentTypeQris,
-		TransactionDetails: midtranssdk.TransactionDetails{
-			OrderID:  order.InvoiceID,
-			GrossAmt: qrisAmount,
-		},
-		Items: &items,
-		Qris: &coreapi.QrisDetails{
-			Acquirer: midtransAcquirer(),
-		},
-	}
-	if order.BuyerType == "guest" && order.GuestNama != nil {
-		req.CustomerDetails = &midtranssdk.CustomerDetails{
-			FName: derefString(order.GuestNama),
-			Email: derefString(order.GuestEmail),
-			Phone: derefString(order.GuestPhone),
-		}
-	}
-	return req
-}
-
-func chargeMidtransQRIS(serverKey string, payload *coreapi.ChargeReq) (*coreapi.ChargeResponse, error) {
-	client := newMidtransCoreAPIClient(serverKey)
-	resp, err := client.ChargeTransaction(payload)
-	if !isNilLikeError(err) {
-		msg := strings.TrimSpace(err.Message)
-		if msg == "" {
-			msg = err.Error()
-		}
-		return nil, fmt.Errorf("midtrans charge gagal: %s", msg)
-	}
-	return resp, nil
-}
-
 func isNilLikeError(err error) bool {
 	if err == nil {
 		return true
@@ -182,7 +141,7 @@ func validateMidtransServerKey(serverKey string, production bool) error {
 			return fmt.Errorf("MIDTRANS_IS_PRODUCTION=true tapi MIDTRANS_SERVER_KEY masih sandbox")
 		}
 		if !strings.HasPrefix(serverKey, "Mid-server-") {
-			return fmt.Errorf("format MIDTRANS_SERVER_KEY production tidak valid; gunakan Mid-server-...")
+			return fmt.Errorf("format MIDTRANS_SERVER_KEY production tidak valid; gunakan awalan Mid-server yang valid")
 		}
 		return nil
 	}
@@ -204,15 +163,6 @@ func midtransAcquirer() string {
 	return "gopay"
 }
 
-func firstQRURL(actions []coreapi.Action) string {
-	for _, action := range actions {
-		if strings.TrimSpace(action.URL) != "" {
-			return action.URL
-		}
-	}
-	return ""
-}
-
 func trimMidtransItemName(v string) string {
 	v = strings.TrimSpace(v)
 	if len(v) <= 50 {
@@ -231,18 +181,4 @@ func derefString(v *string) string {
 func isTrue(v string) bool {
 	v = strings.TrimSpace(strings.ToLower(v))
 	return v == "1" || v == "true" || v == "yes" || v == "y"
-}
-
-func derefInt64(v *int64) int64 {
-	if v == nil {
-		return 0
-	}
-	return *v
-}
-
-func minInt64(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
 }

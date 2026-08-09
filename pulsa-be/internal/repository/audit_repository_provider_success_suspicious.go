@@ -973,6 +973,9 @@ LIMIT 1
 	if transferAmount <= 0 {
 		return nil, fmt.Errorf("nominal request provider tidak valid")
 	}
+	if nominal > 0 && nominal != transferAmount {
+		return nil, fmt.Errorf("nominal debit tidak sesuai dengan nominal transaksi provider")
+	}
 	nominal = transferAmount
 	totalAmount := nominal + fee
 	if totalAmount <= 0 || totalAmount < nominal {

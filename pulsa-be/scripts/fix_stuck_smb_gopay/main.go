@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -46,8 +45,6 @@ func main() {
 		log.Fatal("SMB env vars required")
 	}
 	smbClient := smb.New(smbBaseURL, smbDirectURL, smbID, smbPIN, smbUser, smbPass, 30*time.Second)
-	_ = fmt.Sprintf("")
-
 	rows, err := db.Query(`
 SELECT tm.id, tp.id, tm.ref_id, tm.kode_produk, tm.tujuan, tm.qty,
        COALESCE(tm.qty_provider, tm.qty),

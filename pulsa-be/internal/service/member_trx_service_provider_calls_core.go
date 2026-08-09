@@ -253,15 +253,6 @@ func (h *MemberTrxService) callProviderOnlyWithDest(
 	return attempt.Name, providerRowID, fmt.Errorf("respons %s tidak dikenali: %s", attempt.Name, strings.TrimSpace(resp.Body))
 }
 
-func (h *MemberTrxService) routeProviderForPayInq(
-	ctx context.Context,
-	trxMemberID int64,
-	in trxmemberdto.TrxRequest,
-	billingNominal int64,
-) (used string, rowID int64, err error) {
-	return h.routeProviderForPayInqSkipping(ctx, trxMemberID, in, billingNominal, nil)
-}
-
 func (h *MemberTrxService) routeProviderForPayInqSkipping(
 	ctx context.Context,
 	trxMemberID int64,

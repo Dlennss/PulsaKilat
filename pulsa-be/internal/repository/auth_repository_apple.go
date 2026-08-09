@@ -90,9 +90,9 @@ ON CONFLICT (member_id) DO NOTHING
 	}
 
 	return &AuthGoogleRow{
-		ID:        memberID,
-		Role:      role,
-		Aktif:     aktif,
+		ID:       memberID,
+		Role:     role,
+		Aktif:    aktif,
 		AppleSub: outAppleSub,
 	}, nil
 }

@@ -49,7 +49,7 @@ func (r *WalletRepository) AdminAdjustMemberWallet(ctx context.Context, actorID,
 		return err
 	}
 
-	after := before
+	var after int64
 	arahMutasi := "CREDIT"
 	if direction == "credit" {
 		after = before + amount

@@ -176,22 +176,6 @@ func (h *MemberTrxService) cleanupOtherPendingProviderRows(ctx context.Context, 
 	}
 }
 
-func isProviderWalletDuplicateErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(strings.TrimSpace(err.Error()))
-	return strings.Contains(msg, "uq_mutasi_provider_once_per_provider_trx_kind") ||
-		strings.Contains(msg, "duplicate key value violates unique constraint")
-}
-
-func isProviderWalletInsufficientErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(strings.ToLower(strings.TrimSpace(err.Error())), "provider saldo tidak cukup")
-}
-
 // Debit dompet provider di-handle oleh DB trigger (trg_provider_wallet_on_success).
 // Trigger otomatis potong saat transaksi_provider.status di-update ke 'success'.
 func (h *MemberTrxService) applyProviderSuccessWalletDebit(ctx context.Context, provider string, trxID int64, providerTrxID int64, refID string, price int64, source string) bool {

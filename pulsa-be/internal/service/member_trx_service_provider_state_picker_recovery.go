@@ -337,11 +337,3 @@ func canRetryFailedPaySameRefID(existing map[string]any, now time.Time) bool {
 
 	return true
 }
-
-func truncStatusPayMsg(s string) string {
-	s = strings.TrimSpace(s)
-	if len(s) > 150 {
-		return s[:150] + "..."
-	}
-	return s
-}

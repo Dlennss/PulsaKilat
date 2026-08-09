@@ -12,11 +12,11 @@ import (
 // pakai pattern baru tanpa restart.
 
 type messagePatterns struct {
-	mu       sync.RWMutex
-	failed   []string
-	success  []string
-	pending  []string
-	loaded   bool
+	mu      sync.RWMutex
+	failed  []string
+	success []string
+	pending []string
+	loaded  bool
 }
 
 var patterns = &messagePatterns{

@@ -45,29 +45,6 @@ func buildDepositMidtransChargeRequest(refID string, amount, feeAdmin, grossAmou
 	}
 }
 
-func mapMidtransActions(actions []coreapi.Action) []map[string]string {
-	if len(actions) == 0 {
-		return nil
-	}
-	out := make([]map[string]string, 0, len(actions))
-	for _, action := range actions {
-		item := map[string]string{}
-		if v := strings.TrimSpace(action.Name); v != "" {
-			item["name"] = v
-		}
-		if v := strings.TrimSpace(action.Method); v != "" {
-			item["method"] = v
-		}
-		if v := strings.TrimSpace(action.URL); v != "" {
-			item["url"] = v
-		}
-		if len(item) > 0 {
-			out = append(out, item)
-		}
-	}
-	return out
-}
-
 func buildDepositQrisNote(transactionStatus, paymentType, transactionID, acquirer string) string {
 	parts := make([]string, 0, 4)
 	if v := strings.TrimSpace(transactionStatus); v != "" {

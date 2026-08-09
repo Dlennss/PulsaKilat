@@ -17,4 +17,3 @@ func ProviderRouter(mux *http.ServeMux, wrap Middleware, requireAdmin Middleware
 	mux.HandleFunc("/v1/admin/provider", wrap(requireAdmin(ctrl.Handle)))
 	mux.HandleFunc("/v1/admin/provider/", wrap(requireAdmin(ctrl.Handle)))
 }
-

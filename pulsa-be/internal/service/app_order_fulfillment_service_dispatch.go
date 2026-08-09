@@ -108,7 +108,7 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 		return err
 	}
 
-	hs, body, callErr, price, sn := s.callAppOrderProvider(ctx, provider, providerProductCode, providerQty, order)
+	hs, body, price, sn, callErr := s.callAppOrderProvider(ctx, provider, providerProductCode, providerQty, order)
 
 	rawRespJSON, _ := json.Marshal(map[string]any{
 		"http_status": hs,
@@ -228,11 +228,11 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 	return nil
 }
 
-func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, provider, providerProductCode string, providerQty int64, order *repository.AppOrderRow) (hs int, body string, callErr error, price int64, sn string) {
+func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, provider, providerProductCode string, providerQty int64, order *repository.AppOrderRow) (hs int, body string, price int64, sn string, callErr error) {
 	switch provider {
 	case "gemilang":
 		if s.gmClient == nil {
-			return 0, "", fmt.Errorf("gemilang client belum tersedia"), 0, ""
+			return 0, "", 0, "", fmt.Errorf("gemilang client belum tersedia")
 		}
 		acc, nextHS, nextBody, nextErr := s.gmClient.TrxNoSign(ctx, providerProductCode, order.Qty, order.Dest, order.InvoiceID)
 		hs, body, callErr = nextHS, nextBody, nextErr
@@ -244,7 +244,7 @@ func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, p
 	case "pulsa24jam":
 		client := s.providerClients["pulsa24jam"]
 		if client == nil {
-			return 0, "", fmt.Errorf("pulsa24jam client belum tersedia"), 0, ""
+			return 0, "", 0, "", fmt.Errorf("pulsa24jam client belum tersedia")
 		}
 		resp, nextErr := client.Pay(ctx, providerpkg.PayRequest{
 			Command: "PAY",
@@ -265,7 +265,7 @@ func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, p
 		}
 	default:
 		if s.ysClient == nil {
-			return 0, "", fmt.Errorf("yuscom client belum tersedia"), 0, ""
+			return 0, "", 0, "", fmt.Errorf("yuscom client belum tersedia")
 		}
 		acc, nextHS, nextBody, nextErr := s.ysClient.TrxNoSign(ctx, providerProductCode, order.Qty, order.Dest, order.InvoiceID)
 		hs, body, callErr = nextHS, nextBody, nextErr

@@ -21,8 +21,8 @@ func NewReconcileHandler(db *sql.DB) *ReconcileHandler {
 }
 
 type reconcileResult struct {
-	MemberFixed     int `json:"member_fixed"`
-	MemberDebitFixed int `json:"member_debit_fixed"`
+	MemberFixed        int `json:"member_fixed"`
+	MemberDebitFixed   int `json:"member_debit_fixed"`
 	ProviderDebitFixed int `json:"provider_debit_fixed"`
 }
 

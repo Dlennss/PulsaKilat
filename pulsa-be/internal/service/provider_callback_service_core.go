@@ -85,15 +85,15 @@ func (s *ProviderCallbackService) VerifyJavapayCallbackSignature(rawBody []byte,
 }
 
 func buildDirectMemberWebhookPayload(trx *repository.CallbackTrxMemberFull, finalStatus, ket, providerRef, sn string, memberSaldo, biayaAktual int64) map[string]any {
+	if trx == nil {
+		return map[string]any{}
+	}
 	qtyProvider := trx.QtyProvider
 	if qtyProvider <= 0 {
 		qtyProvider = trx.Qty
 	}
 	hargaMember := effectiveMemberSellingPrice(trx.HargaMember, trx.BiayaPerkiraan)
-	storedKet := ""
-	if trx != nil {
-		storedKet = strings.TrimSpace(trx.Keterangan)
-	}
+	storedKet := strings.TrimSpace(trx.Keterangan)
 	messageField, providerRefField, snField := normalizeMemberWebhookFields(finalStatus, ket, providerRef, sn, storedKet)
 
 	return map[string]any{
@@ -160,20 +160,6 @@ func normalizeMemberWebhookFields(finalStatus, ket, providerRef, sn, storedKet s
 		messageField = "Sedang diproses"
 	}
 	return messageField, providerRefField, snField
-}
-
-func logProviderOutboundRequest(provider, commands, productIn, productSent, dest string, qty int64, refid string, source string) {
-	reqPayload := map[string]any{
-		"provider":     strings.TrimSpace(strings.ToLower(provider)),
-		"commands":     commands,
-		"product_in":   productIn,
-		"product_sent": productSent,
-		"dest":         dest,
-		"qty":          qty,
-		"refid":        refid,
-		"source":       source,
-	}
-	helper.AppendProviderServiceLog("provider_callback_service.log", "REQUEST provider=%s refid=%s payload=%v", provider, refid, reqPayload)
 }
 
 func (s *ProviderCallbackService) sendDirectMemberWebhook(ctx context.Context, provider string, trx *repository.CallbackTrxMemberFull, webhookURL, refid, finalStatus, ket, providerRef, sn string, memberSaldo, biayaAktual, price int64) (int, map[string]any) {

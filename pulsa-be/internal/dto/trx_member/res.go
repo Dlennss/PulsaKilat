@@ -66,9 +66,9 @@ type TransaksiMemberResponse struct {
 }
 
 type ProdukListResponse struct {
-	Ok       bool              `json:"ok"`
-	Commands string            `json:"commands"`
-	Product  string            `json:"product"`
+	Ok       bool               `json:"ok"`
+	Commands string             `json:"commands"`
+	Product  string             `json:"product"`
 	Items    []H2HProdukItemDTO `json:"items"`
 }
 

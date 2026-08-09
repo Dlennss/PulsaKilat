@@ -22,13 +22,6 @@ import (
 	"pulsa2/yuscom"
 )
 
-type providerAttempt struct {
-	Name string
-	Need int64
-	Fee  int64
-	Src  string
-}
-
 type providerRouteAttempt struct {
 	Name                string
 	Need                int64
@@ -56,11 +49,7 @@ const rajabillerCallTimeout = 45 * time.Second
 const payInqHandleTimeout = 10 * time.Minute
 const defaultHandleTimeout = 25 * time.Second
 const javapayPendingRetryDelay = 5 * time.Minute
-const providerSnapshotFreshWindow = 10 * time.Minute
-const smbPrefixedRefIDMaxLen = 16
 const smbCheckCallbackTimeout = 2 * time.Minute
-const smbCheckCallbackWaitTimeout = 10 * time.Second
-const smbCheckCallbackPollInterval = 250 * time.Millisecond
 
 type MemberTrxService struct {
 	MemberRepo   *repository.MemberTrxMemberRepository

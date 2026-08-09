@@ -125,7 +125,7 @@ FOR UPDATE
 		return nil, err
 	}
 
-	bankAfter := bankBefore
+	var bankAfter int64
 	arahMutasi := "CREDIT"
 	if direction == "debit" {
 		if bankBefore < totalAmount {

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	trxmemberdto "pulsa2/internal/dto/trx_member"
 	"pulsa2/internal/helper"
 	"pulsa2/internal/provider"
 	"pulsa2/model"
@@ -45,20 +44,6 @@ func isProviderSystemError(err error) bool {
 		strings.Contains(s, "reset by peer") ||
 		strings.Contains(s, "eof") ||
 		strings.Contains(s, "server")
-}
-
-func buildProviderRequestLogPayload(provider string, in trxmemberdto.TrxRequest, productSent string, routeReason string, fallbackFrom string) map[string]any {
-	return map[string]any{
-		"provider":      strings.TrimSpace(strings.ToLower(provider)),
-		"commands":      in.Commands,
-		"product_in":    in.Product,
-		"product_sent":  productSent,
-		"dest":          in.Dest,
-		"qty":           in.Qty,
-		"refid":         in.RefID,
-		"route_reason":  routeReason,
-		"fallback_from": fallbackFrom,
-	}
 }
 
 func shouldKeepPendingOnProviderFailure(err error) bool {
@@ -271,40 +256,4 @@ func runProviderPayWithImmediateRetries(
 	}
 
 	return resp, callErr
-}
-
-func (h *MemberTrxService) runProviderCallWithImmediateRetries(
-	ctx context.Context,
-	providerName string,
-	refID string,
-	call func(context.Context) (int, string, error),
-	persist func(attempt int, hs int, body string, err error),
-) (int, string, error) {
-	var lastHS int
-	var lastBody string
-	retryLimit := providerRetryLimitForName(providerName)
-
-	resp, err := runProviderPayWithImmediateRetries(providerName, ctx, func(callCtx context.Context) (*provider.PayResponse, error) {
-		hs, body, callErr := call(callCtx)
-		lastHS = hs
-		lastBody = body
-		return &provider.PayResponse{HTTPStatus: hs, Body: body}, callErr
-	}, func(nextAttempt int, limit int, hs int, retryErr error) {
-		if persist != nil {
-			persist(nextAttempt-1, hs, lastBody, retryErr)
-		}
-		h.logf("REQUEST retry_same_provider provider=%s refid=%s attempt=%d/%d http=%d err=%v",
-			providerName, refID, nextAttempt, limit, hs, retryErr)
-	})
-
-	if resp != nil {
-		lastHS = resp.HTTPStatus
-		if resp.Body != "" {
-			lastBody = resp.Body
-		}
-	}
-	if persist != nil {
-		persist(retryLimit, lastHS, lastBody, err)
-	}
-	return lastHS, lastBody, err
 }

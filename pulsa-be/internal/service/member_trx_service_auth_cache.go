@@ -92,14 +92,14 @@ func (h *MemberTrxService) isIPAllowedForMemberCached(ctx context.Context, membe
 }
 
 func (h *MemberTrxService) cleanupAuthCachesLocked(now time.Time) {
-	if h.authCache != nil && len(h.authCache) >= 10000 {
+	if len(h.authCache) >= 10000 {
 		for key, entry := range h.authCache {
 			if !now.Before(entry.expiresAt) {
 				delete(h.authCache, key)
 			}
 		}
 	}
-	if h.ipAllowCache != nil && len(h.ipAllowCache) >= 10000 {
+	if len(h.ipAllowCache) >= 10000 {
 		for key, expiresAt := range h.ipAllowCache {
 			if !now.Before(expiresAt) {
 				delete(h.ipAllowCache, key)

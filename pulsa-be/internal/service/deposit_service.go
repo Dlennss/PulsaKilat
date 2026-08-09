@@ -27,7 +27,7 @@ const (
 	minDepositVAAmount          int64 = 10000000
 	specialDepositBankBCA8ID    int64 = 18
 	specialDepositBankBCA8Email       = "makan@makin.com"
-	depositTicketOfflineMessage       = "Tidak bisa request tiket pada saat ini. Tiket bisa dibuat jam 00.31."
+	depositTicketOfflineMessage       = "tidak bisa request tiket pada saat ini; tiket bisa dibuat jam 00.31"
 	depositVAMethod                   = "va"
 )
 

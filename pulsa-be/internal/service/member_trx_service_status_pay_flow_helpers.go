@@ -162,43 +162,6 @@ func (h *MemberTrxService) handleStatusPayWithoutJavapayRow(ctx context.Context,
 	return &serviceResponse{Body: trxmemberdto.MapStatusResponse(trx.RefID, "failed", "", failMsg, mapCallbackDelivery(st, whErr))}
 }
 
-func (h *MemberTrxService) statusPayFailProviderAndTryFallback(ctx context.Context, trx *repository.TrxMemberFull, row *model.JavapayTrxRow, providerName, failMsg string, triedProviders map[string]bool) *serviceResponse {
-	providerName = strings.TrimSpace(strings.ToLower(providerName))
-	failMsg = strings.TrimSpace(failMsg)
-	if failMsg == "" {
-		failMsg = providerName + " tidak merespon dan belum pernah ada balasan provider"
-	}
-	if row != nil && row.ID > 0 {
-		_ = h.JPRepo.ForceFailIfPending(ctx, row.ID, 0, failMsg, map[string]any{"status_pay": true, "error": failMsg, "provider": providerName})
-	}
-
-	usedProvider, providerRowID, ferr := h.tryStatusPayFallback(ctx, trx, triedProviders)
-	if ferr == nil && strings.TrimSpace(usedProvider) != "" {
-		ketPending, _ := helper.SafeMemberKeterangan("pending", "wait_provider_status")
-		_ = h.MemberRepo.UpdateTransaksiMemberStatus(ctx, trx.ID, "pending", ketPending, 0)
-		h.logf("STATUS-PAY %s no-response failed fallback accepted refid=%s provider=%s row_id=%d", providerName, trx.RefID, usedProvider, providerRowID)
-		return &serviceResponse{Body: map[string]any{"ok": true, "refid": trx.RefID, "status": "pending", "fallback_provider": usedProvider, "provider_row_id": providerRowID}}
-	}
-	if ferr != nil && !retryPendingNoFallbackProviderLeft(ferr) {
-		ketPending, _ := helper.SafeMemberKeterangan("pending", ferr.Error())
-		_ = h.MemberRepo.UpdateTransaksiMemberStatus(ctx, trx.ID, "pending", ketPending, 0)
-		h.logf("STATUS-PAY %s no-response fallback hold refid=%s err=%v", providerName, trx.RefID, ferr)
-		return &serviceResponse{Body: trxmemberdto.MapStatusResponse(trx.RefID, "pending", "", ferr.Error(), nil)}
-	}
-
-	if ok, reason := h.allExistingRouteAttemptsFinalFailed(ctx, trx.ID, trx.RefID); ok {
-		ketFailed, _ := helper.SafeMemberKeterangan("failed", failMsg)
-		h.settleLikeCallback(ctx, trx, "failed", ketFailed, "", 0)
-		st, _, whErr := h.sendFinalWebhook(ctx, trx, "failed", ketFailed, "", ketFailed, 0)
-		h.logf("STATUS-PAY %s no-response settle failed refid=%s reason=%s webhook=%d", providerName, trx.RefID, reason, st)
-		return &serviceResponse{Body: trxmemberdto.MapStatusResponse(trx.RefID, "failed", "", failMsg, mapCallbackDelivery(st, whErr))}
-	}
-
-	ketPending, _ := helper.SafeMemberKeterangan("pending", "provider fallback belum final")
-	_ = h.MemberRepo.UpdateTransaksiMemberStatus(ctx, trx.ID, "pending", ketPending, 0)
-	return &serviceResponse{Body: trxmemberdto.MapStatusResponse(trx.RefID, "pending", "", "provider fallback belum final", nil)}
-}
-
 func (h *MemberTrxService) statusPayRetryPendingProvider(ctx context.Context, trx *repository.TrxMemberFull, providerName string, row *model.JavapayTrxRow, triedProviders map[string]bool) *serviceResponse {
 	if h == nil || trx == nil || row == nil {
 		return nil

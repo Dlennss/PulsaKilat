@@ -90,7 +90,6 @@ func (s *WalletService) ListProviderWallets(ctx context.Context) ([]ProviderWall
 
 func (s *WalletService) DepositProviderWallet(ctx context.Context, actorID int64, actorRole string, bankID int64, provider string, amount int64, adminFee int64, note string) (refID string, bankSaldo int64, saldoInternal int64, err error) {
 	provider = strings.TrimSpace(strings.ToLower(provider))
-	note = strings.TrimSpace(note)
 	if bankID <= 0 || provider == "" || amount <= 0 {
 		return "", 0, 0, errors.New("bank_id, provider & amount required")
 	}

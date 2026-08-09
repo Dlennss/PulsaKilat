@@ -133,7 +133,7 @@ func (s *ProviderCallbackService) processSMBCheckStage(ctx context.Context, row 
 			return true, 200, map[string]any{"ok": true, "refid": data.refid, "status": "pending", "reason": "wait_smb_bank_byr_callback"}
 		}
 
-		if callErr != nil || dispatch.Final.HTTPStatus != 200 || smb.LooksLikeSystemIssue(data.msg) {
+		if dispatch.Final.HTTPStatus != 200 || smb.LooksLikeSystemIssue(data.msg) {
 			ketPending, _ := helper.SafeMemberKeterangan("pending", "wait_smb_pay_callback")
 			_ = s.repo.UpdateTransaksiMemberSettle(ctx, trx.ID, "pending", ketPending, 0, data.price, effectiveMemberSellingPrice(trx.HargaMember, trx.BiayaPerkiraan))
 			return true, 200, map[string]any{"ok": true, "refid": data.refid, "status": "pending", "reason": "wait_smb_pay_callback"}

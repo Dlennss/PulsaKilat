@@ -34,7 +34,7 @@ func (s *AppOrderService) Create(ctx context.Context, in repository.AppOrderCrea
 
 	// Cek jam online produk dari database
 	if !helper.IsProductAvailableNow(produk.JamBuka, produk.JamTutup) {
-		return nil, fmt.Errorf("produk ini tidak tersedia pada jam ini, silakan coba lagi nanti.")
+		return nil, fmt.Errorf("produk ini tidak tersedia pada jam ini, silakan coba lagi nanti")
 	}
 
 	pricingRow, err := s.pricingRepo.GetEffectiveByProdukIDActive(ctx, in.ProdukID)

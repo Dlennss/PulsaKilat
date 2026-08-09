@@ -126,19 +126,6 @@ func normalizeBankPrimarySMBAttempt(attempt providerRouteAttempt) providerRouteA
 	return attempt
 }
 
-func buildBankLoketAttempt(primary providerRouteAttempt) providerRouteAttempt {
-	return providerRouteAttempt{
-		Name:              "loketbayar",
-		Need:              primary.Need,
-		Fee:               primary.Fee,
-		Src:               "bank_internal_fallback_loketbayar",
-		ProdukSKUSnapshot: primary.ProdukSKUSnapshot,
-		KodeProduk:        primary.KodeProduk,
-		SpecialCode:       loketBayarBankTransferProduct,
-		Mode:              "",
-	}
-}
-
 func expandBankProviderAttempts(attempts []providerRouteAttempt, loketEnabled bool) []providerRouteAttempt {
 	if len(attempts) == 0 {
 		return attempts
@@ -173,14 +160,4 @@ func latestBankCodeFromAttempts(rows []repository.ProviderAttemptRow) (string, e
 		}
 	}
 	return "", fmt.Errorf("attempt bank smb/rajabiller tidak ditemukan")
-}
-
-func latestSMBBankCodeFromAttempts(rows []repository.ProviderAttemptRow) (string, error) {
-	for _, row := range rows {
-		if !strings.EqualFold(strings.TrimSpace(row.Provider), "smb") {
-			continue
-		}
-		return deriveBankCodeFromSMBRoute("", row.KodeProduk)
-	}
-	return "", fmt.Errorf("attempt smb tidak ditemukan")
 }

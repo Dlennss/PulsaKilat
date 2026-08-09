@@ -776,31 +776,3 @@ VALUES
 `, memberID, refID, jumlah, alasan, strings.TrimSpace(catatan), before, after, actor)
 	return err
 }
-
-func (r *DepositRepository) creditBankTx(ctx context.Context, tx *sql.Tx, bankID, memberID, jumlah int64, catatan, refID string, diubahOleh int64) error {
-	var before int64
-	if err := tx.QueryRowContext(ctx, `
-SELECT saldo FROM public.bank
-WHERE id = $1
-FOR UPDATE
-`, bankID).Scan(&before); err != nil {
-		return err
-	}
-
-	after := before + jumlah
-	if _, err := tx.ExecContext(ctx, `
-UPDATE public.bank
-SET saldo = $2, diubah_pada = now()
-WHERE id = $1
-`, bankID, after); err != nil {
-		return err
-	}
-
-	_, err := tx.ExecContext(ctx, `
-INSERT INTO public.mutasi_bank
-  (bank_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, member_id, diubah_oleh, dibuat_pada)
-VALUES
-  ($1,$2,'CREDIT',$3,'MEMBER_DEPOSIT_APPROVE',NULLIF($4,''),$5,$6,$7,$8,now())
-`, bankID, refID, jumlah, strings.TrimSpace(catatan), before, after, memberID, diubahOleh)
-	return err
-}

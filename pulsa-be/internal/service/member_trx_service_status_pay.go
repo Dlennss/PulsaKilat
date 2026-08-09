@@ -15,7 +15,7 @@ func (h *MemberTrxService) handleStatusPayMissingMemberAsPay(ctx context.Context
 	payReq := in
 	payReq.Commands = "PAY"
 
-	billingNominal := payReq.Qty
+	var billingNominal int64
 	productRuleSource := "legacy"
 	chargeReceiverEligible := false
 
@@ -167,9 +167,7 @@ func (h *MemberTrxService) handleStatusPayBranch(ctx context.Context, auth *repo
 		} else {
 			h.settleLikeCallback(ctx, trx, "success", ketDB, info.Reff, price)
 		}
-		if successRow != nil {
-			h.applyProviderSuccessWalletDebit(ctx, successProvider, trx.ID, successRow.ID, trx.RefID, price, "STATUS-PAY reconcile (success)")
-		}
+		h.applyProviderSuccessWalletDebit(ctx, successProvider, trx.ID, successRow.ID, trx.RefID, price, "STATUS-PAY reconcile (success)")
 
 		whKet, whProviderRef, whSN, whPrice := providerRowWebhookInfo(successProvider, successRow, "success")
 		if whKet == "" {

@@ -34,4 +34,3 @@ func (s *ProviderService) Update(ctx context.Context, id int64, nama string, akt
 func (s *ProviderService) Delete(ctx context.Context, id int64) error {
 	return s.repo.Delete(ctx, id)
 }
-
