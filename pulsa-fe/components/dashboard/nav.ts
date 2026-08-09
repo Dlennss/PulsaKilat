@@ -243,6 +243,12 @@ export const masterNavSections: NavSection[] = [
       { href: "/dashboard/master/riwayat-pinjaman", label: "Penagihan Kredit" },
     ],
   },
+  {
+    title: "Administrasi",
+    items: [
+      { href: "/dashboard/master/laporan", label: "Laporan" },
+    ],
+  },
 ];
 
 export const analystNavSections: NavSection[] = [

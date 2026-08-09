@@ -28,7 +28,7 @@ function filterMasterNavForRole(role: AppRole | null) {
   if (role === "analis") {
     return analystNavSections;
   }
-  if (role === "master") return masterNavSections;
+  if (role === "master" || role === "marketing") return masterNavSections;
   return masterNavSections
     .map((section) => ({
       ...section,
@@ -207,6 +207,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
 
       if (
         normalizedRole !== "master" &&
+        normalizedRole !== "marketing" &&
         masterOnlyPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
       ) {
         router.replace(targetPathByRole(normalizedRole));

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Camera,
   ClipboardCheck,
+  FileBarChart,
   FileSignature,
   LayoutDashboard,
   LogOut,
@@ -31,6 +32,7 @@ const iconByHref: Record<string, typeof LayoutDashboard> = {
   "/dashboard/master/akun-agent": UsersRound,
   "/dashboard/master/profil-agent": Store,
   "/dashboard/master/riwayat-pinjaman": ReceiptText,
+  "/dashboard/master/laporan": FileBarChart,
 };
 
 function isActivePath(pathname: string, href: string) {
