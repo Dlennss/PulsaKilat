@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, type ReactNode, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   RefreshCcw,
-  ShieldCheck,
   Sparkles,
   Store,
   UserPlus,
@@ -69,7 +68,6 @@ export function MasterCreateAgentForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const displayName = useMemo(() => name.trim() || "Agent Baru", [name]);
   const canSubmit = email.trim() && name.trim() && password.trim().length >= 8 && !loading;
 
   async function copyPassword() {
@@ -119,7 +117,7 @@ export function MasterCreateAgentForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <form onSubmit={submit}>
       <section className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.08)] sm:p-6">
         <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -219,41 +217,6 @@ export function MasterCreateAgentForm() {
         </button>
       </section>
 
-      <aside className="rounded-[28px] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f1fff7_100%)] p-4 shadow-[0_18px_42px_rgba(6,78,59,0.08)] sm:p-5">
-        <div className="rounded-[24px] bg-[linear-gradient(135deg,#052e26,#047857)] p-4 text-white">
-          <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/12 ring-1 ring-white/15">
-              <ShieldCheck className="h-6 w-6" />
-            </span>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-lime-100">Preview Akun</p>
-              <h3 className="mt-1 text-lg font-black">{displayName}</h3>
-            </div>
-          </div>
-          <div className="mt-4 space-y-2 rounded-2xl bg-white/10 p-3 text-xs font-semibold text-white/80">
-            <p className="truncate">Email: {email.trim() || "-"}</p>
-            <p className="truncate">WA: {phone.trim() || "-"}</p>
-            <p className="truncate">Toko: {storeName.trim() || "-"}</p>
-            <p>Role: Agent</p>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {[
-            ["Akun langsung aktif", "Agent bisa login memakai email dan password awal."],
-            ["Level awal", "Agent baru mulai dari Kilat Start."],
-            ["Kredit terpisah", "Pengajuan kredit tetap diputuskan dari panel master."],
-          ].map(([title, desc], index) => (
-            <div key={title} className="flex gap-3 rounded-2xl border border-emerald-100 bg-white px-3 py-3">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-emerald-50 text-xs font-black text-emerald-700">{index + 1}</span>
-              <div>
-                <p className="text-xs font-black text-slate-950">{title}</p>
-                <p className="mt-0.5 text-[11px] font-semibold leading-4 text-slate-500">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </aside>
     </form>
   );
 }
