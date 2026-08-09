@@ -60,6 +60,28 @@ function documentExists(item: AgentCreditApplication, key: string) {
   return String((value as { data_url?: unknown }).data_url || "").startsWith("data:image/");
 }
 
+function storedSignature(item: AgentCreditApplication, role: "agent" | "marketing" | "operator") {
+  const value = role === "agent"
+    ? item.agent_signature_data
+    : role === "marketing"
+      ? item.applicant_data?.marketing_signature_data
+      : item.applicant_data?.master_signature_data;
+  return typeof value === "string" && value.startsWith("data:image/") ? value : "";
+}
+
+function signatureDate(item: AgentCreditApplication, role: "agent" | "marketing" | "operator") {
+  const value = role === "agent"
+    ? item.agent_signature_at
+    : role === "marketing"
+      ? item.applicant_data?.marketing_signature_at
+      : item.applicant_data?.master_signature_at;
+  return typeof value === "string" ? formatDate(value) : "Belum ditandatangani";
+}
+
+function imageTypeFromDataUrl(value: string) {
+  return value.startsWith("data:image/png") ? "PNG" : "JPEG";
+}
+
 function matchesStatus(item: AgentCreditApplication, filter: string) {
   if (filter === "all") return true;
   const label = statusLabel(item);
@@ -150,6 +172,16 @@ export function MarketingReportCenter({ applications }: Props) {
   const periodLabel = dateFrom || dateTo ? `${dateFrom || "Awal"} s.d. ${dateTo || "Sekarang"}` : "Semua periode";
   const totalRequested = filteredApplications.reduce((sum, item) => sum + Number(item.requested_amount || 0), 0);
   const totalOutstanding = filteredApplications.reduce((sum, item) => sum + Number(item.outstanding_amount || 0), 0);
+  const signatureApplications = useMemo(() => {
+    const scoped = tab === "credit" ? filteredApplications.filter((item) => item.status === "approved") : filteredApplications;
+    if (tab !== "agents") return scoped;
+    const latest = new Map<number, AgentCreditApplication>();
+    scoped.forEach((item) => {
+      const current = latest.get(item.member_id);
+      if (!current || new Date(item.updated_at || item.created_at).getTime() > new Date(current.updated_at || current.created_at).getTime()) latest.set(item.member_id, item);
+    });
+    return Array.from(latest.values());
+  }, [filteredApplications, tab]);
 
   async function downloadExcel() {
     if (!rows.length) return;
@@ -190,6 +222,64 @@ export function MarketingReportCenter({ applications }: Props) {
         styles: { fontSize: 7, cellPadding: 4 },
         headStyles: { fillColor: [4, 120, 87], textColor: 255 },
       });
+
+      signatureApplications.forEach((item) => {
+        doc.addPage("a4", "landscape");
+        const pageWidth = doc.internal.pageSize.getWidth();
+        doc.setFillColor(4, 120, 87);
+        doc.rect(0, 0, pageWidth, 72, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(17);
+        doc.text("Pengesahan Otomatis Kredit Agent", 36, 32);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(`${agentName(item)} | Pengajuan #${item.id} | ${statusLabel(item)}`, 36, 50);
+
+        const signers = [
+          { role: "agent" as const, label: "Agent", name: agentName(item) },
+          { role: "marketing" as const, label: "Marketing", name: "Marketing PulsaKilat" },
+          { role: "operator" as const, label: "Operator Kredit", name: "Operator Kredit PulsaKilat" },
+        ];
+        const cardWidth = 235;
+        const gap = 22;
+        const startX = (pageWidth - (cardWidth * 3 + gap * 2)) / 2;
+        signers.forEach((signer, index) => {
+          const x = startX + index * (cardWidth + gap);
+          const signature = storedSignature(item, signer.role);
+          doc.setDrawColor(203, 213, 225);
+          doc.setFillColor(248, 250, 252);
+          doc.roundedRect(x, 105, cardWidth, 210, 6, 6, "FD");
+          doc.setTextColor(4, 120, 87);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+          doc.text(signer.label, x + cardWidth / 2, 130, { align: "center" });
+          if (signature) {
+            try {
+              doc.addImage(signature, imageTypeFromDataUrl(signature), x + 38, 150, cardWidth - 76, 82, undefined, "FAST");
+            } catch {
+              doc.setTextColor(148, 163, 184);
+              doc.setFontSize(9);
+              doc.text("Tanda tangan tidak dapat dibaca", x + cardWidth / 2, 194, { align: "center" });
+            }
+          } else {
+            doc.setTextColor(148, 163, 184);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.text("Belum ditandatangani", x + cardWidth / 2, 194, { align: "center" });
+          }
+          doc.setDrawColor(100, 116, 139);
+          doc.line(x + 28, 250, x + cardWidth - 28, 250);
+          doc.setTextColor(15, 23, 42);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.text(signer.name, x + cardWidth / 2, 268, { align: "center", maxWidth: cardWidth - 30 });
+          doc.setTextColor(100, 116, 139);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          doc.text(signatureDate(item, signer.role), x + cardWidth / 2, 288, { align: "center" });
+        });
+      });
       doc.save(`laporan-marketing-${tab}.pdf`);
     } finally {
       setExporting(false);
@@ -201,7 +291,15 @@ export function MarketingReportCenter({ applications }: Props) {
     const headers = Object.keys(rows[0]);
     const printWindow = window.open("", "_blank", "width=1200,height=800");
     if (!printWindow) return;
-    printWindow.document.write(`<!doctype html><html><head><title>${escapeHtml(reportTitle)}</title><style>body{font-family:Arial,sans-serif;color:#111827;margin:28px}header{border-bottom:3px solid #047857;padding-bottom:12px;margin-bottom:18px}h1{font-size:22px;margin:0;color:#065f46}p{font-size:11px;margin:5px 0;color:#475569}table{width:100%;border-collapse:collapse;font-size:9px}th{background:#047857;color:#fff;text-align:left}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:44px;text-align:center}.line{border-top:1px solid #334155;margin-top:54px;padding-top:6px}@page{size:landscape;margin:14mm}</style></head><body><header><h1>PulsaKilat - ${escapeHtml(reportTitle)}</h1><p>Periode: ${escapeHtml(periodLabel)} | Dibuat: ${escapeHtml(new Date().toLocaleString("id-ID"))}</p><p>Total data: ${rows.length} | Total pengajuan: ${escapeHtml(formatIDR(totalRequested))} | Total tagihan: ${escapeHtml(formatIDR(totalOutstanding))}</p></header><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(row[header] ?? "-")}</td>`).join("")}</tr>`).join("")}</tbody></table><div class="signatures"><div><div class="line">Marketing</div></div><div><div class="line">Pemeriksa</div></div></div><script>window.onload=()=>window.print();</script></body></html>`);
+    const approvalSheets = signatureApplications.map((item) => {
+      const signers = [
+        { role: "agent" as const, label: "Agent", name: agentName(item) },
+        { role: "marketing" as const, label: "Marketing", name: "Marketing PulsaKilat" },
+        { role: "operator" as const, label: "Operator Kredit", name: "Operator Kredit PulsaKilat" },
+      ];
+      return `<section class="approval"><h2>Pengesahan Otomatis Kredit Agent</h2><p>${escapeHtml(agentName(item))} | Pengajuan #${item.id} | ${escapeHtml(statusLabel(item))}</p><div class="signatures">${signers.map((signer) => { const signature = storedSignature(item, signer.role); return `<div class="signature-card"><strong>${escapeHtml(signer.label)}</strong><div class="signature-image">${signature ? `<img src="${signature}" alt="Tanda tangan ${escapeHtml(signer.label)}">` : `<span>Belum ditandatangani</span>`}</div><div class="line">${escapeHtml(signer.name)}</div><small>${escapeHtml(signatureDate(item, signer.role))}</small></div>`; }).join("")}</div></section>`;
+    }).join("");
+    printWindow.document.write(`<!doctype html><html><head><title>${escapeHtml(reportTitle)}</title><style>body{font-family:Arial,sans-serif;color:#111827;margin:28px}header{border-bottom:3px solid #047857;padding-bottom:12px;margin-bottom:18px}h1{font-size:22px;margin:0;color:#065f46}h2{font-size:19px;color:#065f46;margin:0 0 6px}p{font-size:11px;margin:5px 0;color:#475569}table{width:100%;border-collapse:collapse;font-size:9px}th{background:#047857;color:#fff;text-align:left}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}.approval{break-before:page;page-break-before:always;padding-top:12px}.signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:28px;text-align:center}.signature-card{border:1px solid #cbd5e1;border-radius:8px;padding:16px}.signature-card strong{color:#047857}.signature-image{height:110px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px}.signature-image img{max-width:180px;max-height:90px;object-fit:contain}.line{border-top:1px solid #334155;padding-top:7px;font-weight:700}.signature-card small{display:block;margin-top:5px;color:#64748b}@page{size:landscape;margin:14mm}</style></head><body><header><h1>PulsaKilat - ${escapeHtml(reportTitle)}</h1><p>Periode: ${escapeHtml(periodLabel)} | Dibuat: ${escapeHtml(new Date().toLocaleString("id-ID"))}</p><p>Total data: ${rows.length} | Total pengajuan: ${escapeHtml(formatIDR(totalRequested))} | Total tagihan: ${escapeHtml(formatIDR(totalOutstanding))}</p></header><table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(row[header] ?? "-")}</td>`).join("")}</tr>`).join("")}</tbody></table>${approvalSheets}<script>window.onload=()=>window.print();</script></body></html>`);
     printWindow.document.close();
   }
 
