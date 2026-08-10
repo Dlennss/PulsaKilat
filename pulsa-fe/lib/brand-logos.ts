@@ -11,24 +11,24 @@ const BRAND_LOGOS: Record<string, BrandLogoMeta> = {
     sourcePage: "https://commons.wikimedia.org/wiki/File:Logo_Dana_Wiki.svg",
   },
   telkomsel: {
-    src: "/images/providers/logo_telkomsel.png",
+    src: "/images/providers/logo_telkomsel.webp",
     alt: "Logo Telkomsel",
-    sourcePage: "local:/public/images/providers/logo_telkomsel.png",
+    sourcePage: "local:/public/images/providers/logo_telkomsel.webp",
   },
   byu: {
-    src: "/images/providers/logo_byu.png",
+    src: "/images/providers/logo_byu.webp",
     alt: "Logo by.U",
-    sourcePage: "local:/public/images/providers/logo_byu.png",
+    sourcePage: "local:/public/images/providers/logo_byu.webp",
   },
   axis: {
-    src: "/images/providers/logo_axis.png",
+    src: "/images/providers/logo_axis.webp",
     alt: "Logo AXIS",
-    sourcePage: "local:/public/images/providers/logo_axis.png",
+    sourcePage: "local:/public/images/providers/logo_axis.webp",
   },
   tri: {
-    src: "/images/providers/logo_tri.png",
+    src: "/images/providers/logo_tri.webp",
     alt: "Logo Tri",
-    sourcePage: "local:/public/images/providers/logo_tri.png",
+    sourcePage: "local:/public/images/providers/logo_tri.webp",
   },
   gopay: {
     src: "/brand-logos/gopay.svg",
@@ -36,19 +36,19 @@ const BRAND_LOGOS: Record<string, BrandLogoMeta> = {
     sourcePage: "https://commons.wikimedia.org/wiki/File:Gopay_logo.svg",
   },
   indosat: {
-    src: "/images/providers/logo_im3.png",
+    src: "/images/providers/logo_im3.webp",
     alt: "Logo Indosat",
-    sourcePage: "local:/public/images/providers/logo_im3.png",
+    sourcePage: "local:/public/images/providers/logo_im3.webp",
   },
   im3: {
-    src: "/images/providers/logo_im3.png",
+    src: "/images/providers/logo_im3.webp",
     alt: "Logo Indosat",
-    sourcePage: "local:/public/images/providers/logo_im3.png",
+    sourcePage: "local:/public/images/providers/logo_im3.webp",
   },
   mentari: {
-    src: "/images/providers/logo_im3.png",
+    src: "/images/providers/logo_im3.webp",
     alt: "Logo Indosat",
-    sourcePage: "local:/public/images/providers/logo_im3.png",
+    sourcePage: "local:/public/images/providers/logo_im3.webp",
   },
   xl: {
     src: "/images/providers/logo_xl.png",
@@ -106,9 +106,9 @@ const BRAND_LOGOS: Record<string, BrandLogoMeta> = {
     sourcePage: "local:/public/images/ewallet/logo_isaku.svg",
   },
   smartfren: {
-    src: "/images/providers/logo_smartfren.png",
+    src: "/images/providers/logo_smartfren.webp",
     alt: "Logo Smartfren",
-    sourcePage: "local:/public/images/providers/logo_smartfren.png",
+    sourcePage: "local:/public/images/providers/logo_smartfren.webp",
   },
   biznet: {
     src: "/images/internet/logo_biznet.png",

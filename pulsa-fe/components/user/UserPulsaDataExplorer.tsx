@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Signal, Smartphone, Wifi, X } from "lucide-react";
 import { UserProductGrid } from "@/components/user/UserProductGrid";
@@ -34,14 +35,14 @@ type OperatorMatch = {
 function getOperatorVisual(operator: OperatorMatch | null) {
   const label = operator?.label || "";
   const key = normalizeName(label);
-  if (key.includes("by u") || key.includes("byu")) return { short: "by.U", color: "from-sky-500 to-cyan-400" };
-  if (key.includes("telkomsel")) return { short: "Tsel", color: "from-red-500 to-rose-600" };
-  if (key.includes("indosat")) return { short: "im3", color: "from-yellow-400 to-red-500" };
-  if (key === "xl") return { short: "XL", color: "from-blue-600 to-cyan-400" };
-  if (key.includes("axis")) return { short: "AXIS", color: "from-violet-600 to-fuchsia-500" };
-  if (key.includes("tri")) return { short: "3", color: "from-purple-600 to-indigo-500" };
-  if (key.includes("smartfren")) return { short: "SF", color: "from-red-500 to-orange-500" };
-  return { short: "HP", color: "from-[#047857] to-[#22c55e]" };
+  if (key.includes("by u") || key.includes("byu")) return { short: "by.U", logo: "/images/providers/logo_byu.webp" };
+  if (key.includes("telkomsel")) return { short: "Tsel", logo: "/images/providers/logo_telkomsel.webp" };
+  if (key.includes("indosat")) return { short: "im3", logo: "/images/providers/logo_im3.webp" };
+  if (key === "xl") return { short: "XL", logo: "/images/providers/logo_xl.png" };
+  if (key.includes("axis")) return { short: "AXIS", logo: "/images/providers/logo_axis.webp" };
+  if (key.includes("tri")) return { short: "3", logo: "/images/providers/logo_tri.webp" };
+  if (key.includes("smartfren")) return { short: "SF", logo: "/images/providers/logo_smartfren.webp" };
+  return { short: "HP", logo: "" };
 }
 
 function normalizeName(value: string) {
@@ -205,8 +206,14 @@ export function UserPulsaDataExplorer({
 
         <div className="relative mt-4 rounded-[22px] bg-white p-2 text-slate-900 shadow-[0_16px_34px_rgba(5,46,38,0.18)]">
           <div className="flex items-center gap-2">
-            <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${detectedOperator ? `bg-linear-to-br ${operatorVisual.color} text-white` : "bg-emerald-50 text-[#047857]"}`}>
-              {detectedOperator ? <span className="text-xs font-black uppercase">{operatorVisual.short}</span> : <Smartphone className="h-5 w-5" />}
+            <div className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl ${detectedOperator ? "bg-white ring-1 ring-slate-200" : "bg-emerald-50 text-[#047857]"}`}>
+              {detectedOperator && operatorVisual.logo ? (
+                <Image src={operatorVisual.logo} alt={`Logo ${detectedOperator.label}`} width={44} height={44} className="h-full w-full object-contain p-1.5" />
+              ) : detectedOperator ? (
+                <span className="text-xs font-black uppercase text-slate-700">{operatorVisual.short}</span>
+              ) : (
+                <Smartphone className="h-5 w-5" />
+              )}
             </div>
             <input
               value={phone}
@@ -264,8 +271,12 @@ export function UserPulsaDataExplorer({
       <section className="-mt-4 space-y-3 rounded-t-[28px] bg-[#f8fafc] px-4 pt-5">
         {detectedOperator ? (
           <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3 shadow-[0_10px_28px_rgba(15,23,42,0.08)]">
-            <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-linear-to-br ${operatorVisual.color} text-white shadow-[0_10px_20px_rgba(15,23,42,0.14)]`}>
-              <span className="text-xs font-black uppercase">{operatorVisual.short}</span>
+            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-[0_10px_20px_rgba(15,23,42,0.10)] ring-1 ring-slate-200">
+              {operatorVisual.logo ? (
+                <Image src={operatorVisual.logo} alt={`Logo ${detectedOperator.label}`} width={44} height={44} className="h-full w-full object-contain p-1.5" />
+              ) : (
+                <span className="text-xs font-black uppercase text-slate-700">{operatorVisual.short}</span>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-black text-slate-900">{detectedOperator.label}</p>
