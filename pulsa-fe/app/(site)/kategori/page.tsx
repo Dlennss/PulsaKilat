@@ -7,6 +7,7 @@ import { GuestBottomNav } from "@/components/guest/GuestBottomNav";
 import { ServiceDirectory } from "@/components/shared/ServiceDirectory";
 import { buildBreadcrumbJsonLd, buildCollectionJsonLd, buildPageMetadata } from "@/lib/site-search";
 import { UserUniversalServicePageContent } from "@/components/user/UserUniversalServicePageContent";
+import { UserTransferBankPageContent } from "@/components/user/UserTransferBankPageContent";
 
 type SessionShape = {
   user?: UserSession;
@@ -28,6 +29,15 @@ export default async function GuestKategoriPage({ searchParams }: PageProps) {
   const session = (await getServerSession(authOptions)) as SessionShape | null;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const serviceSlug = String(resolvedSearchParams?.layanan || "").trim().toLowerCase();
+
+  if (serviceSlug === "transfer-bank") {
+    return (
+      <main className="min-h-screen bg-[#eef8f3] pb-24">
+        <UserTransferBankPageContent backHref="/kategori" />
+        <GuestBottomNav isLoggedIn={!!session?.backendToken} />
+      </main>
+    );
+  }
 
   if (serviceSlug) {
     return (

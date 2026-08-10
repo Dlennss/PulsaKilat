@@ -17,7 +17,11 @@ const banks = [
   { name: "Bank Jago", image: "/images/banks/jago.jpg" },
 ];
 
-export function UserTransferBankPageContent() {
+type UserTransferBankPageContentProps = {
+  backHref?: string;
+};
+
+export function UserTransferBankPageContent({ backHref = "/user/kategori" }: UserTransferBankPageContentProps) {
   const [accountNumber, setAccountNumber] = useState("");
   const [selectedBankName, setSelectedBankName] = useState<string | null>(null);
   const selectedBank = banks.find((bank) => bank.name === selectedBankName) || null;
@@ -48,7 +52,7 @@ export function UserTransferBankPageContent() {
             </button>
           ) : (
             <Link
-              href="/user/kategori"
+              href={backHref}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/12 text-white ring-1 ring-white/15"
               aria-label="Kembali"
             >

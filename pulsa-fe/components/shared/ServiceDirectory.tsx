@@ -126,7 +126,7 @@ function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
       eyebrow: "Saldo & pembayaran",
       items: [
         { label: "E-Wallet", href: path.ewallet, iconSrc: iconPath.ewallet },
-        { label: "Transfer Bank", href: mode === "user" ? path.transferBank : fallbackPath(mode, "transfer-bank"), iconSrc: iconPath.transferBank },
+        { label: "Transfer Bank", href: path.transferBank, iconSrc: iconPath.transferBank },
         { label: "Pembayaran QRIS", href: fallbackPath(mode, "qris"), iconSrc: iconPath.qris },
         { label: "Uang Elektronik", href: fallbackPath(mode, "uang-elektronik"), iconSrc: iconPath.uangElektronik },
         ...(canUseAgentCredit ? [{ label: "Kredit Saldo Agent", href: "/user/saldo/kredit-agent", iconSrc: iconPath.cicilanMultifinance }] : []),
