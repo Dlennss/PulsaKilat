@@ -259,7 +259,6 @@ export const analystNavSections: NavSection[] = [
       { href: "/dashboard/master/operator/antrean", label: "Antrean Operator" },
       { href: "/dashboard/master/operator/kenaikan-limit", label: "Kenaikan Limit" },
       { href: "/dashboard/master/operator/penarikan-agent", label: "Penarikan Agent" },
-      { href: "/dashboard/master/operator/kredit-diterima", label: "Kredit Diterima" },
       { href: "/dashboard/master/operator/monitor-pelunasan", label: "Monitor Pelunasan" },
       { href: "/dashboard/master/operator/bukti-pelunasan", label: "Bukti Pelunasan" },
       { href: "/dashboard/master/operator/penolakan-catatan", label: "Penolakan & Catatan" },

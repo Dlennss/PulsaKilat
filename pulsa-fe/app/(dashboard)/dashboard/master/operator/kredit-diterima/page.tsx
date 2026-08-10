@@ -1,5 +1,5 @@
-import { AnalystCreditWorkspace } from "@/components/dashboard/AnalystCreditWorkspace";
+import { redirect } from "next/navigation";
 
 export default function OperatorAcceptedCreditPage() {
-  return <AnalystCreditWorkspace view="accepted" />;
+  redirect("/dashboard/master/operator/monitor-pelunasan");
 }

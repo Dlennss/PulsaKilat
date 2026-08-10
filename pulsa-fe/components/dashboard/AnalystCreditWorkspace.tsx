@@ -24,7 +24,6 @@ type SessionShape = {
 export type AnalystCreditWorkspaceView =
   | "decision"
   | "queue"
-  | "accepted"
   | "repayment"
   | "proof"
   | "rejected"
@@ -50,16 +49,6 @@ const viewConfig = {
     emptyDescription: "Belum ada pengajuan baru dari marketing.",
     icon: ClipboardList,
     showActions: true,
-  },
-  accepted: {
-    eyebrow: "Kredit Diterima",
-    title: "Kredit yang Sudah Diterima",
-    desc: "Daftar pinjaman yang sudah disetujui operator dan bisa dipantau statusnya.",
-    listTitle: "Daftar Kredit Diterima",
-    emptyTitle: "Belum ada kredit diterima",
-    emptyDescription: "Pinjaman yang disetujui operator akan tampil di sini.",
-    icon: BadgeCheck,
-    showActions: false,
   },
   repayment: {
     eyebrow: "Monitor Pelunasan",
@@ -142,7 +131,6 @@ function getItemsForView(view: AnalystCreditWorkspaceView, applications: AgentCr
   const rejectedItems = applications.filter(isRejected);
   const archiveItems = applications.filter((item) => item.status === "approved" || isRejected(item) || isPaid(item));
 
-  if (view === "accepted") return approvedItems;
   if (view === "repayment") return usedCredits;
   if (view === "proof") return proofItems;
   if (view === "rejected") return rejectedItems;
@@ -208,12 +196,6 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
     { label: "Siap Dicek", value: decisionReadyItems.length, hint: "Nominal dan berkas tersedia", icon: FileSearch },
     { label: "Sudah Diterima", value: approvedItems.length, hint: "Keputusan operator selesai", icon: BadgeCheck },
     { label: "Perlu Catatan", value: rejectedItems.length, hint: "Ditolak atau perlu revisi", icon: MessageSquareText },
-  ];
-  const acceptedCards = [
-    { label: "Total Diterima", value: approvedItems.length, hint: "Semua kredit yang disetujui", icon: BadgeCheck },
-    { label: "Limit Aktif", value: activeCredits.length, hint: usedCredits.length ? `${usedCredits.length} pinjaman berjalan` : "Belum ada tagihan", icon: WalletCards },
-    { label: "Sudah Lunas", value: paidCredits.length, hint: "Pembayaran selesai", icon: ShieldCheck },
-    { label: "Perlu Lengkap", value: approvedItems.filter((item) => !item.loan_due_date && !isPaid(item)).length, hint: "Butuh jatuh tempo/catatan", icon: MessageSquareText },
   ];
   const repaymentCards = [
     { label: "Tagihan Aktif", value: usedCredits.length, hint: "Pinjaman yang belum lunas", icon: WalletCards },
@@ -440,97 +422,6 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                     ) : (
                       <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-400">Belum ada antrean dari marketing.</div>
                     )}
-                  </div>
-                </div>
-              </div>
-            ) : view === "accepted" ? (
-              <div className="space-y-4">
-                <div className="relative overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f5fff9_66%,#e9fbef_100%)] p-5 shadow-[0_16px_36px_rgba(6,78,59,0.06)]">
-                  <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-emerald-100/80" />
-                  <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Kredit Aktif</p>
-                      <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Agent dengan Kredit Diterima</h2>
-                      <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                        Hanya menampilkan pengajuan yang sudah diterima operator. Dari sini operator bisa memantau kredit berjalan, agent yang sudah lunas, dan nominal kredit yang aktif.
-                      </p>
-                    </div>
-                    <span className="relative inline-flex w-fit items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
-                      <BadgeCheck className="h-5 w-5" />
-                      {approvedItems.length} data diterima
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-[28px] border border-emerald-100 bg-slate-50 p-4 sm:p-5">
-                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Direktori Peminjam</p>
-                      <h3 className="mt-1 text-2xl font-black tracking-normal text-slate-950">Data peminjam diterima</h3>
-                      <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                        Data review dan ditolak tidak ditampilkan di sini. Fokus halaman ini hanya pinjaman yang sudah diterima, aktif, atau lunas.
-                      </p>
-                    </div>
-                    <span className="w-fit rounded-2xl bg-white px-4 py-3 text-center text-sm font-black text-emerald-700 shadow-sm">
-                      {approvedItems.length}
-                      <span className="block text-[11px] font-bold text-slate-400">Diterima</span>
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {acceptedCards.map((card) => {
-                      const CardIcon = card.icon;
-                      return (
-                        <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-xs font-black text-slate-500">{card.label}</p>
-                              <p className="mt-1 text-2xl font-black text-slate-950">{card.value}</p>
-                              <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">{card.hint}</p>
-                            </div>
-                            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
-                              <CardIcon className="h-5 w-5" />
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-5 rounded-[26px] border border-slate-200 bg-white p-4">
-                    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">Peminjam Aktif</p>
-                        <h4 className="mt-1 text-lg font-black text-slate-950">Daftar agent yang sudah diterima</h4>
-                      </div>
-                      <div className="flex w-fit gap-2">
-                        <span className="rounded-full bg-emerald-800 px-3 py-1.5 text-xs font-black text-white">Semua</span>
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600">Disetujui</span>
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600">Lunas</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {approvedItems.length ? (
-                        approvedItems.slice(0, 5).map((item) => (
-                          <div key={item.id} className="flex flex-col gap-3 rounded-3xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="min-w-0">
-                              <p className="truncate text-base font-black text-slate-950">{getAgentName(item)}</p>
-                              <p className="mt-1 truncate text-xs font-semibold text-slate-500">{getAgentStore(item)}</p>
-                            <p className="mt-2 text-xs font-bold text-emerald-700">
-                              {isPaid(item) ? "Sudah lunas" : Number(item.outstanding_amount || 0) > 0 ? "Kredit aktif dipantau" : "Limit aktif belum dipakai"}
-                            </p>
-                            </div>
-                            <div className="text-left sm:text-right">
-                              <p className="text-lg font-black text-emerald-700">{formatIDR(Number(item.approved_amount || item.requested_amount || 0))}</p>
-                              <p className="mt-1 text-xs font-semibold text-slate-400">Sisa {formatIDR(Number(item.outstanding_amount || 0))}</p>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-400">Belum ada kredit yang diterima.</div>
-                      )}
-                    </div>
                   </div>
                 </div>
               </div>
