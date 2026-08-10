@@ -94,7 +94,7 @@ LIMIT 1
 
 		err = tx.QueryRowContext(ctx, `
 INSERT INTO public.deposit_request (member_id, bank_id, bank_nama, bank_nomor_rekening, bank_atas_nama, amount, requested_amount, unique_code, metode, bukti_url, status, note, ref_id)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'','ticket',NULL,$10)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'','ticket','',$10)
 RETURNING id
 `, memberID, bankID, strings.TrimSpace(bankNama), strings.TrimSpace(bankNomorRekening), strings.TrimSpace(bankAtasNama), ticketAmount, requestedAmount, uniqueCode, strings.TrimSpace(metode), strings.TrimSpace(refID)).Scan(&insertedID)
 		if err != nil {
@@ -189,7 +189,7 @@ LIMIT 1
 INSERT INTO public.deposit_request
   (member_id, bank_nama, bank_nomor_rekening, bank_atas_nama, amount, requested_amount, unique_code, metode, bukti_url, status, note, ref_id)
 VALUES
-  ($1,$2,$3,$4,$5,$6,$7,'va','','ticket',NULLIF($8,''),$9)
+  ($1,$2,$3,$4,$5,$6,$7,'va','','ticket',$8,$9)
 RETURNING id
 `, memberID, strings.TrimSpace(bankNama), strings.TrimSpace(bankNomorRekening), strings.TrimSpace(bankAtasNama), ticketAmount, requestedAmount, ticketAmount-requestedAmount, strings.TrimSpace(note), ticketID).Scan(&insertedID)
 	if err != nil {
@@ -226,7 +226,7 @@ func (r *DepositRepository) CreateQrisRequest(ctx context.Context, memberID, amo
 	}
 	_, err := r.db.ExecContext(ctx, `
 INSERT INTO public.deposit_request (member_id, amount, metode, bukti_url, status, note, ref_id)
-VALUES ($1,$2,$3,'','pending',NULLIF($4,''),$5)
+VALUES ($1,$2,$3,'','pending',$4,$5)
 `, memberID, amount, strings.TrimSpace(metode), strings.TrimSpace(note), strings.TrimSpace(refID))
 	return err
 }
