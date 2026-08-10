@@ -46,6 +46,7 @@ type DataTableProps<TRow> = {
   pagination?: DataTablePagination;
   actions?: DataTableActions<TRow>;
   loading?: boolean;
+  variant?: "dark" | "light";
 };
 
 function alignClass(align: Align | undefined): string {
@@ -79,6 +80,7 @@ export function DataTable<TRow>(props: DataTableProps<TRow>) {
     pagination,
     actions,
     loading = false,
+    variant = "dark",
   } = props;
 
   const safeRows = Array.isArray(rows) ? rows : Array.isArray(data) ? data : [];
@@ -86,13 +88,17 @@ export function DataTable<TRow>(props: DataTableProps<TRow>) {
   const currentPage = Math.max(1, pagination?.page ?? 1);
   const totalPages = Math.max(1, pagination?.totalPages ?? 1);
   const pageButtons = visiblePages(currentPage, totalPages);
+  const isLight = variant === "light";
+  const stateClassName = isLight
+    ? "rounded-lg border border-dashed border-emerald-200 bg-white px-3 py-10 text-center text-sm text-slate-500 shadow-sm sm:px-4 sm:py-12"
+    : "mt-5 rounded-md border border-white/15 bg-slate-950/50 px-3 py-6 text-center text-sm text-slate-400 shadow-[0_18px_42px_-26px_rgba(56,189,248,0.45)] sm:px-4 sm:py-8";
 
   if (loading) {
     return (
       <div
         className={
           wrapperClassName ||
-          "mt-5 rounded-md border border-white/15 bg-slate-950/50 px-3 py-6 text-center text-sm text-slate-400 shadow-[0_18px_42px_-26px_rgba(56,189,248,0.45)] sm:px-4 sm:py-8"
+          stateClassName
         }
       >
         Memuat data...
@@ -105,7 +111,7 @@ export function DataTable<TRow>(props: DataTableProps<TRow>) {
       <div
         className={
           wrapperClassName ||
-          "mt-5 rounded-md border border-white/15 bg-slate-950/50 px-3 py-6 text-center text-sm text-slate-400 shadow-[0_18px_42px_-26px_rgba(56,189,248,0.45)] sm:px-4 sm:py-8"
+          stateClassName
         }
       >
         {emptyMessage || emptyText || "Tidak ada data."}
@@ -118,26 +124,28 @@ export function DataTable<TRow>(props: DataTableProps<TRow>) {
       <div
         className={
           wrapperClassName ||
-          "mt-5 overflow-x-auto overflow-y-visible rounded-md border border-white/15 bg-slate-950/50 shadow-[0_18px_42px_-26px_rgba(56,189,248,0.45)]"
+          (isLight
+            ? "overflow-x-auto overflow-y-visible rounded-lg border border-slate-200 bg-white shadow-sm"
+            : "mt-5 overflow-x-auto overflow-y-visible rounded-md border border-white/15 bg-slate-950/50 shadow-[0_18px_42px_-26px_rgba(56,189,248,0.45)]")
         }
       >
         <table className={`w-full text-sm ${minWidthClassName || "min-w-245"}`}>
-          <thead className="sticky top-0 z-10 bg-linear-to-r from-cyan-500/20 via-sky-500/10 to-indigo-500/20 backdrop-blur">
+          <thead className={isLight ? "sticky top-0 z-10 bg-emerald-50" : "sticky top-0 z-10 bg-linear-to-r from-cyan-500/20 via-sky-500/10 to-indigo-500/20 backdrop-blur"}>
             <tr className="text-left">
               {showRowNumber ? (
-                <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200 sm:px-4 sm:py-3 sm:text-xs">No</th>
+                <th className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide sm:px-4 sm:py-3 sm:text-xs ${isLight ? "text-emerald-900" : "text-slate-200"}`}>No</th>
               ) : null}
               {columns.map((col) => (
                 <th
                   key={col.id}
-                  className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200 sm:px-4 sm:py-3 sm:text-xs ${col.thClassName || ""}`}
+                  className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide sm:px-4 sm:py-3 sm:text-xs ${isLight ? "text-emerald-900" : "text-slate-200"} ${col.thClassName || ""}`}
                 >
                   {col.header}
                 </th>
               ))}
               {actions ? (
                 <th
-                  className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200 sm:px-4 sm:py-3 sm:text-xs ${actionAlign} ${
+                  className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide sm:px-4 sm:py-3 sm:text-xs ${isLight ? "text-emerald-900" : "text-slate-200"} ${actionAlign} ${
                     actions.thClassName || ""
                   }`}
                 >
@@ -148,8 +156,8 @@ export function DataTable<TRow>(props: DataTableProps<TRow>) {
           </thead>
           <tbody>
             {safeRows.map((row, index) => (
-              <tr key={rowKey(row, index)} className="border-t border-white/10 bg-white/1.5 transition hover:bg-cyan-400/[0.07]">
-                {showRowNumber ? <td className="whitespace-nowrap px-3 py-2.5 text-slate-300 sm:px-4 sm:py-3">{rowNumberStart + index}</td> : null}
+              <tr key={rowKey(row, index)} className={isLight ? "border-t border-slate-100 bg-white transition hover:bg-emerald-50/60" : "border-t border-white/10 bg-white/1.5 transition hover:bg-cyan-400/[0.07]"}>
+                {showRowNumber ? <td className={`whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3 ${isLight ? "text-slate-500" : "text-slate-300"}`}>{rowNumberStart + index}</td> : null}
                 {columns.map((col) => (
                   <td key={col.id} className={`px-3 py-2.5 sm:px-4 sm:py-3 ${col.tdClassName || ""}`}>
                     {col.render(row, index)}
@@ -165,8 +173,8 @@ export function DataTable<TRow>(props: DataTableProps<TRow>) {
       </div>
 
       {pagination ? (
-        <div className="mt-3 flex flex-col gap-2 rounded-md border border-white/15 bg-linear-to-r from-slate-900/80 via-slate-900/65 to-cyan-950/25 p-2.5 text-sm shadow-[0_16px_36px_-28px_rgba(6,182,212,0.8)] sm:flex-row sm:items-center sm:justify-between sm:p-3">
-          <div className="text-xs text-slate-300 sm:text-sm">
+        <div className={`mt-3 flex flex-col gap-2 rounded-md p-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:p-3 ${isLight ? "border border-slate-200 bg-white shadow-sm" : "border border-white/15 bg-linear-to-r from-slate-900/80 via-slate-900/65 to-cyan-950/25 shadow-[0_16px_36px_-28px_rgba(6,182,212,0.8)]"}`}>
+          <div className={`text-xs sm:text-sm ${isLight ? "text-slate-600" : "text-slate-300"}`}>
             Halaman {currentPage} / {totalPages}
           </div>
           <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">

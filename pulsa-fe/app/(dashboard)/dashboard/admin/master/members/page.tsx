@@ -11,7 +11,7 @@ import { fetchAllAdminProducts } from "@/lib/adminProducts";
 import { alertConfirm, alertError, alertSuccess, alertWarning } from "@/components/ui/alerts";
 import { Input } from "@/components/ui/input";
 import { AppModal } from "@/components/ui/app-modal";
-import { ArrowDownCircle, ArrowUpCircle, CircleUserRound, Clock3, Coins, Loader2, Plus, Save, Search, ShieldCheck, Trash2, Wallet } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, CircleUserRound, Clock3, Coins, Loader2, Plus, Save, Search, ShieldCheck, Trash2, Users, Wallet } from "lucide-react";
 import { decodeJwt, type JwtClaims } from "@/lib/jwt";
 import { ACCOUNT_SCOPE_OPTIONS, createRolesForScope, roleLabel, rolesForScope, type AccountScope, type ManageableRole } from "@/lib/memberRoles";
 
@@ -126,7 +126,7 @@ export default function AdminMembersPage() {
   const searchParams = useSearchParams();
   const [currentRole, setCurrentRole] = useState<string>("");
 
-  const [accountScope, setAccountScope] = useState<AccountScope>("h2h");
+  const [accountScope, setAccountScope] = useState<AccountScope>("retail");
   const [items, setItems] = useState<MemberRow[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -185,7 +185,6 @@ export default function AdminMembersPage() {
   const [hierarchyPreview, setHierarchyPreview] = useState<HierarchyPreview | null>(null);
   const [hierarchyLoading, setHierarchyLoading] = useState(false);
   const [hierarchySaving, setHierarchySaving] = useState(false);
-  const [commissionFocusMode, setCommissionFocusMode] = useState(false);
   const [downlineViewerOpen, setDownlineViewerOpen] = useState(false);
   const [downlineViewerMember, setDownlineViewerMember] = useState<MemberRow | null>(null);
   const [downlineViewerLoading, setDownlineViewerLoading] = useState(false);
@@ -197,11 +196,11 @@ export default function AdminMembersPage() {
   function scopeLabel(scope: AccountScope): string {
     switch (scope) {
       case "h2h":
-        return "Member H2H";
+        return "Akun H2H";
       case "retail":
-        return "Member Retail";
+        return "Pengguna Aplikasi";
       case "internal":
-        return "Akun Internal";
+        return "Tim Operasional";
       default:
         return "Pengguna";
     }
@@ -346,9 +345,7 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     const requestedScope = (searchParams.get("scope") || "").toLowerCase();
-    const panel = (searchParams.get("panel") || "").toLowerCase();
-    setCommissionFocusMode(panel === "commission");
-    if (requestedScope === "h2h" || requestedScope === "retail" || requestedScope === "internal") {
+    if (requestedScope === "retail" || requestedScope === "internal") {
       setAccountScope((prev) => (prev === requestedScope ? prev : (requestedScope as AccountScope)));
     }
   }, [searchParams]);
@@ -914,43 +911,43 @@ export default function AdminMembersPage() {
     {
       id: "id",
       header: "ID",
-      tdClassName: "whitespace-nowrap font-medium text-slate-100",
+      tdClassName: "whitespace-nowrap font-medium text-slate-700",
       render: (m) => m.id,
     },
     {
       id: "nama",
       header: "Nama",
-      tdClassName: "whitespace-nowrap text-slate-200",
+      tdClassName: "whitespace-nowrap font-semibold text-slate-950",
       render: (m) => m.nama,
     },
     {
       id: "email",
       header: "Email",
-      tdClassName: "whitespace-nowrap text-slate-300",
+      tdClassName: "whitespace-nowrap text-slate-600",
       render: (m) => m.email,
     },
     {
       id: "role",
       header: "Role",
-      tdClassName: "whitespace-nowrap text-slate-200",
-      render: (m) => m.role,
+      tdClassName: "whitespace-nowrap text-slate-700",
+      render: (m) => roleLabel(m.role),
     },
     {
       id: "saldo",
       header: "Saldo",
-      tdClassName: "whitespace-nowrap font-semibold text-cyan-200",
+      tdClassName: "whitespace-nowrap font-semibold text-emerald-700",
       render: (m) => fmtIDR(m.saldo),
     },
     {
       id: "fee",
       header: "Fee",
-      tdClassName: "whitespace-nowrap font-semibold text-violet-200",
+      tdClassName: "whitespace-nowrap font-semibold text-violet-700",
       render: (m) => fmtIDR(m.fee_member_rp ?? 0),
     },
     {
       id: "commission",
       header: "Komisi / Trx",
-      tdClassName: "whitespace-nowrap font-semibold text-amber-200",
+      tdClassName: "whitespace-nowrap font-semibold text-amber-700",
       render: (m) => fmtIDR(effectiveCommission(m, accountScope)),
     },
   ];
@@ -958,7 +955,6 @@ export default function AdminMembersPage() {
   const canManageWallet = currentRole === "admin" || currentRole === "operator_wallet";
   const canManageSecurity = currentRole === "admin";
   const isH2HScope = accountScope === "h2h";
-  const isRetailScope = accountScope === "retail";
   const isInternalScope = accountScope === "internal";
 
 const actions: DataTableActions<MemberRow> = {
@@ -970,7 +966,7 @@ const actions: DataTableActions<MemberRow> = {
         <div className="inline-flex" data-action-dropdown>
           <button
             type="button"
-            className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-cyan-400/40 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+            className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
             onClick={(e) => {
               const target = e.currentTarget as HTMLElement;
               if (actionMenu?.key === `wallet-${m.id}`) {
@@ -987,7 +983,7 @@ const actions: DataTableActions<MemberRow> = {
 
         {canManageSecurity ? (
         <Button
-          className="h-8 w-8 border-amber-400/40 bg-amber-500/10 p-0 text-amber-200 hover:bg-amber-500/20"
+          className="h-8 w-8 border-amber-200 bg-amber-50 p-0 text-amber-700 hover:bg-amber-100"
           variant="outline"
           onClick={() => {
             setActionMenu(null);
@@ -1001,7 +997,7 @@ const actions: DataTableActions<MemberRow> = {
         ) : null}
 
         <Button
-          className="h-8 gap-1.5 border-amber-400/40 bg-amber-500/10 px-2 text-amber-200 hover:bg-amber-500/20"
+          className="h-8 gap-1.5 border-amber-200 bg-amber-50 px-2 text-amber-700 hover:bg-amber-100"
           variant="outline"
           onClick={() => {
             setActionMenu(null);
@@ -1015,7 +1011,7 @@ const actions: DataTableActions<MemberRow> = {
         </Button>
 
         <Button
-          className="h-8 gap-1.5 border-sky-400/40 bg-sky-500/10 px-2 text-sky-200 hover:bg-sky-500/20"
+          className="h-8 gap-1.5 border-sky-200 bg-sky-50 px-2 text-sky-700 hover:bg-sky-100"
           variant="outline"
           onClick={() => {
             setActionMenu(null);
@@ -1029,7 +1025,7 @@ const actions: DataTableActions<MemberRow> = {
         </Button>
 
         <Button
-          className="h-8 gap-1.5 border-emerald-400/40 bg-emerald-500/10 px-2 text-emerald-200 hover:bg-emerald-500/20"
+          className="h-8 gap-1.5 border-emerald-200 bg-emerald-50 px-2 text-emerald-700 hover:bg-emerald-100"
           variant="outline"
           onClick={() => {
             setActionMenu(null);
@@ -1043,7 +1039,7 @@ const actions: DataTableActions<MemberRow> = {
         </Button>
 
         <Button
-          className="h-8 w-8 border-sky-400/40 bg-sky-500/10 p-0 text-sky-200 hover:bg-sky-500/20"
+          className="h-8 w-8 border-slate-200 bg-slate-50 p-0 text-slate-600 hover:bg-slate-100"
           variant="outline"
           onClick={() => {
             setActionMenu(null);
@@ -1136,53 +1132,61 @@ const actions: DataTableActions<MemberRow> = {
         </div>
       ) : null}
 
-    <div className="space-y-4 p-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-lg font-semibold tracking-tight">{scopeLabel(accountScope)}</div>
-          <div className="text-sm text-muted-foreground">
-            {isH2HScope
-              ? "Pisahkan akun member H2H, fee kategori, komisi flat, dan tindakan admin."
-              : isRetailScope
-                ? "Pisahkan akun retail user, agent, master, dan komisi flat per transaksi."
-                : "Pisahkan akun admin dan operator internal."}
+    <div className="-m-2 min-h-screen bg-[#eef8f3] p-3 sm:p-5 lg:p-6">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <section className="rounded-lg border border-emerald-100 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                <Users className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase text-emerald-700">Akun Pengguna</div>
+                <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">Manajemen Akun</h1>
+                <p className="mt-1 text-sm text-slate-600">Kelola pengguna aplikasi dan tim operasional PulsaKilat.</p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 sm:min-w-56">
+              <div className="text-[11px] font-bold uppercase text-emerald-700">Total Saldo</div>
+              <div className="mt-1 text-xl font-bold text-emerald-950">Rp {fmtIDR(totalSaldo)}</div>
+              <div className="mt-0.5 text-xs text-emerald-700">{roleFilter ? roleLabel(roleFilter) : scopeLabel(accountScope)}</div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div className="flex w-full flex-wrap gap-2">
-          {ACCOUNT_SCOPE_OPTIONS.map((scope) => (
-            <button
-              key={scope.value}
-              type="button"
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                accountScope === scope.value
-                  ? "bg-cyan-500 text-slate-950"
-                  : "border border-white/15 bg-slate-900/70 text-slate-200 hover:bg-slate-800"
-              }`}
-              onClick={() => {
-                setAccountScope(scope.value);
-                setRoleFilter("");
-                setOffset(0);
-                void load(0, "", scope.value);
-              }}
-              title={scope.description}
-            >
-              {scope.label}
-            </button>
-          ))}
-        </div>
+        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4">
+            {ACCOUNT_SCOPE_OPTIONS.filter((scope) => scope.value !== "h2h").map((scope) => (
+              <button
+                key={scope.value}
+                type="button"
+                className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+                  accountScope === scope.value
+                    ? "bg-emerald-700 text-white"
+                    : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
+                }`}
+                onClick={() => {
+                  setAccountScope(scope.value);
+                  setRoleFilter("");
+                  setOffset(0);
+                  void load(0, "", scope.value);
+                }}
+              >
+                {scopeLabel(scope.value)}
+              </button>
+            ))}
+          </div>
 
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
-          {currentRole === "admin" ? (
-          <Button
-            className="h-10 w-full border-0 bg-linear-to-r from-violet-500 to-indigo-600 text-white shadow-[0_12px_26px_-14px_rgba(139,92,246,0.8)] hover:from-violet-400 hover:to-indigo-500 sm:w-auto"
-            onClick={() => setRegisterOpen(true)}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Tambah Pengguna
-          </Button>
-          ) : null}
-          <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="mt-4 grid gap-3 md:grid-cols-[auto_minmax(180px,260px)_minmax(240px,1fr)]">
+            {currentRole === "admin" ? (
+              <Button
+                className="h-11 border-0 bg-emerald-700 px-4 text-white hover:bg-emerald-800"
+                onClick={() => setRegisterOpen(true)}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                Tambah Pengguna
+              </Button>
+            ) : null}
             <select
               value={roleFilter}
               onChange={(e) => {
@@ -1191,81 +1195,66 @@ const actions: DataTableActions<MemberRow> = {
                 setOffset(0);
                 void load(0, nextRole);
               }}
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
               aria-label="Filter role pengguna"
-              title="Filter role"
             >
-              <option value="">Semua role di {scopeLabel(accountScope)}</option>
+              <option value="">Semua role</option>
               {scopeRoleOptions.map((roleValue) => (
-                <option key={roleValue} value={roleValue}>
-                  {roleLabel(roleValue)}
-                </option>
+                <option key={roleValue} value={roleValue}>{roleLabel(roleValue)}</option>
               ))}
             </select>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
+            <div className="flex min-w-0 gap-2">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setOffset(0);
+                    void load(0);
+                  }
+                }}
+                placeholder="Cari nama atau email"
+                className="h-11 min-w-0 flex-1 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:ring-emerald-500"
+              />
+              <Button
+                className="h-11 w-11 shrink-0 border-0 bg-emerald-700 p-0 text-white hover:bg-emerald-800"
+                onClick={() => {
                   setOffset(0);
                   void load(0);
-                }
-              }}
-              placeholder="Cari email/nama"
-              className="h-10 flex-1 sm:w-56 sm:flex-none"
-            />
-            <Button
-              className="h-10 w-10 shrink-0 border-0 bg-linear-to-r from-indigo-500 via-sky-500 to-cyan-500 p-0 text-white shadow-[0_12px_26px_-14px_rgba(99,102,241,0.8)] hover:from-indigo-400 hover:via-sky-400 hover:to-cyan-400"
-              onClick={() => {
-                setOffset(0);
-                void load(0);
-              }}
-              disabled={loading}
-              aria-label={loading ? "Loading pencarian" : "Cari member"}
-              title={loading ? "Loading..." : "Cari"}
-            >
-              <Search className="h-4 w-4" />
-            </Button>
+                }}
+                disabled={loading}
+                aria-label={loading ? "Memuat pencarian" : "Cari pengguna"}
+                title="Cari"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
-        </div>
+        </section>
+
+        <DataTable
+          columns={columns}
+          rows={items}
+          rowKey={(m) => m.id}
+          rowNumberStart={offset + 1}
+          minWidthClassName="min-w-[1150px]"
+          emptyText={`Belum ada ${scopeLabel(accountScope).toLowerCase()}.`}
+          actions={actions}
+          loading={loading}
+          variant="light"
+          pagination={{
+            page: Math.floor(offset / PAGE_SIZE) + 1,
+            totalPages: hasNext ? Math.floor(offset / PAGE_SIZE) + 2 : Math.floor(offset / PAGE_SIZE) + 1,
+            onPrev: () => setOffset((v) => Math.max(0, v - PAGE_SIZE)),
+            onNext: () => setOffset((v) => v + PAGE_SIZE),
+            onPageChange: (nextPage) => setOffset((nextPage - 1) * PAGE_SIZE),
+            disablePrev: loading || offset === 0,
+            disableNext: loading || !hasNext,
+          }}
+        />
       </div>
-
-      <div className="w-full rounded-2xl border border-emerald-400/25 bg-linear-to-r from-emerald-500/15 to-teal-500/10 px-4 py-3 text-sm text-emerald-100 shadow-[0_14px_30px_-20px_rgba(16,185,129,0.8)] sm:inline-flex sm:w-auto sm:items-center sm:gap-2">
-        <span className="text-emerald-200/90">Total Saldo {roleFilter ? roleLabel(roleFilter) : scopeLabel(accountScope)}:</span>
-        <span className="font-semibold text-emerald-50">Rp {fmtIDR(totalSaldo)}</span>
-      </div>
-
-      {commissionFocusMode ? (
-        <div className="rounded-2xl border border-amber-400/25 bg-linear-to-r from-amber-500/15 to-orange-500/10 px-4 py-3 text-sm text-amber-100 shadow-[0_14px_30px_-20px_rgba(251,191,36,0.65)]">
-          Pengaturan komisi ada di tombol <span className="font-semibold">Komisi</span> pada tiap akun. Nilai yang diatur adalah nominal flat per transaksi sukses untuk agent atau master sesuai scope yang sedang aktif.
-        </div>
-      ) : null}
-
-      {!isInternalScope ? (
-        <div className="rounded-2xl border border-sky-400/25 bg-linear-to-r from-sky-500/15 to-cyan-500/10 px-4 py-3 text-sm text-sky-100 shadow-[0_14px_30px_-20px_rgba(56,189,248,0.55)]">
-          Untuk menambahkan akun ini ke <span className="font-semibold">agent</span> atau <span className="font-semibold">master</span> yang sudah ada, klik tombol <span className="font-semibold">Downline</span> di baris akun.
-        </div>
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        rows={items}
-        rowKey={(m) => m.id}
-        rowNumberStart={offset + 1}
-        minWidthClassName="min-w-[1150px]"
-        emptyText="Tidak ada data."
-        actions={actions}
-        pagination={{
-          page: Math.floor(offset / PAGE_SIZE) + 1,
-          totalPages: hasNext ? Math.floor(offset / PAGE_SIZE) + 2 : Math.floor(offset / PAGE_SIZE) + 1,
-          onPrev: () => setOffset((v) => Math.max(0, v - PAGE_SIZE)),
-          onNext: () => setOffset((v) => v + PAGE_SIZE),
-          onPageChange: (nextPage) => setOffset((nextPage - 1) * PAGE_SIZE),
-          disablePrev: loading || offset === 0,
-          disableNext: loading || !hasNext,
-        }}
-      />
+    </div>
 
       {/* Adjust modal */}
       <RegisterMemberModal
@@ -1876,7 +1865,6 @@ const actions: DataTableActions<MemberRow> = {
           </div>
         </AppModal>
       ) : null}
-    </div>
     </>
   );
 }
