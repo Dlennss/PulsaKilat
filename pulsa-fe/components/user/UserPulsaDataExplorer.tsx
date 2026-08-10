@@ -269,24 +269,6 @@ export function UserPulsaDataExplorer({
       </section>
 
       <section className="-mt-4 space-y-3 rounded-t-[28px] bg-[#f8fafc] px-4 pt-5">
-        {detectedOperator ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3 shadow-[0_10px_28px_rgba(15,23,42,0.08)]">
-            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-[0_10px_20px_rgba(15,23,42,0.10)] ring-1 ring-slate-200">
-              {operatorVisual.logo ? (
-                <Image src={operatorVisual.logo} alt={`Logo ${detectedOperator.label}`} width={44} height={44} className="h-full w-full object-contain p-1.5" />
-              ) : (
-                <span className="text-xs font-black uppercase text-slate-700">{operatorVisual.short}</span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-black text-slate-900">{detectedOperator.label}</p>
-              <p className="text-xs font-semibold text-slate-500">
-                Menampilkan {activeTab === "pulsa" ? "pulsa" : "paket data"} sesuai nomor.
-              </p>
-            </div>
-          </div>
-        ) : null}
-
         {!phone.trim() ? (
           <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-5 text-center shadow-[0_10px_28px_rgba(15,23,42,0.08)]">
             <p className="text-sm font-black text-slate-900">Masukkan nomor HP</p>
