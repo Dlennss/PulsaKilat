@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   BadgePercent,
-  BookUser,
   BriefcaseBusiness,
   Car,
   CalendarDays,
@@ -344,14 +343,11 @@ const defaultService: ServiceMeta = {
 };
 
 const hpPostpaidProviders = [
-  { name: "Telkomsel", logo: "/images/providers/logo_telkomsel.png" },
-  { name: "XL Axiata", logo: "/images/providers/logo_xl.png" },
-  { name: "Indosat", logo: "/images/providers/logo_im3.png" },
-  { name: "3 (Tri)", logo: "/images/providers/logo_tri.png" },
-  { name: "Smartfren", logo: "/images/providers/logo_smartfren.png" },
-  { name: "Biznet", logo: "/images/internet/logo_biznet.png" },
-  { name: "First Media", logo: null },
-  { name: "Home Credit", logo: null },
+  { name: "Telkomsel Halo", label: "Telkomsel", logo: "/images/providers/logo_telkomsel.webp" },
+  { name: "XL Prioritas", label: "XL", logo: "/images/providers/logo_xl.png" },
+  { name: "Indosat Postpaid", label: "Indosat", logo: "/images/providers/logo_im3.webp" },
+  { name: "Tri Postpaid", label: "Tri", logo: "/images/providers/logo_tri.webp" },
+  { name: "Smartfren Postpaid", label: "Smartfren", logo: "/images/providers/logo_smartfren.webp" },
 ];
 
 const esimRegions = ["Semua", "Asia", "Eropa", "Amerika", "Afrika", "Oseania"];
@@ -852,190 +848,183 @@ export function UserUniversalServicePageContent({ serviceSlug }: { serviceSlug: 
 
   if (isHpPostpaid && !completedOrder) {
     return (
-      <main className="min-h-screen bg-[#f3fbf7] pb-36 text-[#070d26]">
-        <section className="relative overflow-hidden rounded-b-[42px] bg-[radial-gradient(circle_at_82%_8%,rgba(255,255,255,0.18),transparent_34%),linear-gradient(145deg,#00763b_0%,#00a650_54%,#007a3d_100%)] px-5 pb-20 pt-8 text-white shadow-[0_18px_40px_rgba(0,105,54,0.24)]">
-          <div className="mx-auto flex w-full max-w-md items-center justify-between">
-            <Link href="/user/kategori" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/12">
-              <ArrowLeft className="h-8 w-8" strokeWidth={2.8} />
-            </Link>
-            <h1 className="min-w-0 flex-1 px-2 text-center text-[23px] font-extrabold leading-tight tracking-normal text-white min-[390px]:text-[29px]">
-              HP Pascabayar
-            </h1>
-            <Link href="/user/transaksi" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/12">
-              <Clock3 className="h-8 w-8" strokeWidth={2.8} />
-            </Link>
-          </div>
-        </section>
+      <main className="min-h-screen overflow-x-hidden bg-[#edf7f2] pb-32 text-slate-950">
+        <header className="relative overflow-hidden bg-[linear-gradient(140deg,#052e26_0%,#047857_64%,#38b94d_115%)] px-4 pb-10 pt-5 text-white shadow-[0_16px_36px_rgba(5,46,38,0.22)]">
+          <div className="mx-auto w-full max-w-md">
+            <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+              <Link href="/user/kategori" aria-label="Kembali" className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15 transition hover:bg-white/15">
+                <ArrowLeft className="h-5 w-5" strokeWidth={2.5} />
+              </Link>
+              <h1 className="truncate text-center text-xl font-black">HP Pascabayar</h1>
+              <Link href="/user/transaksi" aria-label="Riwayat transaksi" className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15 transition hover:bg-white/15">
+                <Clock3 className="h-5 w-5" strokeWidth={2.5} />
+              </Link>
+            </div>
 
-        <div className="relative z-10 mx-auto -mt-9 w-full max-w-md space-y-5 px-4">
-          <section className="rounded-[30px] border border-emerald-100/80 bg-white p-3.5 shadow-[0_18px_44px_rgba(15,23,42,0.12)]">
-            <div className="grid min-h-[118px] grid-cols-[76px_minmax(0,1fr)] items-center gap-4 rounded-[24px] border border-slate-100 bg-white px-3.5 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
-              <span className="relative grid h-[76px] w-[76px] place-items-center rounded-full bg-[linear-gradient(145deg,#18c866,#00783d)] text-white shadow-[inset_0_1px_12px_rgba(255,255,255,0.22),0_12px_24px_rgba(0,126,65,0.18)]">
-                <ReceiptText className="h-11 w-11" strokeWidth={3} />
-                <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-[3px] border-white bg-white text-[#008a42] shadow-[0_8px_18px_rgba(15,23,42,0.14)]">
-                  <span className="text-xl font-black leading-none">!</span>
-                </span>
+            <div className="mt-7 flex items-center gap-4">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-[#047857] shadow-[0_12px_26px_rgba(0,0,0,0.16)]">
+                <ReceiptText className="h-7 w-7" strokeWidth={2.5} />
               </span>
               <div className="min-w-0">
-                <h2 className="text-[20px] font-extrabold leading-tight text-[#070d26] min-[390px]:text-2xl">HP Pascabayar</h2>
-                <p className="mt-2 text-[13px] font-medium leading-relaxed text-[#646979] min-[390px]:text-[15px]">
-                  Bayar tagihan pascabayar lebih mudah dan cepat
-                </p>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-lime-100">Tagihan Seluler</p>
+                <p className="mt-1 text-sm font-semibold leading-5 text-emerald-50">Cek nomor pelanggan dan selesaikan tagihan dalam satu proses.</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="relative z-10 mx-auto -mt-4 w-full max-w-md space-y-4 px-3 min-[390px]:px-4">
+          <section className="overflow-hidden rounded-[24px] border border-emerald-100 bg-white shadow-[0_16px_38px_rgba(15,23,42,0.09)]">
+            <div className="border-b border-slate-100 px-4 py-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#047857]">Langkah 1</p>
+                  <h2 className="mt-1 text-lg font-black">Pilih operator</h2>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-[#047857]">{hpPostpaidProviders.length} tersedia</span>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {hpPostpaidProviders.map((provider) => {
+                  const active = selectedProvider === provider.name || (provider.name === "Telkomsel Halo" && selectedProvider === "Telkomsel");
+                  return (
+                    <button
+                      key={provider.name}
+                      type="button"
+                      onClick={() => {
+                        setSelectedProvider(provider.name);
+                        setHpBill(null);
+                      }}
+                      aria-pressed={active}
+                      className={[
+                        "relative flex min-h-[88px] min-w-0 flex-col items-center justify-center rounded-[16px] border px-2 py-3 text-center transition",
+                        active
+                          ? "border-[#047857] bg-emerald-50 shadow-[0_8px_18px_rgba(4,120,87,0.10)] ring-1 ring-[#047857]"
+                          : "border-slate-200 bg-white hover:border-emerald-300",
+                      ].join(" ")}
+                    >
+                      {active ? <CheckCircle2 className="absolute right-2 top-2 h-4 w-4 text-[#047857]" strokeWidth={2.8} /> : null}
+                      <span className="grid h-9 w-full place-items-center overflow-hidden">
+                        <Image src={provider.logo} alt={`Logo ${provider.label}`} width={60} height={36} className="max-h-8 max-w-[58px] object-contain" />
+                      </span>
+                      <span className="mt-2 line-clamp-1 w-full text-[10px] font-black text-slate-800 min-[390px]:text-[11px]">{provider.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <h3 className="mt-7 text-[22px] font-extrabold text-[#07112e]">Provider</h3>
-            <div className="mt-4 grid grid-cols-4 gap-2.5">
-              {hpPostpaidProviders.map((provider) => {
-                const active = selectedProvider === provider.name || selectedProvider === `${provider.name} Halo`;
-                return (
-                  <button
-                    key={provider.name}
-                    type="button"
-                    onClick={() => {
-                      setSelectedProvider(provider.name);
-                      setHpBill(null);
-                    }}
-                    className={[
-                      "flex min-h-[100px] min-w-0 flex-col items-center justify-center rounded-[16px] border bg-white px-1.5 py-3 text-center shadow-[0_8px_18px_rgba(15,23,42,0.05)] transition",
-                      active ? "border-[#009f4d] bg-[#fbfffd] ring-2 ring-emerald-100" : "border-slate-200 hover:border-emerald-300",
-                    ].join(" ")}
-                  >
-                    <span className="grid h-10 w-full place-items-center overflow-hidden">
-                      {provider.logo ? (
-                        <Image
-                          src={provider.logo}
-                          alt={provider.name}
-                          width={68}
-                          height={34}
-                          className="max-h-8 w-auto object-contain"
-                        />
-                      ) : (
-                        <span className={provider.name === "First Media" ? "text-center text-base font-black leading-none text-[#2474b9]" : "text-center text-base font-black leading-none text-[#e1272f]"}>
-                          {provider.name === "First Media" ? "FiRST" : "HOME"}
-                          <span className="block text-[10px]">{provider.name === "First Media" ? "MEDIA" : "CREDIT"}</span>
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-3 line-clamp-2 text-[11px] font-bold leading-tight text-[#070d26] min-[390px]:text-xs">{provider.name}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <div className="px-4 py-5">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#047857]">Langkah 2</p>
+              <label htmlFor="hp-postpaid-number" className="mt-1 block text-lg font-black">Nomor pelanggan</label>
+              <div className="mt-3 flex min-h-14 items-center overflow-hidden rounded-[16px] border border-slate-200 bg-slate-50 transition focus-within:border-[#047857] focus-within:bg-white focus-within:ring-4 focus-within:ring-emerald-100">
+                <span className="grid h-14 w-12 shrink-0 place-items-center text-[#047857]">
+                  <Smartphone className="h-5 w-5" strokeWidth={2.4} />
+                </span>
+                <input
+                  id="hp-postpaid-number"
+                  value={destination}
+                  onChange={(event) => {
+                    setDestination(event.target.value.replace(/\D+/g, ""));
+                    setHpBill(null);
+                  }}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Contoh: 081234567890"
+                  className="h-14 min-w-0 flex-1 bg-transparent pr-3 text-base font-bold text-slate-950 outline-none placeholder:text-sm placeholder:font-semibold placeholder:text-slate-400"
+                />
+              </div>
 
-            <h3 className="mt-7 text-[22px] font-extrabold text-[#07112e]">Nomor Pelanggan</h3>
-            <div className="mt-4 flex h-[60px] items-center overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.04)] focus-within:border-[#008a42] focus-within:ring-4 focus-within:ring-emerald-100">
-              <span className="grid h-full w-[52px] shrink-0 place-items-center text-slate-400">
-                <UserRound className="h-7 w-7" strokeWidth={2.2} />
-              </span>
-              <input
-                value={destination}
-                onChange={(event) => {
-                  setDestination(event.target.value);
-                  setHpBill(null);
-                }}
-                inputMode="numeric"
-                placeholder="Masukkan nomor pelanggan"
-                className="min-w-0 flex-1 bg-transparent px-1 text-base font-semibold text-[#070d26] outline-none placeholder:text-slate-400"
-              />
-              <span className="grid h-full w-[52px] shrink-0 place-items-center text-[#008a42]">
-                <BookUser className="h-7 w-7" strokeWidth={2.4} />
-              </span>
-            </div>
+              <div className="mt-4 flex min-h-11 items-center justify-between gap-4 rounded-[14px] bg-slate-50 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-800">Simpan nomor</p>
+                  <p className="truncate text-[10px] font-semibold text-slate-400">Untuk transaksi berikutnya</p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Simpan nomor pelanggan"
+                  aria-pressed={saveNumber}
+                  onClick={() => setSaveNumber((value) => !value)}
+                  className={[
+                    "relative h-7 w-12 shrink-0 rounded-full transition",
+                    saveNumber ? "bg-[#047857]" : "bg-slate-300",
+                  ].join(" ")}
+                >
+                  <span className={["absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition", saveNumber ? "left-6" : "left-1"].join(" ")} />
+                </button>
+              </div>
 
-            <div className="mt-5 flex items-center justify-between">
-              <p className="text-lg font-extrabold text-[#07112e]">Simpan Nomor</p>
+              {error ? <p role="alert" className="mt-4 rounded-[14px] border border-rose-200 bg-rose-50 px-3 py-3 text-xs font-bold leading-5 text-rose-700">{error}</p> : null}
+
               <button
                 type="button"
-                aria-pressed={saveNumber}
-                onClick={() => setSaveNumber((value) => !value)}
-                className={[
-                  "relative h-9 w-[72px] rounded-full border transition",
-                  saveNumber ? "border-[#008a42] bg-[#009f4d]" : "border-slate-300 bg-slate-200",
-                ].join(" ")}
+                disabled={!canContinue || isCreating}
+                onClick={checkHpPostpaidBill}
+                className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-[16px] bg-[#047857] px-4 text-sm font-black text-white shadow-[0_12px_24px_rgba(4,120,87,0.20)] transition hover:bg-[#036b4e] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
               >
-                <span
-                  className={[
-                    "absolute top-1 h-7 w-7 rounded-full bg-white shadow-[0_4px_10px_rgba(15,23,42,0.18)] transition",
-                    saveNumber ? "right-1" : "left-1",
-                  ].join(" ")}
-                />
+                <Search className="h-4 w-4" strokeWidth={2.7} />
+                {isCreating ? "Memeriksa..." : "Cek Tagihan"}
               </button>
             </div>
-
-            {error ? (
-              <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</p>
-            ) : null}
-
-            <button
-              type="button"
-              disabled={!canContinue || isCreating}
-              onClick={checkHpPostpaidBill}
-              className="mt-6 flex h-[60px] w-full items-center justify-center rounded-[16px] bg-[linear-gradient(135deg,#00a650,#007a3d)] text-lg font-extrabold tracking-wide text-white shadow-[0_14px_26px_rgba(0,122,61,0.22)] transition hover:brightness-105 disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
-            >
-              {isCreating ? "MEMERIKSA..." : "CEK TAGIHAN"}
-            </button>
           </section>
 
           {hpBill ? (
-            <section className="rounded-[30px] border border-emerald-100/80 bg-white p-4 shadow-[0_16px_36px_rgba(15,23,42,0.10)]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#008a42]">Detail Tagihan</p>
-                  <h3 className="mt-1 text-xl font-extrabold text-[#07112e]">{hpBill.provider}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">{hpBill.period}</p>
+            <section className="overflow-hidden rounded-[24px] border border-emerald-100 bg-white shadow-[0_16px_38px_rgba(15,23,42,0.09)]">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-4">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#047857]">Tagihan Ditemukan</p>
+                  <h2 className="mt-1 truncate text-lg font-black">{hpBill.provider}</h2>
+                  <p className="mt-0.5 text-xs font-semibold text-slate-400">Periode {hpBill.period}</p>
                 </div>
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#008a42]">
-                  <ReceiptText className="h-6 w-6" strokeWidth={2.5} />
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-emerald-50 text-[#047857]">
+                  <ReceiptText className="h-5 w-5" strokeWidth={2.5} />
                 </span>
               </div>
 
-              <div className="mt-4 space-y-2">
+              <dl className="divide-y divide-slate-100 px-4">
                 {[
                   ["Nama pelanggan", hpBill.customerName],
                   ["Nomor pelanggan", hpBill.destination],
                   ["Nominal tagihan", formatCurrency(hpBill.nominal)],
                   ["Biaya admin", formatCurrency(hpBill.adminFee)],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between gap-3 rounded-2xl bg-[#f4fbf7] px-4 py-3">
-                    <span className="text-xs font-bold text-slate-500">{label}</span>
-                    <span className="max-w-[170px] truncate text-right text-sm font-black text-[#07112e]">{value}</span>
+                  <div key={label} className="grid min-h-12 grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] items-center gap-3 py-3">
+                    <dt className="text-xs font-semibold text-slate-500">{label}</dt>
+                    <dd className="break-words text-right text-sm font-black text-slate-900">{value}</dd>
                   </div>
                 ))}
-                <div className="flex items-center justify-between rounded-[20px] bg-[linear-gradient(135deg,#ecfdf5,#f7fee7)] px-4 py-4">
-                  <span className="text-sm font-black text-[#07112e]">Total bayar</span>
-                  <span className="text-xl font-extrabold text-[#008a42]">{formatCurrency(hpBill.total)}</span>
+              </dl>
+
+              <div className="bg-[#052e26] px-4 py-4 text-white">
+                <div className="flex items-end justify-between gap-3">
+                  <span className="text-xs font-bold text-emerald-100">Total pembayaran</span>
+                  <span className="text-xl font-black text-white min-[390px]:text-2xl">{formatCurrency(hpBill.total)}</span>
                 </div>
               </div>
 
-              <div className="mt-5">
-                <p className="text-sm font-extrabold text-[#07112e]">Metode Pembayaran</p>
-                <button
-                  type="button"
-                  className="mt-3 flex w-full items-center gap-3 rounded-[20px] border-2 border-[#00a650] bg-[#f4fff9] px-4 py-3 text-left shadow-[0_10px_20px_rgba(0,122,61,0.08)]"
-                >
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#008a42] text-white">
+              <div className="p-4">
+                <div className="flex items-center gap-3 rounded-[16px] border border-emerald-200 bg-emerald-50 px-3 py-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-[#047857] text-white">
                     <WalletCards className="h-5 w-5" strokeWidth={2.5} />
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-black text-[#07112e]">Saldo PulsaKilat</span>
-                    <span className="mt-0.5 block text-xs font-semibold text-slate-500">Bayar langsung dari saldo akun</span>
-                  </span>
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-[#008a42]" strokeWidth={2.6} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-slate-900">Saldo PulsaKilat</p>
+                    <p className="text-[10px] font-semibold text-slate-500">Pembayaran dari saldo utama</p>
+                  </div>
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-[#047857]" strokeWidth={2.7} />
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isCreating}
+                  onClick={payHpPostpaidBill}
+                  className="mt-4 flex h-14 w-full items-center justify-center rounded-[16px] bg-[#047857] px-4 text-sm font-black text-white shadow-[0_12px_24px_rgba(4,120,87,0.20)] transition hover:bg-[#036b4e] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                >
+                  {isCreating ? "Memproses..." : "Bayar Sekarang"}
                 </button>
               </div>
-
-              <button
-                type="button"
-                disabled={isCreating}
-                onClick={payHpPostpaidBill}
-                className="mt-5 flex h-[58px] w-full items-center justify-center rounded-[18px] bg-[linear-gradient(135deg,#052e26,#008a42,#65c82f)] text-base font-extrabold text-white shadow-[0_16px_28px_rgba(0,122,61,0.24)] disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500"
-              >
-                {isCreating ? "MEMPROSES..." : "BAYAR SEKARANG"}
-              </button>
             </section>
           ) : null}
-
         </div>
       </main>
     );
