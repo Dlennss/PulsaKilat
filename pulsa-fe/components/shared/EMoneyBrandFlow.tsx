@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Sparkles, Wallet, Zap } from "lucide-react";
+import { Sparkles, Wallet } from "lucide-react";
 import { UserProductGrid } from "@/components/user/UserProductGrid";
 import type { UserProductItem } from "@/components/user/types";
 import { getBrandLogo } from "@/lib/brand-logos";
@@ -218,7 +218,6 @@ export function EMoneyBrandFlow({ items, isLoggedIn, authToken, buyerRole, initi
         initialDest={initialDest}
         buyLabel="Top Up"
         enableGuestHint={false}
-        icon={Zap}
       />
     </div>
   );

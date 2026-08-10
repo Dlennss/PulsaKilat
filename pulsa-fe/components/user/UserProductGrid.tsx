@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { X, Zap, type LucideIcon } from "lucide-react";
+import { X } from "lucide-react";
 import type { UserProductItem } from "@/components/user/types";
 import { UserCheckoutModal } from "@/components/user/UserCheckoutModal";
 import { getDisplayProductName, getDisplayedFixedPrice } from "@/components/guest/product-card-shared";
@@ -19,7 +19,6 @@ type UserProductGridProps = {
   enableGuestHint?: boolean;
   buyLabel?: string;
   hidePrice?: boolean;
-  icon?: LucideIcon;
 };
 
 function formatRupiah(value: number) {
@@ -88,7 +87,6 @@ function UserProductCard({
   buyBlockedLabel,
   buyLabel,
   hidePrice,
-  icon: Icon = Zap,
 }: {
   item: UserProductItem;
   isLoggedIn: boolean;
@@ -98,7 +96,6 @@ function UserProductCard({
   buyBlockedLabel?: string;
   buyLabel?: string;
   hidePrice?: boolean;
-  icon?: LucideIcon;
 }) {
   const isFixed = item.tipe_harga === "FIXED";
   const effectiveRole = isLoggedIn ? buyerRole : "guest";
@@ -132,9 +129,6 @@ function UserProductCard({
                 {nominalLabel}
               </p>
             </div>
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100 transition group-hover:scale-105">
-              <Icon className="h-4 w-4" />
-            </span>
           </div>
 
           <div className="space-y-2">
@@ -163,9 +157,6 @@ function UserProductCard({
               {displayName}
             </h2>
           </div>
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-sky-100 to-sky-50 text-sky-600 shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-110">
-            <Icon className="h-4 w-4" />
-          </span>
         </div>
 
         {hidePrice ? (
@@ -214,7 +205,6 @@ export function UserProductGrid({
   enableGuestHint = true,
   buyLabel,
   hidePrice = false,
-  icon = Zap,
 }: UserProductGridProps) {
   const [selectedProduct, setSelectedProduct] = React.useState<UserProductItem | null>(null);
   const [showGuestHint, setShowGuestHint] = React.useState(false);
@@ -278,7 +268,6 @@ export function UserProductGrid({
             buyBlockedLabel={buyBlockedLabel}
             buyLabel={buyLabel}
             hidePrice={hidePrice}
-            icon={icon}
           />
         ))}
       </div>
