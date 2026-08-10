@@ -589,7 +589,10 @@ export function UserCheckoutModal({
           if (effectiveRole === "agent" && creditAvailable > 0) {
             throw new Error("Saldo utama tidak cukup. Mutasikan saldo kredit ke saldo utama terlebih dahulu.");
           }
-          throw new Error("Saldo utama tidak cukup. Isi saldo terlebih dahulu untuk melanjutkan transaksi.");
+          const requiredTopup = Math.max(100_000, Math.ceil(estimatedQrisAmount || Number(orderJson.item.harga_final || 0)));
+          onClose();
+          router.push(`/user/account/topup?amount=${requiredTopup}`);
+          return;
         }
         throw new Error(paymentError);
       }

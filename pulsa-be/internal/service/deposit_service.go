@@ -24,6 +24,7 @@ type DepositService struct {
 
 const (
 	minDepositAmount            int64 = 1000000
+	minRetailDepositAmount      int64 = 100000
 	minDepositVAAmount          int64 = 10000000
 	specialDepositBankBCA8ID    int64 = 18
 	specialDepositBankBCA8Email       = "makan@makin.com"
@@ -81,6 +82,9 @@ func (s *DepositService) CreateRequest(ctx context.Context, memberID int64, role
 	}
 	if bankID <= 0 || amount <= 0 {
 		return nil, errors.New("invalid payload")
+	}
+	if !helper.IsH2HRole(role) && amount < minRetailDepositAmount {
+		return nil, errors.New("minimal topup Rp 100.000")
 	}
 	if helper.IsH2HRole(role) && amount < minDepositAmount {
 		return nil, errors.New("minimal deposit Rp 1.000.000")
