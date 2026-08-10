@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowUpRight, BadgeCheck, Building2, Coins, Landmark, ReceiptText, Shield, Users, Wallet, Zap } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Landmark, Package, ReceiptText, Shield, Users, Wallet, Zap } from "lucide-react";
 
 type MembersResp = {
   ok?: boolean;
@@ -28,15 +28,10 @@ type ProviderWalletResp = {
 };
 
 type OverviewData = {
-  h2hCount: number;
   retailCount: number;
-  h2hSaldo: number;
   retailSaldo: number;
-  totalMemberSaldo: number;
   totalBankSaldo: number;
-  totalProviderSaldo: number;
-  totalProvider: number;
-  profit: number;
+  pulsa24JamSaldo: number;
 };
 
 function authHeader(): Record<string, string> {
@@ -81,26 +76,17 @@ function iconToneClass(tone: StatTone) {
 export default function AdminHome() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<OverviewData>({
-    h2hCount: 0,
     retailCount: 0,
-    h2hSaldo: 0,
     retailSaldo: 0,
-    totalMemberSaldo: 0,
     totalBankSaldo: 0,
-    totalProviderSaldo: 0,
-    totalProvider: 0,
-    profit: 0,
+    pulsa24JamSaldo: 0,
   });
 
   useEffect(() => {
     async function loadOverview() {
       setLoading(true);
       try {
-        const [h2hRes, retailRes, bankRes, providerWalletRes] = await Promise.all([
-          fetch("/api/admin/members?scope=h2h&limit=1&offset=0", {
-            headers: authHeader(),
-            cache: "no-store",
-          }),
+        const [retailRes, bankRes, providerWalletRes] = await Promise.all([
           fetch("/api/admin/members?scope=retail&limit=1&offset=0", {
             headers: authHeader(),
             cache: "no-store",
@@ -115,18 +101,14 @@ export default function AdminHome() {
           }),
         ]);
 
-        const [h2hJson, retailJson, bankJson, providerWalletJson] = await Promise.all([
-          h2hRes.json().catch(() => ({} as MembersResp)),
+        const [retailJson, bankJson, providerWalletJson] = await Promise.all([
           retailRes.json().catch(() => ({} as MembersResp)),
           bankRes.json().catch(() => ({} as BankResp)),
           providerWalletRes.json().catch(() => ({} as ProviderWalletResp)),
         ]);
 
-        const h2hCount = h2hRes.ok && h2hJson.ok ? Number(h2hJson.total_count || 0) : 0;
         const retailCount = retailRes.ok && retailJson.ok ? Number(retailJson.total_count || 0) : 0;
-        const h2hSaldo = h2hRes.ok && h2hJson.ok ? Number(h2hJson.total_saldo || 0) : 0;
         const retailSaldo = retailRes.ok && retailJson.ok ? Number(retailJson.total_saldo || 0) : 0;
-        const totalMemberSaldo = h2hSaldo + retailSaldo;
         const totalBankSaldo =
           bankRes.ok && bankJson.ok
             ? (Array.isArray(bankJson.items) ? bankJson.items : []).reduce(
@@ -134,27 +116,19 @@ export default function AdminHome() {
                 0
               )
             : 0;
-        const totalProviderSaldo =
-          providerWalletRes.ok && providerWalletJson.ok
-            ? (Array.isArray(providerWalletJson.data) ? providerWalletJson.data : []).reduce(
-                (sum: number, item: { saldo_provider?: number }) => sum + Number(item.saldo_provider || 0),
-                0
-              )
-            : 0;
-        const totalProvider =
-          providerWalletRes.ok && providerWalletJson.ok ? (Array.isArray(providerWalletJson.data) ? providerWalletJson.data.length : 0) : 0;
-        const profit = totalProviderSaldo + totalBankSaldo - totalMemberSaldo;
+        const pulsa24JamSaldo = providerWalletRes.ok && providerWalletJson.ok
+          ? Number(
+              (Array.isArray(providerWalletJson.data) ? providerWalletJson.data : []).find(
+                (item: { provider: string; saldo_provider?: number }) => item.provider.toLowerCase() === "pulsa24jam"
+              )?.saldo_provider || 0
+            )
+          : 0;
 
         setData({
-          h2hCount,
           retailCount,
-          h2hSaldo,
           retailSaldo,
-          totalMemberSaldo,
           totalBankSaldo,
-          totalProviderSaldo,
-          totalProvider,
-          profit,
+          pulsa24JamSaldo,
         });
       } finally {
         setLoading(false);
@@ -165,15 +139,10 @@ export default function AdminHome() {
   }, []);
 
   const stats = [
-    { title: "Akun H2H", value: fmtNumber(data.h2hCount), icon: Users, tone: "blue" as StatTone, desc: "Member H2H terdaftar" },
-    { title: "Akun Retail", value: fmtNumber(data.retailCount), icon: Users, tone: "green" as StatTone, desc: "Agent dan user aplikasi" },
-    { title: "Provider Aktif", value: fmtNumber(data.totalProvider), icon: Building2, tone: "mint" as StatTone, desc: "Koneksi provider berjalan" },
-    { title: "Saldo H2H", value: fmtCurrency(data.h2hSaldo), icon: Wallet, tone: "blue" as StatTone, desc: "Total saldo member H2H" },
-    { title: "Saldo Retail", value: fmtCurrency(data.retailSaldo), icon: Wallet, tone: "green" as StatTone, desc: "Total saldo akun retail" },
-    { title: "Saldo Member", value: fmtCurrency(data.totalMemberSaldo), icon: Wallet, tone: "lime" as StatTone, desc: "Gabungan H2H dan retail" },
-    { title: "Saldo Bank", value: fmtCurrency(data.totalBankSaldo), icon: Landmark, tone: "blue" as StatTone, desc: "Dana di rekening aktif" },
-    { title: "Saldo Provider", value: fmtCurrency(data.totalProviderSaldo), icon: Building2, tone: "mint" as StatTone, desc: "Saldo di supplier" },
-    { title: "Profit Estimasi", value: fmtCurrency(data.profit), icon: Coins, tone: data.profit >= 0 ? "green" as StatTone : "gold" as StatTone, desc: "Bank + provider - member" },
+    { title: "Akun Pengguna", value: fmtNumber(data.retailCount), icon: Users, tone: "green" as StatTone, desc: "User dan agent PulsaKilat" },
+    { title: "Saldo Pengguna", value: fmtCurrency(data.retailSaldo), icon: Wallet, tone: "lime" as StatTone, desc: "Total saldo utama pengguna" },
+    { title: "Saldo Rekening", value: fmtCurrency(data.totalBankSaldo), icon: Landmark, tone: "blue" as StatTone, desc: "Dana pada rekening PulsaKilat" },
+    { title: "Modal Pulsa24Jam", value: fmtCurrency(data.pulsa24JamSaldo), icon: Zap, tone: "mint" as StatTone, desc: "Saldo untuk memproses produk" },
   ];
 
   return (
@@ -192,7 +161,7 @@ export default function AdminHome() {
                 Ringkasan Operasional
               </h1>
               <p className="relative mt-3 max-w-2xl text-sm font-semibold leading-6 text-emerald-50">
-                Pantau akun, saldo, provider, dan aktivitas penting dari satu dashboard yang fokus ke operasional PulsaKilat.
+                Pantau pengguna, kredit agent, transaksi, saldo, dan produk dari satu dashboard operasional PulsaKilat.
               </p>
               <div className="relative mt-5 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#052e26] bg-white px-3 py-1.5 text-xs font-black text-[#052e26]">
@@ -216,7 +185,7 @@ export default function AdminHome() {
                 href="/dashboard/admin/integrasi/pulsa24jam"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-[#052e26] bg-white px-4 py-3 text-sm font-black text-[#052e26] shadow-[0_12px_24px_rgba(6,78,59,0.10)] outline-none transition hover:bg-[#f8fffb] focus-visible:ring-4 focus-visible:ring-emerald-200"
               >
-                Integrasi Provider
+                Koneksi Pulsa24Jam
                 <ArrowUpRight className="h-4 w-4" />
               </Link>
             </div>
@@ -246,22 +215,22 @@ export default function AdminHome() {
         <section className="grid gap-3 lg:grid-cols-3">
           {[
             {
-              href: "/dashboard/admin/komisi",
-              title: "Komisi & Laporan",
-              desc: "Pantau komisi agent, master, dan performa bisnis.",
-              icon: Coins,
+              href: "/dashboard/admin/master/members",
+              title: "Pengguna & Kredit",
+              desc: "Kelola akun user, agent, marketing, dan pengajuan kredit.",
+              icon: Users,
             },
             {
-              href: "/dashboard/admin/wallet-activity",
-              title: "Aktivitas Wallet",
-              desc: "Lacak koreksi saldo member dan provider.",
-              icon: Wallet,
-            },
-            {
-              href: "/dashboard/admin/transaksi/member-status-logs",
-              title: "Log Status Member",
-              desc: "Audit perubahan status transaksi member.",
+              href: "/dashboard/admin/transaksi/aplikasi",
+              title: "Transaksi Pelanggan",
+              desc: "Pantau pembelian produk dan status pemrosesannya.",
               icon: ReceiptText,
+            },
+            {
+              href: "/dashboard/admin/master/produk",
+              title: "Produk & Harga",
+              desc: "Atur produk, harga jual, dan biaya layanan aplikasi.",
+              icon: Package,
             },
           ].map((item) => {
             const Icon = item.icon;
