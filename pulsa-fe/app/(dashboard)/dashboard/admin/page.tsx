@@ -13,7 +13,11 @@ type MembersResp = {
 
 type BankResp = {
   ok?: boolean;
-  items?: Array<{ saldo?: number }>;
+  items?: Array<{
+    saldo?: number;
+    aktif?: boolean;
+    admin_staff_only?: boolean;
+  }>;
 };
 
 type ProviderWalletResp = {
@@ -112,7 +116,10 @@ export default function AdminHome() {
         const totalBankSaldo =
           bankRes.ok && bankJson.ok
             ? (Array.isArray(bankJson.items) ? bankJson.items : []).reduce(
-                (sum: number, item: { saldo?: number }) => sum + Number(item.saldo || 0),
+                (sum: number, item: { saldo?: number; aktif?: boolean; admin_staff_only?: boolean }) =>
+                  item.aktif !== false && !item.admin_staff_only
+                    ? sum + Number(item.saldo || 0)
+                    : sum,
                 0
               )
             : 0;
@@ -141,7 +148,7 @@ export default function AdminHome() {
   const stats = [
     { title: "Akun Pengguna", value: fmtNumber(data.retailCount), icon: Users, tone: "green" as StatTone, desc: "User dan agent PulsaKilat" },
     { title: "Saldo Pengguna", value: fmtCurrency(data.retailSaldo), icon: Wallet, tone: "lime" as StatTone, desc: "Total saldo utama pengguna" },
-    { title: "Saldo Rekening", value: fmtCurrency(data.totalBankSaldo), icon: Landmark, tone: "blue" as StatTone, desc: "Dana pada rekening PulsaKilat" },
+    { title: "Saldo Pembayaran", value: fmtCurrency(data.totalBankSaldo), icon: Landmark, tone: "blue" as StatTone, desc: "Rekening aktif untuk pembayaran pengguna" },
     { title: "Modal Pulsa24Jam", value: fmtCurrency(data.pulsa24JamSaldo), icon: Zap, tone: "mint" as StatTone, desc: "Saldo untuk memproses produk" },
   ];
 
@@ -192,7 +199,7 @@ export default function AdminHome() {
           </div>
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((item) => {
             const Icon = item.icon;
             return (
