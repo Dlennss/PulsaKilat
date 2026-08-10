@@ -80,6 +80,56 @@ func firstQRURLFromPayload(payload map[string]any) string {
 	return ""
 }
 
+func firstQRURL(actions []coreapi.Action) string {
+	for _, action := range actions {
+		if url := strings.TrimSpace(action.URL); url != "" {
+			return url
+		}
+	}
+	return ""
+}
+
+func buildMidtransChargeRequest(order *repository.AppOrderRow, qrisAmount int64) *coreapi.ChargeReq {
+	items := []midtranssdk.ItemDetails{{
+		ID:    order.ProdukSKUSnapshot,
+		Price: qrisAmount,
+		Qty:   1,
+		Name:  trimMidtransItemName(order.ProdukNamaSnapshot),
+	}}
+	req := &coreapi.ChargeReq{
+		PaymentType: coreapi.PaymentTypeQris,
+		TransactionDetails: midtranssdk.TransactionDetails{
+			OrderID:  order.InvoiceID,
+			GrossAmt: qrisAmount,
+		},
+		Items: &items,
+		Qris: &coreapi.QrisDetails{
+			Acquirer: midtransAcquirer(),
+		},
+	}
+	if strings.EqualFold(strings.TrimSpace(order.BuyerType), "guest") {
+		req.CustomerDetails = &midtranssdk.CustomerDetails{
+			FName: derefString(order.GuestNama),
+			Email: derefString(order.GuestEmail),
+			Phone: derefString(order.GuestPhone),
+		}
+	}
+	return req
+}
+
+func chargeMidtransQRIS(serverKey string, payload *coreapi.ChargeReq) (*coreapi.ChargeResponse, error) {
+	client := newMidtransCoreAPIClient(serverKey)
+	resp, err := client.ChargeTransaction(payload)
+	if !isNilLikeError(err) {
+		msg := strings.TrimSpace(err.Message)
+		if msg == "" {
+			msg = err.Error()
+		}
+		return nil, fmt.Errorf("midtrans charge gagal: %s", msg)
+	}
+	return resp, nil
+}
+
 func isNilLikeError(err error) bool {
 	if err == nil {
 		return true

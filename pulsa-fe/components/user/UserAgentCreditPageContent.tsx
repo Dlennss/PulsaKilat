@@ -1126,7 +1126,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
             <li>2. Data agent dan tanda tangan wajib benar. Foto dokumen serta selfie lapangan akan diambil dan dipertanggungjawabkan oleh marketing.</li>
             <li>3. Pembayaran atau pelunasan wajib disertai bukti transfer yang valid.</li>
             <li>4. Agent wajib melunasi tagihan kredit terpakai secara penuh sesuai jadwal jatuh tempo.</li>
-            <li>5. Jika pembayaran terlambat lebih dari 3 hari, akun perlu evaluasi/perbaikan sebelum bisa naik limit atau mengajukan refill.</li>
+            <li>5. Jika pembayaran terlambat lebih dari 2 minggu, akun perlu evaluasi/perbaikan sebelum bisa naik limit atau mengajukan refill.</li>
             <li>6. PulsaKilat berhak menolak, menunda, atau mengevaluasi ulang pengajuan jika data/bukti tidak sesuai.</li>
           </ol>
           <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3">

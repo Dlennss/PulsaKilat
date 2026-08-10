@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"pulsa2/internal/repository"
@@ -28,11 +30,44 @@ func (s *AppOrderPaymentService) CreateByInvoiceID(ctx context.Context, invoiceI
 		return nil, err
 	}
 
-	if order.BuyerType != "user" || order.MemberID == nil || *order.MemberID <= 0 {
-		return nil, fmt.Errorf("transaksi produk wajib login dan menggunakan saldo PulsaKilat")
-	}
 	if order.HargaFinal <= 0 {
 		return nil, fmt.Errorf("nominal pembayaran tidak valid")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(order.BuyerType), "guest") {
+		serverKey, err := midtransServerKeyFromEnv()
+		if err != nil {
+			return nil, err
+		}
+
+		payload := buildMidtransChargeRequest(order, order.HargaFinal)
+		resp, err := chargeMidtransQRIS(serverKey, payload)
+		if err != nil {
+			return nil, err
+		}
+		rawResp, _ := json.Marshal(resp)
+		payment := repository.AppOrderPaymentCreateInput{
+			AppOrderID:        order.ID,
+			OrderID:           order.InvoiceID,
+			TransactionID:     resp.TransactionID,
+			GrossAmount:       order.HargaFinal,
+			PaymentType:       resp.PaymentType,
+			TransactionStatus: resp.TransactionStatus,
+			FraudStatus:       resp.FraudStatus,
+			Acquirer:          resp.Acquirer,
+			QRURL:             firstQRURL(resp.Actions),
+			RawRequest:        repository.BuildPaymentRawRequest(payload, 0, order.HargaFinal, 0, order.HargaFinal, order.HargaFinal),
+			RawCallback:       string(rawResp),
+			ExpiredAt:         parseMidtransTime(resp.ExpiryTime),
+		}
+		if err := s.paymentRepo.Create(ctx, payment); err != nil {
+			return nil, err
+		}
+		return s.paymentRepo.GetByOrderID(ctx, order.InvoiceID)
+	}
+
+	if order.BuyerType != "user" || order.MemberID == nil || *order.MemberID <= 0 {
+		return nil, fmt.Errorf("tipe pembeli tidak valid")
 	}
 	now := time.Now()
 	payment := repository.AppOrderPaymentCreateInput{

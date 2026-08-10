@@ -255,7 +255,6 @@ export function UserCheckoutModal({
   onClose,
 }: UserCheckoutModalProps) {
   const router = useRouter();
-  const [localAuthToken, setLocalAuthToken] = React.useState("");
   const [dest, setDest] = React.useState("");
   const [destServer, setDestServer] = React.useState("");
   const [nominal, setNominal] = React.useState("");
@@ -275,15 +274,9 @@ export function UserCheckoutModal({
   const [, forceTick] = React.useReducer((v) => v + 1, 0);
   const refundRecoveryAttemptedRef = React.useRef(false);
   const checkoutQrisCompletingRef = React.useRef(false);
-  const effectiveAuthToken = authToken || localAuthToken;
+  const effectiveAuthToken = authToken?.trim() || "";
   const activeTurnstileToken = turnstileToken || guestTurnstileToken;
   const guestNeedsTurnstile = !effectiveAuthToken && TURNSTILE_ENABLED && Boolean(TURNSTILE_SITE_KEY);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("auth_token") || "";
-    setLocalAuthToken(stored.trim());
-  }, []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -540,11 +533,6 @@ export function UserCheckoutModal({
       setError("Nominal wajib diisi.");
       return;
     }
-    if (!effectiveAuthToken) {
-      setError("Silakan login dan gunakan saldo PulsaKilat untuk bertransaksi.");
-      return;
-    }
-
     const finalDest = destMode === "ml_id_server" ? `${cleanDest}${cleanServer}` : cleanDest;
 
     setLoading(true);
@@ -780,8 +768,8 @@ export function UserCheckoutModal({
   const usesQris = qrisAmount > 0;
   const paymentMethodLabel = usesQris
     ? walletUsed > 0 || creditUsed > 0
-      ? "Saldo + QRIS Pulsa24Jam"
-      : "QRIS Pulsa24Jam"
+      ? "Saldo + QRIS"
+      : "QRIS"
     : creditUsed > 0
       ? walletUsed > 0
         ? "Saldo Utama + Kredit"
@@ -830,7 +818,7 @@ export function UserCheckoutModal({
     statusText = "QRIS kedaluwarsa";
     statusTone = "text-rose-600";
     statusTitle = "Pembayaran tidak selesai";
-    statusDescription = "QRIS Pulsa24Jam sudah tidak aktif. Buat transaksi baru untuk melanjutkan.";
+    statusDescription = "QRIS sudah tidak aktif. Buat transaksi baru untuk melanjutkan.";
   }
   if (isAwaitingPayment && walletUsed > 0) {
     statusDescription = "Saldo sudah terpotong. Selesaikan pembayaran untuk sisa tagihan.";
