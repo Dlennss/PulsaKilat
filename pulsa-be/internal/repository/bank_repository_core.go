@@ -12,12 +12,54 @@ type BankRepository struct {
 }
 
 const (
-	systemQrisBankName = "QRIS"
-	systemQRTPBankName = "QRTP"
+	systemQrisBankName             = "QRIS"
+	systemQRTPBankName             = "QRTP"
+	pulsaKilatDepositBankName      = "BNI"
+	pulsaKilatDepositAccountNumber = "1955637480"
+	pulsaKilatDepositAccountHolder = "M Sansan Irfanda"
 )
 
 func NewBankRepository(db *sql.DB) *BankRepository {
 	return &BankRepository{db: db}
+}
+
+// EnsurePulsaKilatDepositBank keeps the public deposit account available after
+// deployment, including installations where SQL migrations are applied later.
+func (r *BankRepository) EnsurePulsaKilatDepositBank(ctx context.Context) error {
+	if r == nil || r.db == nil {
+		return errors.New("bank repository belum dikonfigurasi")
+	}
+
+	result, err := r.db.ExecContext(ctx, `
+UPDATE public.bank
+SET nama = $2,
+    nomor_rekening = $1,
+    atas_nama = $3,
+    aktif = true,
+    admin_staff_only = false,
+    diubah_pada = now()
+WHERE regexp_replace(COALESCE(nomor_rekening, ''), '[^0-9]', '', 'g') = $1
+`, pulsaKilatDepositAccountNumber, pulsaKilatDepositBankName, pulsaKilatDepositAccountHolder)
+	if err != nil {
+		return err
+	}
+	if affected, _ := result.RowsAffected(); affected > 0 {
+		return nil
+	}
+
+	_, err = r.db.ExecContext(ctx, `
+INSERT INTO public.bank
+  (nama, nomor_rekening, atas_nama, saldo, aktif, admin_staff_only, dibuat_pada, diubah_pada)
+VALUES
+  ($1, $2, $3, 0, true, false, now(), now())
+ON CONFLICT ((lower(trim(nama)))) DO UPDATE
+SET nomor_rekening = EXCLUDED.nomor_rekening,
+    atas_nama = EXCLUDED.atas_nama,
+    aktif = true,
+    admin_staff_only = false,
+    diubah_pada = now()
+`, pulsaKilatDepositBankName, pulsaKilatDepositAccountNumber, pulsaKilatDepositAccountHolder)
+	return err
 }
 
 func (r *BankRepository) List(ctx context.Context, includeAdminStaffOnly bool) ([]BankRow, error) {

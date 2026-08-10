@@ -18,6 +18,9 @@ import (
 func DepositRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB, lbClient *loketbayar.Client, p24Client *provider.Pulsa24JamAdapter) {
 	repo := repository.NewDepositRepository(db)
 	bankRepo := repository.NewBankRepository(db)
+	if err := bankRepo.EnsurePulsaKilatDepositBank(context.Background()); err != nil {
+		log.Printf("[deposit_bank_setup] gagal mengaktifkan rekening deposit BNI: %v", err)
+	}
 	svc := service.NewDepositService(repo, bankRepo, lbClient)
 	svc.SetPulsa24JamClient(p24Client)
 	ctrl := controller.NewDepositController(svc)
