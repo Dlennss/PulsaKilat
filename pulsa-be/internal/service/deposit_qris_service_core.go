@@ -27,7 +27,7 @@ type DepositQrisCreateResult struct {
 }
 
 func buildDepositQrisResultFromRow(row *repository.DepositRequestRow) *DepositQrisCreateResult {
-	feeAdmin := calcDepositQrisFee(row.Amount)
+	feeAdmin := calcDepositQrisFee()
 	return &DepositQrisCreateResult{
 		RefID:       row.RefID,
 		Amount:      row.Amount,

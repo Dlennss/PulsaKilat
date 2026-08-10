@@ -123,9 +123,6 @@ func (h *MemberTrxService) RecoverPendingRef(ctx context.Context, memberID int64
 					}
 				}
 				h.settleLikeCallback(ctx, trx, "success", ketDB, noreff, price)
-				if price > 0 {
-					_ = h.applyProviderSuccessWalletDebit(ctx, provider, trx.ID, att.ID, trx.RefID, price, "RECOVER settle existing success")
-				}
 				_, _, _ = h.sendFinalWebhook(ctx, trx, "success", "Transaksi berhasil", noreff, noreff, price)
 				h.logf("RECOVER settle existing success refid=%s provider=%s price=%d", refID, provider, price)
 			}
@@ -181,9 +178,6 @@ func (h *MemberTrxService) RecoverPendingRef(ctx context.Context, memberID int64
 							ketDB = strings.TrimSpace(jpMsg)
 						}
 						h.settleLikeCallback(ctx, trx, "success", ketDB, jpNoRef, jpPrice)
-						if jpPrice > 0 {
-							_ = h.applyProviderSuccessWalletDebit(ctx, "javapay", trx.ID, att.ID, trx.RefID, jpPrice, "RECHECK javapay Status (success)")
-						}
 						_, _, _ = h.sendFinalWebhook(ctx, trx, "success", "Transaksi berhasil", jpNoRef, jpNoRef, jpPrice)
 						return "javapay", att.ID, nil
 					}
@@ -237,9 +231,6 @@ func (h *MemberTrxService) RecoverPendingRef(ctx context.Context, memberID int64
 						}
 					}
 					h.settleLikeCallback(ctx, trx, "success", ketDB, noreff, price)
-					if price > 0 {
-						_ = h.applyProviderSuccessWalletDebit(ctx, provider, trx.ID, newRow.ID, trx.RefID, price, "RECHECK settle (success)")
-					}
 					_, _, _ = h.sendFinalWebhook(ctx, trx, "success", "Transaksi berhasil", noreff, noreff, price)
 					return provider, newRow.ID, nil
 				}

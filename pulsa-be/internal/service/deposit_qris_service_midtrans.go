@@ -11,7 +11,7 @@ func IsDepositQrisOrderID(orderID string) bool {
 	return strings.HasPrefix(strings.TrimSpace(strings.ToUpper(orderID)), depositQrisPrefix)
 }
 
-func calcDepositQrisFee(amount int64) int64 {
+func calcDepositQrisFee() int64 {
 	return 0
 }
 

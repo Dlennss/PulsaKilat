@@ -34,9 +34,10 @@ func (s *ProdukService) Create(ctx context.Context, in repository.ProdukUpsertIn
 		return 0, err
 	}
 	in.TipeHarga = normalized
-	if in.TipeHarga == "FIXED" {
+	switch in.TipeHarga {
+	case "FIXED":
 		in.MaksimalNominal = nil
-	} else if in.TipeHarga == "OPEN_AMOUNT" {
+	case "OPEN_AMOUNT":
 		in.Nominal = nil
 	}
 	return s.repo.Create(ctx, in)
@@ -48,9 +49,10 @@ func (s *ProdukService) Update(ctx context.Context, in repository.ProdukUpsertIn
 		return err
 	}
 	in.TipeHarga = normalized
-	if in.TipeHarga == "FIXED" {
+	switch in.TipeHarga {
+	case "FIXED":
 		in.MaksimalNominal = nil
-	} else if in.TipeHarga == "OPEN_AMOUNT" {
+	case "OPEN_AMOUNT":
 		in.Nominal = nil
 	}
 	return s.repo.Update(ctx, in)

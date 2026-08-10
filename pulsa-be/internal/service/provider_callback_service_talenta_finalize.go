@@ -62,7 +62,7 @@ func buildTalentaFinalOutput(msg, noreff string, finalStatus string) (ket, provi
 	return
 }
 
-func (s *ProviderCallbackService) finalizeTalentaMemberTrx(ctx context.Context, row *repository.ProviderTrxRefRow, trx *repository.CallbackTrxMemberFull, data talentaCallbackData) (int, map[string]any) {
+func (s *ProviderCallbackService) finalizeTalentaMemberTrx(ctx context.Context, _ *repository.ProviderTrxRefRow, trx *repository.CallbackTrxMemberFull, data talentaCallbackData) (int, map[string]any) {
 	finalStatus := resolveTalentaFinalStatus(data.rcNum, data.rcStr, data.msg)
 	// Advisory lock: serialize concurrent callbacks for same transaction
 	if locked, _ := s.repo.AcquireCallbackLock(ctx, trx.ID); locked {

@@ -46,7 +46,7 @@ func isProviderSystemError(err error) bool {
 		strings.Contains(s, "server")
 }
 
-func shouldKeepPendingOnProviderFailure(err error) bool {
+func shouldKeepPendingOnProviderFailure(_ error) bool {
 	return false
 }
 

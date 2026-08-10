@@ -176,12 +176,6 @@ func (h *MemberTrxService) cleanupOtherPendingProviderRows(ctx context.Context, 
 	}
 }
 
-// Debit dompet provider di-handle oleh DB trigger (trg_provider_wallet_on_success).
-// Trigger otomatis potong saat transaksi_provider.status di-update ke 'success'.
-func (h *MemberTrxService) applyProviderSuccessWalletDebit(ctx context.Context, provider string, trxID int64, providerTrxID int64, refID string, price int64, source string) bool {
-	return true
-}
-
 func (h *MemberTrxService) insertProviderSnapshot(ctx context.Context, provider string, trxID int64, providerTrxID int64, refID string, saldo int64, source string, raw any) {
 	if h.ProviderWallet == nil || saldo <= 0 {
 		return

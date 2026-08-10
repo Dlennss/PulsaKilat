@@ -214,7 +214,7 @@ func (s *ProviderCallbackService) hasOtherProviderAttemptForRef(ctx context.Cont
 
 	for _, row := range rows {
 		provider := strings.ToLower(strings.TrimSpace(row.Provider))
-		if provider == "" {
+		if provider == "" || provider == strings.ToLower(strings.TrimSpace(excludedProvider)) {
 			continue
 		}
 

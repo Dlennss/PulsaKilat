@@ -44,7 +44,7 @@ ORDER BY tm.dibuat_pada`)
 
 	type stk struct {
 		TrxID, ProvID, MemberID, Qty, Biaya int64
-		RefID, Produk, Tujuan                string
+		RefID, Produk, Tujuan               string
 	}
 	var stuck []stk
 	for rows.Next() {
@@ -95,7 +95,7 @@ ORDER BY tm.dibuat_pada`)
 			log.Printf("  FAILED — refunding")
 			res, _ := db.Exec(`UPDATE transaksi_member SET status='failed', keterangan='JavaPay gagal (status check)' WHERE id=$1 AND status='pending'`, s.TrxID)
 			if aff, _ := res.RowsAffected(); aff > 0 {
-				refundMember(db, s.TrxID, s.MemberID, s.RefID, s.Biaya)
+				refundMember(db, s.MemberID, s.RefID, s.Biaya)
 			}
 
 		default:
@@ -105,7 +105,7 @@ ORDER BY tm.dibuat_pada`)
 	log.Println("Done")
 }
 
-func refundMember(db *sql.DB, trxID, memberID int64, refID string, biaya int64) {
+func refundMember(db *sql.DB, memberID int64, refID string, biaya int64) {
 	tx, _ := db.Begin()
 	defer tx.Rollback()
 	var before int64

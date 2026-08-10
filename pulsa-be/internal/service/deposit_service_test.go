@@ -32,7 +32,7 @@ func TestDepositTicketRequestOfflineAt(t *testing.T) {
 
 func TestDepositQrisTopupHasNoAdminFee(t *testing.T) {
 	amount := int64(500000)
-	feeAdmin := calcDepositQrisFee(amount)
+	feeAdmin := calcDepositQrisFee()
 	if feeAdmin != 0 {
 		t.Fatalf("calcDepositQrisFee(%d) = %d, want 0", amount, feeAdmin)
 	}

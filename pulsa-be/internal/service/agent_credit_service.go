@@ -262,7 +262,7 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 	case helper.RoleRetailAnalyst:
 		return s.decideAsAnalyst(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount)
 	case helper.RoleRetailMaster:
-		return s.decideAsMaster(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), approvedAmount, limitAmount)
+		return s.decideAsMaster(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData))
 	default:
 		return nil, errors.New("role reviewer tidak valid")
 	}
@@ -400,7 +400,7 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 	}
 }
 
-func (s *AgentCreditService) decideAsMaster(ctx context.Context, masterID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData string, approvedAmount, limitAmount int64) (*repository.AgentCreditApplication, error) {
+func (s *AgentCreditService) decideAsMaster(ctx context.Context, masterID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData string) (*repository.AgentCreditApplication, error) {
 	if reviewState.Status == "submitted" || reviewState.Status == "marketing_review" {
 		switch decision {
 		case "approve", "approved", "setujui", "forward_to_analysis", "kirim_analis":

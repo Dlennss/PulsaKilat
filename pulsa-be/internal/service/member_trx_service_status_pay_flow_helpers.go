@@ -110,7 +110,7 @@ func (h *MemberTrxService) loadStatusPayProviderRows(ctx context.Context, refID 
 	return rows, nil
 }
 
-func (h *MemberTrxService) handleStatusPayWithoutJavapayRow(ctx context.Context, trx *repository.TrxMemberFull, rows *statusPayProviderRows, triedProviders map[string]bool) *serviceResponse {
+func (h *MemberTrxService) handleStatusPayWithoutJavapayRow(ctx context.Context, trx *repository.TrxMemberFull, rows *statusPayProviderRows, _ map[string]bool) *serviceResponse {
 	if rows.ys != nil || rows.tl != nil || rows.mk != nil || rows.sg != nil || rows.mn != nil || rows.tr != nil || rows.aj != nil || rows.gm != nil || rows.sm != nil || rows.lb != nil {
 		waitProvider := "yuscom"
 		waitReason := "wait_yuscom_callback"
@@ -321,7 +321,7 @@ func derefStatusPayString(v *string) string {
 	return strings.TrimSpace(*v)
 }
 
-func (h *MemberTrxService) handleStatusPayJavapayLookup(ctx context.Context, trx *repository.TrxMemberFull, triedProviders map[string]bool) *serviceResponse {
+func (h *MemberTrxService) handleStatusPayJavapayLookup(ctx context.Context, trx *repository.TrxMemberFull, _ map[string]bool) *serviceResponse {
 	if h.JPClient == nil {
 		return &serviceResponse{Err: &ServiceError{Kind: ErrUpstream, Message: "javapay client nil"}}
 	}
@@ -424,9 +424,6 @@ func (h *MemberTrxService) handleStatusPayJavapayLookup(ctx context.Context, trx
 	}
 
 	if finalStatus == "success" || finalStatus == "failed" {
-		if finalStatus == "success" {
-			_ = h.applyProviderSuccessWalletDebit(ctx, "javapay", trx.ID, statusRow.ID, trx.RefID, jpStatusPrice, "STATUS-PAY (success)")
-		}
 		h.settleLikeCallback(ctx, trx, finalStatus, ketDB, info.Reff, jpStatusPrice)
 		snOut := strings.TrimSpace(info.SN)
 		if snOut == "" {

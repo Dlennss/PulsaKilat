@@ -34,7 +34,7 @@ func (s *DepositService) HandleMidtransWebhook(ctx context.Context, raw []byte, 
 	if err != nil {
 		return http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error()}
 	}
-	feeAdmin := calcDepositQrisFee(row.Amount)
+	feeAdmin := calcDepositQrisFee()
 	return http.StatusOK, map[string]any{
 		"ok": true,
 		"item": map[string]any{
@@ -143,5 +143,5 @@ func depositQrisPaidGrossAmount(rowAmount int64, payload map[string]any) int64 {
 	if grossAmount := helper.ToI64(payload["gross_amount"]); grossAmount > 0 {
 		return grossAmount
 	}
-	return rowAmount + calcDepositQrisFee(rowAmount)
+	return rowAmount + calcDepositQrisFee()
 }

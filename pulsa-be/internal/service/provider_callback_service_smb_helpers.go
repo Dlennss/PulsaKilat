@@ -115,7 +115,7 @@ func smbEffectiveWalletPrice(callbackPrice int64, row *repository.ProviderTrxRef
 	return 0
 }
 
-func smbPersistedMessage(stage, msg string) string {
+func smbPersistedMessage(_ string, msg string) string {
 	return strings.TrimSpace(msg)
 }
 

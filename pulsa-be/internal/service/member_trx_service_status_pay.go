@@ -167,8 +167,6 @@ func (h *MemberTrxService) handleStatusPayBranch(ctx context.Context, auth *repo
 		} else {
 			h.settleLikeCallback(ctx, trx, "success", ketDB, info.Reff, price)
 		}
-		h.applyProviderSuccessWalletDebit(ctx, successProvider, trx.ID, successRow.ID, trx.RefID, price, "STATUS-PAY reconcile (success)")
-
 		whKet, whProviderRef, whSN, whPrice := providerRowWebhookInfo(successProvider, successRow, "success")
 		if whKet == "" {
 			whKet = ket

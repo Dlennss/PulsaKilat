@@ -52,18 +52,18 @@ func resolveCallbackFinalStatus(msg string) string {
 	return "pending" // pesan tidak dikenali dari callback = tunggu status/callback berikutnya
 }
 
-func resolveYuscomFinalStatus(statusNum int, rcStr, msg string) string {
+func resolveYuscomFinalStatus(_ int, _, msg string) string {
 	return resolveCallbackFinalStatus(msg)
 }
 
-func resolveMultikomFinalStatus(statusNum int, rcStr, msg string) string {
+func resolveMultikomFinalStatus(_ int, _, msg string) string {
 	if helper.LooksLikeMultikomSuccess(msg) {
 		return "success"
 	}
 	return resolveCallbackFinalStatus(msg)
 }
 
-func resolveSagaraFinalStatus(statusNum int, rcStr, msg string) string {
+func resolveSagaraFinalStatus(_ int, _, msg string) string {
 	if sagaramobile.LooksLikeSuccess(msg) {
 		return "success"
 	}
@@ -76,7 +76,7 @@ func resolveSagaraFinalStatus(statusNum int, rcStr, msg string) string {
 	return "pending"
 }
 
-func resolveMinionsFinalStatus(statusNum int, rcStr, msg string) string {
+func resolveMinionsFinalStatus(_ int, _, msg string) string {
 	if minions.LooksLikeSuccess(msg) {
 		return "success"
 	}
@@ -89,11 +89,11 @@ func resolveMinionsFinalStatus(statusNum int, rcStr, msg string) string {
 	return "pending"
 }
 
-func resolveTrionikFinalStatus(statusNum int, rcStr, msg string) string {
+func resolveTrionikFinalStatus(_ int, _, msg string) string {
 	return resolveCallbackFinalStatus(msg)
 }
 
-func resolveAJSFinalStatus(statusNum int, rcStr, msg string) string {
+func resolveAJSFinalStatus(_ int, _, msg string) string {
 	if helper.LooksLikeAJSSuccess(msg) {
 		return "success"
 	}
@@ -106,7 +106,7 @@ func resolveAJSFinalStatus(statusNum int, rcStr, msg string) string {
 	return "pending"
 }
 
-func resolveGemilangFinalStatus(statusNum int, rcStr, msg string) string {
+func resolveGemilangFinalStatus(_ int, _, msg string) string {
 	if helper.LooksLikeGemilangSuccess(msg) {
 		return "success"
 	}

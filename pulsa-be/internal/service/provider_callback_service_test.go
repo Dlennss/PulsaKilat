@@ -152,11 +152,6 @@ func TestHasOtherProviderAttempt(t *testing.T) {
 }
 
 func TestHasOtherProviderAttemptForRefIgnoresFinalFailedProvider(t *testing.T) {
-	svc := &ProviderCallbackService{
-		repo: &repository.ProviderCallbackRepository{},
-	}
-	_ = svc
-
 	multikomFailed := &model.JavapayTrxRow{
 		ID:         10,
 		KodeRespon: strPtr("61"),

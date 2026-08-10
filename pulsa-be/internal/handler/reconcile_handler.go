@@ -114,7 +114,7 @@ WHERE id = $1 AND lower(trim(status)) = 'pending'`,
 		log.Printf("[reconcile] member settled success trx=%d ref=%s provider=%s", trxID, refID, provider)
 
 		// Kirim callback ke member
-		h.sendMemberCallback(ctx, memberID, refID, "success", ket, noReferensi, biayaPerkiraan, providerHarga)
+		h.sendMemberCallback(ctx, memberID, refID, "success", ket, noReferensi, biayaPerkiraan)
 
 		count++
 	}
@@ -224,7 +224,7 @@ ON CONFLICT DO NOTHING`, provider, refID, harga, trxMemberID, tpID)
 	return count, nil
 }
 
-func (h *ReconcileHandler) sendMemberCallback(ctx context.Context, memberID int64, refID, status, ket, providerRef string, biayaAktual, providerHarga int64) {
+func (h *ReconcileHandler) sendMemberCallback(ctx context.Context, memberID int64, refID, status, ket, providerRef string, biayaAktual int64) {
 	var webhookURL string
 	err := h.db.QueryRowContext(ctx, `SELECT COALESCE(webhook_url, '') FROM public.member WHERE id = $1`, memberID).Scan(&webhookURL)
 	if err != nil || strings.TrimSpace(webhookURL) == "" {

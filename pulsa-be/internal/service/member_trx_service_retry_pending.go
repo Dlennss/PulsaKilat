@@ -214,7 +214,8 @@ func (h *MemberTrxService) retryPendingRows(ctx context.Context, rows []*reposit
 				continue
 			}
 
-			if status == "success" {
+			switch status {
+			case "success":
 				ket := strings.TrimSpace(providerRef)
 				if ket == "" {
 					ket = "Transaksi berhasil (loketbayar trx recheck)"
@@ -222,7 +223,7 @@ func (h *MemberTrxService) retryPendingRows(ctx context.Context, rows []*reposit
 				h.settleLikeCallback(ctx, trx, "success", ket, providerRef, resp.Price)
 				st, _, _ := h.sendFinalWebhook(ctx, trx, "success", ket, providerRef, providerRef, resp.Price)
 				helper.AppendMemberTrxLog("RETRY_PENDING loketbayar trx_recheck settle success refid=%s webhook=%d", trx.RefID, st)
-			} else if status == "failed" {
+			case "failed":
 				ketFailed, _ := helper.SafeMemberKeterangan("failed", msg)
 				h.settleLikeCallback(ctx, trx, "failed", ketFailed, strings.TrimSpace(providerRef), 0)
 				st, _, _ := h.sendFinalWebhook(ctx, trx, "failed", ketFailed, strings.TrimSpace(providerRef), ketFailed, 0)
@@ -358,7 +359,8 @@ func (h *MemberTrxService) retryPendingRows(ctx context.Context, rows []*reposit
 		helper.AppendMemberTrxLog("RETRY_PENDING respon refid=%s provider=%s http=%d status=%s body=%s",
 			trx.RefID, pendingProvider, resp.HTTPStatus, status, resp.Body)
 
-		if status == "success" {
+		switch status {
+		case "success":
 			ket := strings.TrimSpace(resp.ProviderRef)
 			if ket == "" {
 				ket = "Transaksi berhasil (retry)"
@@ -366,7 +368,7 @@ func (h *MemberTrxService) retryPendingRows(ctx context.Context, rows []*reposit
 			h.settleLikeCallback(ctx, trx, "success", ket, resp.ProviderRef, resp.Price)
 			st, _, _ := h.sendFinalWebhook(ctx, trx, "success", ket, resp.ProviderRef, resp.ProviderRef, resp.Price)
 			helper.AppendMemberTrxLog("RETRY_PENDING settle success refid=%s provider=%s webhook=%d", trx.RefID, pendingProvider, st)
-		} else if status == "failed" {
+		case "failed":
 			ketFailed, _ := helper.SafeMemberKeterangan("failed", resp.Message)
 			h.settleLikeCallback(ctx, trx, "failed", ketFailed, strings.TrimSpace(resp.ProviderRef), 0)
 			st, _, _ := h.sendFinalWebhook(ctx, trx, "failed", ketFailed, strings.TrimSpace(resp.ProviderRef), ketFailed, 0)

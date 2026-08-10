@@ -162,7 +162,7 @@ func normalizeMemberWebhookFields(finalStatus, ket, providerRef, sn, storedKet s
 	return messageField, providerRefField, snField
 }
 
-func (s *ProviderCallbackService) sendDirectMemberWebhook(ctx context.Context, provider string, trx *repository.CallbackTrxMemberFull, webhookURL, refid, finalStatus, ket, providerRef, sn string, memberSaldo, biayaAktual, price int64) (int, map[string]any) {
+func (s *ProviderCallbackService) sendDirectMemberWebhook(_ context.Context, provider string, trx *repository.CallbackTrxMemberFull, webhookURL, refid, finalStatus, ket, providerRef, sn string, memberSaldo, biayaAktual, price int64) (int, map[string]any) {
 	if trx == nil {
 		return 200, map[string]any{"ok": true, "refid": refid}
 	}
@@ -179,7 +179,7 @@ func (s *ProviderCallbackService) sendDirectMemberWebhook(ctx context.Context, p
 	return 200, map[string]any{"ok": true, "refid": refid, "member_webhook_queued": true}
 }
 
-func (s *ProviderCallbackService) sendDirectMemberWebhookSync(ctx context.Context, provider string, trx *repository.CallbackTrxMemberFull, webhookURL, refid, finalStatus, ket, providerRef, sn string, memberSaldo, biayaAktual, price int64) (int, map[string]any) {
+func (s *ProviderCallbackService) sendDirectMemberWebhookSync(ctx context.Context, provider string, trx *repository.CallbackTrxMemberFull, webhookURL, refid, finalStatus, ket, providerRef, sn string, memberSaldo, biayaAktual, _ int64) (int, map[string]any) {
 	if trx == nil {
 		return 200, map[string]any{"ok": true, "refid": refid}
 	}
@@ -274,7 +274,7 @@ func shouldKeepExistingMemberFinalStatus(currentStatus, _ string) bool {
 	}
 }
 
-func (s *ProviderCallbackService) prepareMemberTrxSuccessTransition(ctx context.Context, provider string, trx *repository.CallbackTrxMemberFull) error {
+func (s *ProviderCallbackService) prepareMemberTrxSuccessTransition(ctx context.Context, _ string, trx *repository.CallbackTrxMemberFull) error {
 	if s == nil || s.repo == nil || trx == nil {
 		return nil
 	}
