@@ -262,25 +262,27 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
           </div>
 
           <div className="min-w-0 space-y-4 p-2 sm:space-y-5 sm:p-6 lg:p-7">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {stats.map((item) => {
-                const StatIcon = item.icon;
-                return (
-                  <div key={item.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-slate-500">{item.label}</p>
-                        <p className="mt-1 text-2xl font-black text-slate-950">{item.value}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</p>
-                      </div>
-                      <div className={`grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br ${item.tone} text-white shadow-lg`}>
-                        <StatIcon className="h-6 w-6" />
+            {view === "decision" ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {stats.map((item) => {
+                  const StatIcon = item.icon;
+                  return (
+                    <div key={item.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-bold text-slate-500">{item.label}</p>
+                          <p className="mt-1 text-2xl font-black text-slate-950">{item.value}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</p>
+                        </div>
+                        <div className={`grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br ${item.tone} text-white shadow-lg`}>
+                          <StatIcon className="h-6 w-6" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : null}
 
             {view === "decision" ? (
               <div className="overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f2fff8_62%,#e4f8ee_100%)] p-4 shadow-[0_16px_36px_rgba(6,78,59,0.06)] sm:p-5">
