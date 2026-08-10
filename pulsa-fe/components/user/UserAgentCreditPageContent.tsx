@@ -742,12 +742,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               ))}
             </div>
 
-            <div className="mt-4 flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-slate-400">
-              <SearchCheck className="h-4 w-4 shrink-0" strokeWidth={2.4} />
-              <span className="truncate text-xs font-semibold">Cari nama, toko, nomor, atau ID...</span>
-            </div>
-
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
               {["Semua", "Menunggu", "Diterima", "Ditolak"].map((filter, index) => (
                 <span
                   key={filter}
