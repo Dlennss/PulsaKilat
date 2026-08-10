@@ -462,7 +462,7 @@ export default function DepositRequestsPage({
           <input id="deposit-approve-amount" class="swal2-input" inputmode="numeric" autocomplete="off" value="${formatAmountInput(defaultAmount)}" style="width:100%;margin:0;" />
           <label for="deposit-bank-refids" class="block text-xs font-semibold uppercase tracking-wide text-slate-400">Ref ID mutasi bank</label>
           <textarea id="deposit-bank-refids" class="swal2-textarea" rows="3" placeholder="BMIN-...&#10;BMIN-..." style="width:100%;margin:0;"></textarea>
-          <div class="text-xs text-slate-400">Maksimal 4 refid. Jika diisi, nominal kredit dihitung dari total mutasi refid tersebut.</div>
+          <div class="text-xs text-slate-400">Opsional, maksimal 4 refid. Jika dikosongkan, sistem mencatat mutasi kredit bank otomatis saat approval.</div>
         </div>
       `,
       showCancelButton: true,

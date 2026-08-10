@@ -166,9 +166,49 @@ WHERE bank_id = $1::bigint
 ORDER BY dibuat_pada ASC, id ASC
 LIMIT 1
 FOR UPDATE SKIP LOCKED
-`, bankID.Int64, creditAmount, fallbackRefID).Scan(&mutasiID, &refID)
+		`, bankID.Int64, creditAmount, fallbackRefID).Scan(&mutasiID, &refID)
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", 0, errors.New("belum ada di mutasi")
+			// Manual approval is the operator's confirmation that the transfer
+			// has reached the bank. Keep the accounting trail complete by
+			// creating the incoming bank mutation inside this same transaction.
+			var bankBefore int64
+			if err := tx.QueryRowContext(ctx, `
+SELECT saldo
+FROM public.bank
+WHERE id = $1::bigint
+  AND aktif = true
+FOR UPDATE
+`, bankID.Int64).Scan(&bankBefore); err != nil {
+				return "", 0, err
+			}
+			bankAfter := bankBefore + creditAmount
+			if _, err := tx.ExecContext(ctx, `
+UPDATE public.bank
+SET saldo = $2::bigint,
+    diubah_pada = now()
+WHERE id = $1::bigint
+`, bankID.Int64, bankAfter); err != nil {
+				return "", 0, err
+			}
+			refID = fallbackRefID
+			manualNote := fmt.Sprintf("Mutasi masuk dibuat saat approve deposit #%d", reqID)
+			if trimmedNote := strings.TrimSpace(note); trimmedNote != "" {
+				manualNote += " | " + trimmedNote
+			}
+			if err := tx.QueryRowContext(ctx, `
+INSERT INTO public.mutasi_bank
+  (bank_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, diubah_oleh, dibuat_pada, meta)
+VALUES
+  ($1,$2,'CREDIT',$3,'BANK_MANUAL_IN',$4,$5,$6,$7,now(),jsonb_build_object(
+    'created_from_deposit_approval', true,
+    'deposit_request_id', $8::bigint
+  ))
+RETURNING id
+`, bankID.Int64, refID, creditAmount, manualNote, bankBefore, bankAfter, adminID, reqID).Scan(&mutasiID); err != nil {
+				return "", 0, err
+			}
+			mutasiRows = []depositBankMutationForApprove{{ID: mutasiID, RefID: refID, Amount: creditAmount}}
+			err = nil
 		}
 		if err != nil {
 			return "", 0, err
