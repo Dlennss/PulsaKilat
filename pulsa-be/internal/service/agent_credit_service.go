@@ -68,6 +68,17 @@ type AgentCreditLoanStatusInput struct {
 	Reason        string `json:"reason"`
 }
 
+func (s *AgentCreditService) ListTeamActivity(ctx context.Context, auth helper.AuthInfo, actorRole string, limit int) ([]repository.AgentCreditTeamActivity, error) {
+	if helper.NormalizeRole(auth.Role) != helper.RoleAdmin {
+		return nil, errors.New("super admin only")
+	}
+	actorRole = strings.TrimSpace(strings.ToLower(actorRole))
+	if actorRole != "" && actorRole != "marketing" && actorRole != "operator_credit" && actorRole != "super_admin" {
+		return nil, errors.New("filter role tidak valid")
+	}
+	return s.repo.ListTeamActivity(ctx, actorRole, limit)
+}
+
 func isCreditReviewer(role string) bool {
 	normalized := helper.NormalizeRole(role)
 	return normalized == helper.RoleAdmin ||

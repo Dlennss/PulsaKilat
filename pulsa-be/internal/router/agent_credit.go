@@ -23,4 +23,5 @@ func AgentCreditRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB) {
 	mux.HandleFunc("/v1/admin/agent-credit/applications", wrap(ctrl.MasterApplications))
 	mux.HandleFunc("/v1/admin/agent-credit/applications/decision", wrap(ctrl.MasterDecision))
 	mux.HandleFunc("/v1/admin/agent-credit/loans/status", wrap(ctrl.AdminLoanStatus))
+	mux.HandleFunc("/v1/admin/agent-credit/team-activity", wrap(ctrl.AdminTeamActivity))
 }

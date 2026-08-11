@@ -263,24 +263,24 @@ export default function AdminHome() {
 
         <section className="grid gap-3 lg:grid-cols-2">
           <Link
-            href="/dashboard/master"
+            href="/dashboard/admin/pemantauan-tim?role=marketing"
             className="group flex min-h-28 items-center justify-between gap-4 rounded-[24px] border border-emerald-200 bg-white p-5 shadow-[0_16px_34px_rgba(6,78,59,0.07)] transition hover:border-emerald-500"
           >
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Pemantauan Lapangan</p>
-              <p className="mt-2 text-lg font-black text-slate-950">Buka Panel Marketing</p>
-              <p className="mt-1 text-sm font-semibold text-slate-500">Pantau pendaftaran agent, dokumen survei, dan portofolio binaan.</p>
+              <p className="mt-2 text-lg font-black text-slate-950">Aktivitas Marketing</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Lihat status akun dan pekerjaan lapangan tanpa masuk ke panel Marketing.</p>
             </div>
             <ArrowUpRight className="h-6 w-6 shrink-0 text-emerald-700" />
           </Link>
           <Link
-            href="/dashboard/master/operator"
+            href="/dashboard/admin/pemantauan-tim?role=operator_credit"
             className="group flex min-h-28 items-center justify-between gap-4 rounded-[24px] border border-emerald-200 bg-white p-5 shadow-[0_16px_34px_rgba(6,78,59,0.07)] transition hover:border-emerald-500"
           >
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Pengawasan Kredit</p>
-              <p className="mt-2 text-lg font-black text-slate-950">Buka Panel Operator Kredit</p>
-              <p className="mt-1 text-sm font-semibold text-slate-500">Pantau keputusan, limit, penarikan, tagihan, dan arsip kredit.</p>
+              <p className="mt-2 text-lg font-black text-slate-950">Aktivitas Operator Kredit</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Lihat keputusan dan aktivitas kredit tanpa masuk ke panel Operator.</p>
             </div>
             <ArrowUpRight className="h-6 w-6 shrink-0 text-emerald-700" />
           </Link>

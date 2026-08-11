@@ -57,6 +57,61 @@ type AgentCreditLoanStatusResult struct {
 	OutstandingAmount     int64  `json:"outstanding_amount"`
 }
 
+type AgentCreditTeamActivity struct {
+	ID         int64     `json:"id"`
+	ActorID    int64     `json:"actor_id"`
+	ActorName  string    `json:"actor_name"`
+	ActorEmail string    `json:"actor_email"`
+	ActorRole  string    `json:"actor_role"`
+	Action     string    `json:"action"`
+	EntityType string    `json:"entity_type"`
+	EntityID   string    `json:"entity_id"`
+	Reason     string    `json:"reason"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+func (r *AgentCreditRepository) ListTeamActivity(ctx context.Context, actorRole string, limit int) ([]AgentCreditTeamActivity, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	rows, err := r.db.QueryContext(ctx, `
+SELECT
+  a.id,
+  COALESCE(a.actor_id, 0),
+  COALESCE(m.nama, ''),
+  COALESCE(m.email, ''),
+  a.actor_role,
+  a.action,
+  a.entity_type,
+  a.entity_id,
+  a.reason,
+  a.created_at
+FROM public.audit_log a
+LEFT JOIN public.member m ON m.id = a.actor_id
+WHERE a.actor_role IN ('marketing', 'operator_credit', 'super_admin')
+  AND ($1 = '' OR a.actor_role = $1)
+ORDER BY a.created_at DESC, a.id DESC
+LIMIT $2
+`, actorRole, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]AgentCreditTeamActivity, 0)
+	for rows.Next() {
+		var item AgentCreditTeamActivity
+		if err := rows.Scan(&item.ID, &item.ActorID, &item.ActorName, &item.ActorEmail, &item.ActorRole, &item.Action, &item.EntityType, &item.EntityID, &item.Reason, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 type AgentCreditProfile struct {
 	LevelCode          string `json:"credit_level_code"`
 	LevelName          string `json:"credit_level_name"`

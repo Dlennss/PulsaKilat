@@ -129,6 +129,7 @@ export const adminNavSections: NavSection[] = [
     title: "Pengguna & Kredit",
     items: [
       { href: "/dashboard/admin/master/members", label: "Akun Pengguna" },
+      { href: "/dashboard/admin/pemantauan-tim", label: "Pemantauan Tim" },
       { href: "/dashboard/admin/kredit/pengajuan", label: "Pengajuan Kredit" },
       { href: "/dashboard/admin/komisi/pengaturan", label: "Komisi Marketing" },
     ],
@@ -159,32 +160,11 @@ export const adminNavSections: NavSection[] = [
       { href: "/dashboard/admin/integrasi/pulsa24jam", label: "Koneksi Pulsa24Jam" },
     ],
   },
-  {
-    title: "Akses Semua Panel",
-    items: [
-      { href: "/dashboard/master", label: "Panel Marketing" },
-      { href: "/dashboard/master/operator", label: "Panel Operator Kredit" },
-      { href: "/dashboard/operator", label: "Panel Operator Transaksi" },
-      { href: "/dashboard/wallet", label: "Panel Operator Wallet" },
-      { href: "/dashboard/auditor", label: "Panel Auditor" },
-    ],
-  },
 ];
-
-export const superAdminPanelSwitcher: NavSection = {
-  title: "Super Admin",
-  items: [
-    { href: "/dashboard/admin", label: "Pusat Super Admin" },
-    { href: "/dashboard/master", label: "Panel Marketing" },
-    { href: "/dashboard/master/operator", label: "Panel Operator Kredit" },
-    { href: "/dashboard/operator", label: "Panel Operator Transaksi" },
-    { href: "/dashboard/wallet", label: "Panel Operator Wallet" },
-    { href: "/dashboard/auditor", label: "Panel Auditor" },
-  ],
-};
 
 const staffHiddenAdminHrefs = new Set([
   "/dashboard/admin/master/members",
+  "/dashboard/admin/pemantauan-tim",
   "/dashboard/admin/master/aktivasi-h2h",
   "/dashboard/admin/members",
   "/dashboard/admin/komisi/pengaturan",

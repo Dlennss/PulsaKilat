@@ -38,3 +38,11 @@ func TestManageableRolesIncludeMarketingAndCreditOperator(t *testing.T) {
 		}
 	}
 }
+
+func TestListTeamActivityRequiresSuperAdmin(t *testing.T) {
+	svc := NewAgentCreditService(nil)
+	_, err := svc.ListTeamActivity(context.Background(), helper.AuthInfo{MemberID: 10, Role: helper.RoleRetailAnalyst}, "", 50)
+	if err == nil || !strings.Contains(err.Error(), "super admin") {
+		t.Fatalf("error = %v, want super admin only", err)
+	}
+}

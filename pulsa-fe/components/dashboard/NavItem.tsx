@@ -43,6 +43,7 @@ const iconByHref = {
   "/dashboard/admin": LayoutDashboard,
   "/dashboard/admin/komisi": BarChart3,
   "/dashboard/admin/master/members": Users,
+  "/dashboard/admin/pemantauan-tim": Activity,
   "/dashboard/admin/kredit/pengajuan": CreditCard,
   "/dashboard/admin/komisi/pengaturan": HandCoins,
   "/dashboard/admin/transaksi/aplikasi": ReceiptText,

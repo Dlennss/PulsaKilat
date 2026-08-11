@@ -168,6 +168,24 @@ func (h *AgentCreditController) AdminLoanStatus(w http.ResponseWriter, r *http.R
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "item": item})
 }
 
+func (h *AgentCreditController) AdminTeamActivity(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
+		return
+	}
+	auth, ok := helper.GetAuth(r.Context())
+	if !ok {
+		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	items, err := h.svc.ListTeamActivity(r.Context(), auth, helper.QueryString(r, "role"), helper.QueryInt(r, "limit", 50))
+	if err != nil {
+		helper.WriteJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
+}
+
 func (h *AgentCreditController) PayInstallment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})

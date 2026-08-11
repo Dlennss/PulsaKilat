@@ -8,12 +8,13 @@ import { HeaderMobile } from "@/components/dashboard/HeaderMobile";
 import { MainContent } from "@/components/dashboard/MainContent";
 import { SidebarDesktop } from "@/components/dashboard/SidebarDesktop";
 import { SidebarMobile } from "@/components/dashboard/SidebarMobile";
-import { adminNavSections, analystNavSections, auditorNavSections, getMemberNavSections, masterNavSections, operatorNavSections, staffNavSections, superAdminPanelSwitcher, walletNavSections, type H2HRole, type NavSection } from "@/components/dashboard/nav";
+import { adminNavSections, analystNavSections, auditorNavSections, getMemberNavSections, masterNavSections, operatorNavSections, staffNavSections, walletNavSections, type H2HRole } from "@/components/dashboard/nav";
 
 type AppRole = "admin" | "staff" | "auditor" | "member" | "agent_member" | "master_member" | "operator_trx" | "operator_wallet" | "user" | "agent" | "master" | "marketing" | "analis";
 
 const staffBlockedAdminPrefixes = [
   "/dashboard/admin/master/members",
+  "/dashboard/admin/pemantauan-tim",
   "/dashboard/admin/master/aktivasi-h2h",
   "/dashboard/admin/members",
   "/dashboard/admin/komisi/pengaturan",
@@ -35,10 +36,6 @@ function filterMasterNavForRole(role: AppRole | null) {
       items: section.items.filter((item) => !masterOnlyPrefixes.some((prefix) => item.href === prefix || item.href.startsWith(`${prefix}/`))),
     }))
     .filter((section) => section.items.length > 0);
-}
-
-function withSuperAdminSwitcher(sections: NavSection[]): NavSection[] {
-  return [superAdminPanelSwitcher, ...sections];
 }
 
 function targetPathByRole(role: AppRole): string {
@@ -171,9 +168,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
       const inWalletArea = pathname.startsWith("/dashboard/wallet");
       const inMasterArea = pathname.startsWith("/dashboard/master");
 
-      const adminOperationalArea = inAdminArea || inMasterArea || inOperatorArea || inWalletArea || inAuditorArea;
-
-      if (normalizedRole === "admin" && !adminOperationalArea) {
+      if (normalizedRole === "admin" && !inAdminArea) {
         router.replace("/dashboard/admin");
         return;
       }
@@ -242,11 +237,10 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
 
   const navSections = useMemo(() => {
     if (pathname.startsWith("/dashboard/admin")) return currentRole === "staff" ? staffNavSections : adminNavSections;
-    if (pathname.startsWith("/dashboard/auditor")) return currentRole === "admin" ? withSuperAdminSwitcher(auditorNavSections) : auditorNavSections;
-    if (pathname.startsWith("/dashboard/operator")) return currentRole === "admin" ? withSuperAdminSwitcher(operatorNavSections) : operatorNavSections;
-    if (pathname.startsWith("/dashboard/wallet")) return currentRole === "admin" ? withSuperAdminSwitcher(walletNavSections) : walletNavSections;
-    if (pathname.startsWith("/dashboard/master/operator")) return currentRole === "admin" ? withSuperAdminSwitcher(analystNavSections) : filterMasterNavForRole(currentRole);
-    if (pathname.startsWith("/dashboard/master")) return currentRole === "admin" ? withSuperAdminSwitcher(masterNavSections) : filterMasterNavForRole(currentRole);
+    if (pathname.startsWith("/dashboard/auditor")) return auditorNavSections;
+    if (pathname.startsWith("/dashboard/operator")) return operatorNavSections;
+    if (pathname.startsWith("/dashboard/wallet")) return walletNavSections;
+    if (pathname.startsWith("/dashboard/master")) return filterMasterNavForRole(currentRole);
     const h2hRole: H2HRole =
       currentRole === "agent_member" || currentRole === "master_member" ? currentRole : "member";
     return getMemberNavSections(h2hRole);
