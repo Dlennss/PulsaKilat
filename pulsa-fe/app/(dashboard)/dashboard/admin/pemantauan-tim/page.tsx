@@ -164,7 +164,13 @@ function TeamMonitoringContent() {
         <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-5">
             <div><h2 className="text-lg font-black">Status Akun Tim</h2><p className="mt-1 text-xs font-semibold text-slate-500">{visibleMembers.length} akun ditemukan</p></div>
-            <Link href="/dashboard/admin/master/members" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#052e26] px-3 text-xs font-black text-white"><UserCog className="h-4 w-4" /> Kelola Akun</Link>
+            <Link
+              href="/dashboard/admin/master/members"
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 text-xs font-black !text-[#064e3b] shadow-sm transition hover:border-emerald-500 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
+            >
+              <UserCog className="h-4 w-4" aria-hidden="true" />
+              <span>Kelola Akun</span>
+            </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[700px] w-full text-left text-sm">
