@@ -131,7 +131,6 @@ export const adminNavSections: NavSection[] = [
       { href: "/dashboard/admin/master/members", label: "Akun Pengguna" },
       { href: "/dashboard/admin/pemantauan-tim", label: "Pemantauan Tim" },
       { href: "/dashboard/admin/kredit/pengajuan", label: "Pengajuan Kredit" },
-      { href: "/dashboard/admin/komisi/pengaturan", label: "Komisi Marketing" },
     ],
   },
   {
@@ -166,7 +165,6 @@ const staffHiddenAdminHrefs = new Set([
   "/dashboard/admin/pemantauan-tim",
   "/dashboard/admin/master/aktivasi-h2h",
   "/dashboard/admin/members",
-  "/dashboard/admin/komisi/pengaturan",
   "/dashboard/admin/provider-merchant-ids",
 ]);
 

@@ -17,7 +17,6 @@ const staffBlockedAdminPrefixes = [
   "/dashboard/admin/pemantauan-tim",
   "/dashboard/admin/master/aktivasi-h2h",
   "/dashboard/admin/members",
-  "/dashboard/admin/komisi/pengaturan",
 ];
 
 const masterOnlyPrefixes = [
