@@ -120,3 +120,15 @@ func TestScanDepositRowAllowsNullableOptionalStrings(t *testing.T) {
 		t.Fatalf("unexpected row: %+v", row)
 	}
 }
+
+func TestRandomDepositUniqueCodeUsesLastThreeDigits(t *testing.T) {
+	for i := 0; i < 200; i++ {
+		code, err := randomDepositUniqueCode()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if code < 1 || code > 999 {
+			t.Fatalf("kode unik = %d, want 1..999", code)
+		}
+	}
+}

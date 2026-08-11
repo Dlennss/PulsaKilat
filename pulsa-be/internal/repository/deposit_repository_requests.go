@@ -207,11 +207,11 @@ RETURNING id
 }
 
 func randomDepositUniqueCode() (int64, error) {
-	n, err := cryptorand.Int(cryptorand.Reader, big.NewInt(90000))
+	n, err := cryptorand.Int(cryptorand.Reader, big.NewInt(999))
 	if err != nil {
 		return 0, err
 	}
-	return 10000 + n.Int64(), nil
+	return 1 + n.Int64(), nil
 }
 
 func (r *DepositRepository) CreateQrisRequest(ctx context.Context, memberID, amount int64, metode, refID, note string) error {
