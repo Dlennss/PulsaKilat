@@ -34,7 +34,9 @@ func (s *Pulsa24JamCatalogSyncService) Sync(ctx context.Context) (*repository.Pu
 
 func pulsa24JamCatalogItemFromProduct(product provider.Pulsa24JamProduct) repository.Pulsa24JamCatalogItem {
 	price := int64(0)
-	if product.Price != nil {
+	if product.AppBasePrice != nil {
+		price = *product.AppBasePrice
+	} else if product.Price != nil {
 		price = *product.Price
 	} else if product.AdditionalFee != nil {
 		price = *product.AdditionalFee

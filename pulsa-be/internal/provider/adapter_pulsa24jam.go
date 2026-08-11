@@ -118,9 +118,11 @@ type Pulsa24JamProduct struct {
 	CategoryName   string     `json:"kategori_nama"`
 	BrandName      string     `json:"brand_nama"`
 	PriceType      string     `json:"tipe_harga"`
+	AppBasePrice   *int64     `json:"harga_dasar_app,omitempty"`
 	Price          *int64     `json:"harga,omitempty"`
 	AdditionalFee  *int64     `json:"fee_tambahan,omitempty"`
 	MaximumNominal *int64     `json:"maksimal_nominal,omitempty"`
+	Active         bool       `json:"aktif"`
 	CreatedAt      *time.Time `json:"dibuat_pada,omitempty"`
 	UpdatedAt      *time.Time `json:"diubah_pada,omitempty"`
 }
@@ -133,25 +135,16 @@ type pulsa24JamProductsResponse struct {
 	Items    []Pulsa24JamProduct `json:"items"`
 }
 
-// Products mengambil katalog H2H langsung dari command PRODUK Pulsa24Jam.
+// Products mengambil katalog aplikasi langsung dari endpoint produk Pulsa24Jam.
 func (a *Pulsa24JamAdapter) Products(ctx context.Context, product string) ([]Pulsa24JamProduct, error) {
 	if !a.Configured() {
 		return nil, fmt.Errorf("pulsa24jam credential belum lengkap")
 	}
-	payload := pulsa24JamPayRequest{
-		Commands: "PRODUK",
-		Product:  strings.TrimSpace(product),
-		PIN:      a.PIN,
-	}
-	rawPayload, err := json.Marshal(payload)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, a.appProductsURL(), nil)
 	if err != nil {
 		return nil, err
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.trxURL(), bytes.NewReader(rawPayload))
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("X-Api-Key", a.APIKey)
 
 	res, err := a.Client.Do(httpReq)
@@ -170,7 +163,18 @@ func (a *Pulsa24JamAdapter) Products(ctx context.Context, product string) ([]Pul
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices || !out.OK {
 		return nil, fmt.Errorf("produk Pulsa24Jam gagal: %s", firstNonEmpty(out.Message, out.Msg, string(body)))
 	}
-	return out.Items, nil
+	requestedSKU := strings.ToUpper(strings.TrimSpace(product))
+	items := make([]Pulsa24JamProduct, 0, len(out.Items))
+	for _, item := range out.Items {
+		if !item.Active {
+			continue
+		}
+		if requestedSKU != "" && strings.ToUpper(strings.TrimSpace(item.SKU)) != requestedSKU {
+			continue
+		}
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayResponse, error) {
@@ -326,6 +330,15 @@ func (a *Pulsa24JamAdapter) trxURL() string {
 		return base + "/trx"
 	}
 	return base + "/v1/trx"
+}
+
+func (a *Pulsa24JamAdapter) appProductsURL() string {
+	base := strings.TrimRight(strings.TrimSpace(a.BaseURL), "/")
+	base = strings.TrimSuffix(base, "/trx")
+	if strings.HasSuffix(base, "/v1") {
+		return base + "/app/produk"
+	}
+	return base + "/v1/app/produk"
 }
 
 func firstNonEmpty(values ...string) string {

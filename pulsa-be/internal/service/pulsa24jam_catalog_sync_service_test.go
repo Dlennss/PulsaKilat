@@ -30,3 +30,14 @@ func TestPulsa24JamCatalogItemFromProductKeepsUpstreamCatalog(t *testing.T) {
 		})
 	}
 }
+
+func TestPulsa24JamCatalogItemUsesAppBasePrice(t *testing.T) {
+	legacyPrice := int64(12500)
+	appBasePrice := int64(13000)
+	got := pulsa24JamCatalogItemFromProduct(provider.Pulsa24JamProduct{
+		SKU: "ML10", Name: "Mobile Legend 10 Diamond", Price: &legacyPrice, AppBasePrice: &appBasePrice,
+	})
+	if got.Price != appBasePrice {
+		t.Fatalf("harga katalog = %d, want %d", got.Price, appBasePrice)
+	}
+}

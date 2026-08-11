@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,18 +9,14 @@ import (
 
 func TestPulsa24JamProducts(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/v1/app/produk" {
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
 		if got := r.Header.Get("X-Api-Key"); got != "api-key" {
 			t.Fatalf("unexpected API key %q", got)
 		}
-		var payload map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Fatal(err)
-		}
-		if payload["commands"] != "PRODUK" || payload["pin"] != "1234" {
-			t.Fatalf("unexpected payload %#v", payload)
-		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true,"commands":"PRODUK","items":[{"id":1,"sku":"ML10","nama":"Mobile Legend 10 Diamond","group_name":"GAME","kategori_nama":"Game","brand_nama":"Mobile Legend","tipe_harga":"FIXED","harga":2500}]}`))
+		_, _ = w.Write([]byte(`{"ok":true,"items":[{"id":1,"sku":"ML10","nama":"Mobile Legend 10 Diamond","group_name":"GAME","kategori_nama":"Game","brand_nama":"Mobile Legend","tipe_harga":"FIXED","harga_dasar_app":2500,"aktif":true},{"id":2,"sku":"OFF","nama":"Nonaktif","aktif":false}]}`))
 	}))
 	defer server.Close()
 
@@ -35,7 +30,7 @@ func TestPulsa24JamProducts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 1 || items[0].SKU != "ML10" || items[0].Price == nil || *items[0].Price != 2500 {
+	if len(items) != 1 || items[0].SKU != "ML10" || items[0].AppBasePrice == nil || *items[0].AppBasePrice != 2500 {
 		t.Fatalf("unexpected products %#v", items)
 	}
 }
@@ -43,7 +38,7 @@ func TestPulsa24JamProducts(t *testing.T) {
 func TestPulsa24JamProductsRejectsEmptyOrFailedResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"ok":false,"msg":"PIN salah"}`))
+		_, _ = w.Write([]byte(`{"ok":false,"msg":"katalog gagal"}`))
 	}))
 	defer server.Close()
 
