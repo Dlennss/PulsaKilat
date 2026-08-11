@@ -11,9 +11,9 @@ import { fetchAllAdminProducts } from "@/lib/adminProducts";
 import { alertConfirm, alertError, alertSuccess, alertWarning } from "@/components/ui/alerts";
 import { Input } from "@/components/ui/input";
 import { AppModal } from "@/components/ui/app-modal";
-import { ArrowDownCircle, ArrowUpCircle, CircleUserRound, Clock3, Coins, Loader2, Plus, Save, Search, ShieldCheck, Trash2, Users, Wallet } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Clock3, Coins, Eye, Loader2, MoreHorizontal, Plus, Save, Search, ShieldCheck, Trash2, UserCog, Users, Wallet } from "lucide-react";
 import { decodeJwt, type JwtClaims } from "@/lib/jwt";
-import { ACCOUNT_SCOPE_OPTIONS, createRolesForScope, roleLabel, rolesForScope, type AccountScope, type ManageableRole } from "@/lib/memberRoles";
+import { createRolesForScope, roleLabel, type AccountScope, type ManageableRole } from "@/lib/memberRoles";
 
 const H2H_FEE_CATEGORY_NAMES = ["DANA", "GOPAY", "OVO", "LINKAJA", "SHOPEEPAY", "BANK", "LAINNYA"] as const;
 const H2H_FEE_CATEGORY_OPTIONS = H2H_FEE_CATEGORY_NAMES.map((name) => ({
@@ -109,6 +109,12 @@ function fmtIDR(n: number | string): string {
   return new Intl.NumberFormat("id-ID").format(num);
 }
 
+function fmtDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+}
+
 /** ambil hanya digit */
 function digitsOnly(s: string): string {
   return String(s || "").replace(/\D+/g, "");
@@ -190,7 +196,6 @@ export default function AdminMembersPage() {
   const [downlineViewerLoading, setDownlineViewerLoading] = useState(false);
   const [downlineViewerItems, setDownlineViewerItems] = useState<MemberRow[]>([]);
 
-  const scopeRoleOptions = rolesForScope(accountScope);
   const createRoleOptions = createRolesForScope(accountScope);
 
   function scopeLabel(scope: AccountScope): string {
@@ -730,7 +735,7 @@ export default function AdminMembersPage() {
     const preferredLeft = rect.right - menuWidth;
     const left = Math.max(viewportPadding, Math.min(preferredLeft, window.innerWidth - menuWidth - viewportPadding));
     const top = Math.min(rect.bottom + 8, window.innerHeight - 220);
-    setActionMenu({ key: `wallet-${member.id}`, top, left, member });
+    setActionMenu({ key: `manage-${member.id}`, top, left, member });
   }
 
   function openAdjust(m: MemberRow) {
@@ -909,22 +914,15 @@ export default function AdminMembersPage() {
 
   const columns: DataTableColumn<MemberRow>[] = [
     {
-      id: "id",
-      header: "ID",
-      tdClassName: "whitespace-nowrap font-medium text-slate-700",
-      render: (m) => m.id,
-    },
-    {
-      id: "nama",
-      header: "Nama",
-      tdClassName: "whitespace-nowrap font-semibold text-slate-950",
-      render: (m) => m.nama,
-    },
-    {
-      id: "email",
-      header: "Email",
-      tdClassName: "whitespace-nowrap text-slate-600",
-      render: (m) => m.email,
+      id: "account",
+      header: "Akun",
+      tdClassName: "min-w-56",
+      render: (m) => (
+        <div>
+          <p className="font-bold text-slate-950">{m.nama || "Nama belum diisi"}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{m.email}</p>
+        </div>
+      ),
     },
     {
       id: "role",
@@ -933,122 +931,68 @@ export default function AdminMembersPage() {
       render: (m) => roleLabel(m.role),
     },
     {
+      id: "status",
+      header: "Status",
+      tdClassName: "whitespace-nowrap",
+      render: (m) => (
+        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${m.aktif ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+          {m.aktif ? "Aktif" : "Nonaktif"}
+        </span>
+      ),
+    },
+    {
       id: "saldo",
-      header: "Saldo",
+      header: "Saldo Utama",
       tdClassName: "whitespace-nowrap font-semibold text-emerald-700",
-      render: (m) => fmtIDR(m.saldo),
+      render: (m) => `Rp ${fmtIDR(m.saldo)}`,
     },
     {
-      id: "fee",
-      header: "Fee",
-      tdClassName: "whitespace-nowrap font-semibold text-violet-700",
-      render: (m) => fmtIDR(m.fee_member_rp ?? 0),
-    },
-    {
-      id: "commission",
-      header: "Komisi / Trx",
-      tdClassName: "whitespace-nowrap font-semibold text-amber-700",
-      render: (m) => fmtIDR(effectiveCommission(m, accountScope)),
+      id: "registered",
+      header: "Terdaftar",
+      tdClassName: "whitespace-nowrap text-slate-600",
+      render: (m) => fmtDate(m.dibuat_pada),
     },
   ];
 
   const canManageWallet = currentRole === "admin" || currentRole === "operator_wallet";
   const canManageSecurity = currentRole === "admin";
-  const isH2HScope = accountScope === "h2h";
   const isInternalScope = accountScope === "internal";
 
-const actions: DataTableActions<MemberRow> = {
+  const actions: DataTableActions<MemberRow> = {
     header: "Aksi",
-    align: "left",
-    render: (m, index) => (
-      <div className="flex min-w-41 items-center gap-2 sm:min-w-0">
-        {canManageWallet ? (
-        <div className="inline-flex" data-action-dropdown>
-          <button
-            type="button"
-            className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-            onClick={(e) => {
-              const target = e.currentTarget as HTMLElement;
-              if (actionMenu?.key === `wallet-${m.id}`) {
-                setActionMenu(null);
-                return;
-              }
-              openWalletActionMenu(m, target);
-            }}
-          >
-            <Wallet className="h-4 w-4" />
-          </button>
-        </div>
-        ) : null}
-
-        {canManageSecurity ? (
+    align: "right",
+    render: (m) => (
+      <div className="flex items-center justify-end gap-2">
         <Button
-          className="h-8 w-8 border-amber-200 bg-amber-50 p-0 text-amber-700 hover:bg-amber-100"
+          className="h-9 gap-1.5 border-emerald-200 bg-emerald-50 px-3 font-bold text-emerald-800 hover:bg-emerald-100"
           variant="outline"
           onClick={() => {
             setActionMenu(null);
             setEditMember(m);
             setEditOpen(true);
           }}
-          title="Update Profil"
         >
-          <CircleUserRound className="h-4 w-4" />
+          <Eye className="h-4 w-4" />
+          Detail
         </Button>
-        ) : null}
-
-        <Button
-          className="h-8 gap-1.5 border-amber-200 bg-amber-50 px-2 text-amber-700 hover:bg-amber-100"
-          variant="outline"
-          onClick={() => {
-            setActionMenu(null);
-            openCommissionModal(m);
-          }}
-          title={isInternalScope ? "Akun internal tidak memiliki komisi transaksi" : "Atur komisi akun ini"}
-          disabled={isInternalScope}
-        >
-          <Coins className="h-4 w-4" />
-          <span className="hidden sm:inline">Komisi</span>
-        </Button>
-
-        <Button
-          className="h-8 gap-1.5 border-sky-200 bg-sky-50 px-2 text-sky-700 hover:bg-sky-100"
-          variant="outline"
-          onClick={() => {
-            setActionMenu(null);
-            openHierarchy(m);
-          }}
-          title={isInternalScope ? "Akun internal tidak punya hirarki downline" : "Atur agent atau master di atas akun ini"}
-          disabled={isInternalScope}
-        >
-          <ShieldCheck className="h-4 w-4" />
-          <span className="hidden sm:inline">Downline</span>
-        </Button>
-
-        <Button
-          className="h-8 gap-1.5 border-emerald-200 bg-emerald-50 px-2 text-emerald-700 hover:bg-emerald-100"
-          variant="outline"
-          onClick={() => {
-            setActionMenu(null);
-            void openDownlineViewer(m);
-          }}
-          title={isInternalScope ? "Akun internal tidak punya downline" : "Lihat daftar downline akun ini"}
-          disabled={isInternalScope}
-        >
-          <Search className="h-4 w-4" />
-          <span className="hidden sm:inline">Lihat</span>
-        </Button>
-
-        <Button
-          className="h-8 w-8 border-slate-200 bg-slate-50 p-0 text-slate-600 hover:bg-slate-100"
-          variant="outline"
-          onClick={() => {
-            setActionMenu(null);
-            router.push(`/dashboard/admin/master/members/history?member_id=${m.id}&tab=mutasi`);
-          }}
-          title="History"
-        >
-          <Clock3 className="h-4 w-4" />
-        </Button>
+        <div className="inline-flex" data-action-dropdown>
+          <button
+            type="button"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
+            onClick={(e) => {
+              const target = e.currentTarget as HTMLElement;
+              if (actionMenu?.key === `manage-${m.id}`) {
+                setActionMenu(null);
+                return;
+              }
+              openWalletActionMenu(m, target);
+            }}
+            aria-label={`Tindakan untuk ${m.nama || m.email}`}
+            title="Tindakan lainnya"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     ),
   };
@@ -1058,75 +1002,71 @@ const actions: DataTableActions<MemberRow> = {
       {actionMenu ? (
         <div className="fixed inset-0 z-40" onMouseDown={() => setActionMenu(null)}>
           <div
-            className="fixed z-50 w-44 rounded-xl border border-white/15 bg-slate-950/95 p-2 shadow-2xl"
+            className="fixed z-50 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.18)]"
             style={{ top: actionMenu.top, left: actionMenu.left }}
             onMouseDown={(e) => e.stopPropagation()}
             data-action-dropdown
           >
-            <Button
-              className="h-8 w-full justify-start border-0 bg-linear-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500"
+            {canManageSecurity ? <Button
+              className="h-9 w-full justify-start border-0 bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"
+              onClick={() => {
+                const member = actionMenu.member;
+                setActionMenu(null);
+                setEditMember(member);
+                setEditOpen(true);
+              }}
+            >
+              <UserCog className="mr-1.5 h-4 w-4" /> Edit Akun
+            </Button> : null}
+            {canManageWallet && ["user", "agent"].includes(actionMenu.member.role) ? <Button
+              className="h-9 w-full justify-start border-0 bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"
               onClick={() => {
                 const member = actionMenu.member;
                 setActionMenu(null);
                 openAdjust(member);
               }}
             >
-              <Wallet className="mr-1.5 h-4 w-4" />
-              Update Saldo
-            </Button>
-            <Button
-              className="mt-1 h-8 w-full justify-start border-0 bg-linear-to-r from-violet-500 to-fuchsia-500 text-white hover:from-violet-400 hover:to-fuchsia-400"
-              onClick={() => {
-                const member = actionMenu.member;
-                setActionMenu(null);
-                setFeeMember(member);
-                setNewFee(String(member.fee_member_rp ?? 0));
-                setFeeOpen(true);
-              }}
-              disabled={isH2HScope || isInternalScope}
-              title={isH2HScope ? "H2H wajib pakai fee per produk" : isInternalScope ? "Akun internal tidak memakai default fee" : "Default Fee"}
-            >
-              <Wallet className="mr-1.5 h-4 w-4" />
-              {isH2HScope ? "Fee Flat Nonaktif" : isInternalScope ? "Fee Tidak Berlaku" : "Default Fee"}
-            </Button>
-            <Button
-              className="mt-1 h-8 w-full justify-start border-0 bg-linear-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-400 hover:to-teal-400"
-              onClick={() => {
-                const member = actionMenu.member;
-                setActionMenu(null);
-                void openFeeProducts(member);
-              }}
-              disabled={!isH2HScope}
-              title={!isH2HScope ? "Fee produk hanya untuk akun H2H" : "Fee"}
-            >
-              <Wallet className="mr-1.5 h-4 w-4" />
-              {isH2HScope ? "Fee Kategori" : "Fee H2H Only"}
-            </Button>
-            <Button
-              className="mt-1 h-8 w-full justify-start border-0 bg-linear-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400"
+              <Wallet className="mr-1.5 h-4 w-4" /> Kelola Saldo
+            </Button> : null}
+            {(["agent", "master", "agent_member", "master_member"].includes(actionMenu.member.role)) ? <Button
+              className="h-9 w-full justify-start border-0 bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"
               onClick={() => {
                 const member = actionMenu.member;
                 setActionMenu(null);
                 openCommissionModal(member);
               }}
-              disabled={isInternalScope}
-              title={isInternalScope ? "Akun internal tidak memiliki komisi transaksi" : "Komisi"}
             >
-              <Coins className="mr-1.5 h-4 w-4" />
-              {isInternalScope ? "Komisi Tidak Berlaku" : "Komisi"}
-            </Button>
-            <Button
-              className="mt-1 h-8 w-full justify-start border-0 bg-linear-to-r from-sky-500 to-indigo-600 text-white hover:from-sky-400 hover:to-indigo-500"
+              <Coins className="mr-1.5 h-4 w-4" /> Atur Komisi
+            </Button> : null}
+            {(["agent", "master", "agent_member", "master_member"].includes(actionMenu.member.role)) ? <Button
+              className="h-9 w-full justify-start border-0 bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"
+              onClick={() => {
+                const member = actionMenu.member;
+                setActionMenu(null);
+                void openDownlineViewer(member);
+              }}
+            >
+              <Users className="mr-1.5 h-4 w-4" /> Lihat Jaringan
+            </Button> : null}
+            {(["agent", "master", "agent_member", "master_member"].includes(actionMenu.member.role)) ? <Button
+              className="h-9 w-full justify-start border-0 bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"
               onClick={() => {
                 const member = actionMenu.member;
                 setActionMenu(null);
                 openHierarchy(member);
               }}
-              disabled={isInternalScope}
-              title={isInternalScope ? "Akun internal tidak punya hirarki downline" : "Atur hirarki downline dan komisi historis"}
             >
-              <ShieldCheck className="mr-1.5 h-4 w-4" />
-              {isInternalScope ? "Hierarki Tidak Berlaku" : "Hierarki"}
+              <ShieldCheck className="mr-1.5 h-4 w-4" /> Atur Jaringan
+            </Button> : null}
+            <Button
+              className="h-9 w-full justify-start border-0 bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"
+              onClick={() => {
+                const member = actionMenu.member;
+                setActionMenu(null);
+                router.push(`/dashboard/admin/master/members/history?member_id=${member.id}&tab=mutasi`);
+              }}
+            >
+              <Clock3 className="mr-1.5 h-4 w-4" /> Riwayat Aktivitas
             </Button>
           </div>
         </div>
@@ -1141,9 +1081,9 @@ const actions: DataTableActions<MemberRow> = {
                 <Users className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] font-bold uppercase text-emerald-700">Akun Pengguna</div>
-                <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">Manajemen Akun</h1>
-                <p className="mt-1 text-sm text-slate-600">Kelola pengguna aplikasi dan tim operasional PulsaKilat.</p>
+                <div className="text-[11px] font-bold uppercase text-emerald-700">Direktori Akun</div>
+                <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">Akun PulsaKilat</h1>
+                <p className="mt-1 text-sm text-slate-600">Kelola pelanggan, agent, marketing, dan operator dalam satu tempat.</p>
               </div>
             </div>
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 sm:min-w-56">
@@ -1156,28 +1096,35 @@ const actions: DataTableActions<MemberRow> = {
 
         <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4">
-            {ACCOUNT_SCOPE_OPTIONS.filter((scope) => scope.value !== "h2h").map((scope) => (
+            {[
+              { label: "Semua Akun", scope: "retail" as AccountScope, role: "" },
+              { label: "Pelanggan", scope: "retail" as AccountScope, role: "user" },
+              { label: "Agent", scope: "retail" as AccountScope, role: "agent" },
+              { label: "Marketing", scope: "retail" as AccountScope, role: "marketing" },
+              { label: "Operator Kredit", scope: "retail" as AccountScope, role: "analis" },
+              { label: "Tim Internal", scope: "internal" as AccountScope, role: "" },
+            ].map((tab) => (
               <button
-                key={scope.value}
+                key={`${tab.scope}-${tab.role || "all"}`}
                 type="button"
                 className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
-                  accountScope === scope.value
+                  accountScope === tab.scope && roleFilter === tab.role
                     ? "bg-emerald-700 text-white"
                     : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
                 }`}
                 onClick={() => {
-                  setAccountScope(scope.value);
-                  setRoleFilter("");
+                  setAccountScope(tab.scope);
+                  setRoleFilter(tab.role);
                   setOffset(0);
-                  void load(0, "", scope.value);
+                  void load(0, tab.role, tab.scope);
                 }}
               >
-                {scopeLabel(scope.value)}
+                {tab.label}
               </button>
             ))}
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-[auto_minmax(180px,260px)_minmax(240px,1fr)]">
+          <div className="mt-4 grid gap-3 md:grid-cols-[auto_minmax(240px,1fr)]">
             {currentRole === "admin" ? (
               <Button
                 className="h-11 border-0 bg-emerald-700 px-4 text-white hover:bg-emerald-800"
@@ -1187,22 +1134,6 @@ const actions: DataTableActions<MemberRow> = {
                 Tambah Pengguna
               </Button>
             ) : null}
-            <select
-              value={roleFilter}
-              onChange={(e) => {
-                const nextRole = e.target.value;
-                setRoleFilter(nextRole);
-                setOffset(0);
-                void load(0, nextRole);
-              }}
-              className="h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-              aria-label="Filter role pengguna"
-            >
-              <option value="">Semua role</option>
-              {scopeRoleOptions.map((roleValue) => (
-                <option key={roleValue} value={roleValue}>{roleLabel(roleValue)}</option>
-              ))}
-            </select>
             <div className="flex min-w-0 gap-2">
               <Input
                 value={search}
@@ -1238,7 +1169,7 @@ const actions: DataTableActions<MemberRow> = {
           rows={items}
           rowKey={(m) => m.id}
           rowNumberStart={offset + 1}
-          minWidthClassName="min-w-[1150px]"
+          minWidthClassName="min-w-[820px]"
           emptyText={`Belum ada ${scopeLabel(accountScope).toLowerCase()}.`}
           actions={actions}
           loading={loading}
