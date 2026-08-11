@@ -1063,7 +1063,7 @@ export default function AdminMembersPage() {
               onClick={() => {
                 const member = actionMenu.member;
                 setActionMenu(null);
-                router.push(`/dashboard/admin/master/members/history?member_id=${member.id}&tab=mutasi`);
+                router.push(`/dashboard/admin/master/members/history?member_id=${member.id}`);
               }}
             >
               <Clock3 className="mr-1.5 h-4 w-4" /> Riwayat Aktivitas

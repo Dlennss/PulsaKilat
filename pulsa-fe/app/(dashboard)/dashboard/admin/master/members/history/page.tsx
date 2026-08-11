@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import HistoryClient from "./HistoryClient";
+import AccountActivityClient from "./AccountActivityClient";
 
 export default function Page() {
   return (
     <Suspense fallback={<div >Loading...</div>}>
-      <HistoryClient />
+      <AccountActivityClient />
     </Suspense>
   );
 }
