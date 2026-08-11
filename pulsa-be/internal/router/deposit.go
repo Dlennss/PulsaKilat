@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"pulsa2/internal/controller"
@@ -50,22 +52,24 @@ func DepositRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB, lbClient *lo
 	// internal admin token
 	mux.HandleFunc("/admin/deposit/credit", ctrl.AdminCreditInternal)
 
-	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			n, err := svc.AutoApprovePendingFromBankMutations(ctx, 5)
-			cancel()
-			if err != nil {
-				log.Printf("[deposit_auto_approve] error: %v", err)
-				continue
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("DEPOSIT_AUTO_APPROVE_ENABLED")), "true") {
+		go func() {
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+			for range ticker.C {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				n, err := svc.AutoApprovePendingFromBankMutations(ctx, 5)
+				cancel()
+				if err != nil {
+					log.Printf("[deposit_auto_approve] error: %v", err)
+					continue
+				}
+				if n > 0 {
+					log.Printf("[deposit_auto_approve] %d deposit approved", n)
+				}
 			}
-			if n > 0 {
-				log.Printf("[deposit_auto_approve] %d deposit approved", n)
-			}
-		}
-	}()
+		}()
+	}
 
 	if p24Client != nil && p24Client.Configured() {
 		go func() {

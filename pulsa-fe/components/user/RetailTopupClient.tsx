@@ -37,7 +37,7 @@ function fmtIDR(value: number) {
 function statusLabel(value: string) {
   switch (String(value || "").toLowerCase()) {
     case "ticket": return "Menunggu transfer";
-    case "pending": return "Menunggu verifikasi";
+    case "pending": return "Menunggu persetujuan admin";
     case "approved": return "Saldo sudah masuk";
     case "rejected": return "Ditolak";
     case "cancelled": return "Dibatalkan";
@@ -114,7 +114,7 @@ export function RetailTopupClient({ authToken, initialAmount = 0 }: Props) {
       });
       setTicket(data.item);
       setHistory((rows) => [data.item, ...rows.filter((row) => row.id !== data.item.id)]);
-      setMessage("Tiket dibuat. Transfer sesuai nominal tepat yang tertera.");
+      setMessage("Permintaan top up sudah dikirim ke admin. Transfer sesuai nominal yang tertera agar dapat disetujui.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal membuat tiket topup.");
     } finally {
@@ -159,7 +159,7 @@ export function RetailTopupClient({ authToken, initialAmount = 0 }: Props) {
       {loading ? <div className="grid min-h-48 place-items-center rounded-[28px] bg-white"><LoaderCircle className="h-6 w-6 animate-spin text-[#047857]" /></div> : ticket ? (
         <section className="rounded-[28px] border border-emerald-950/5 bg-white p-5 shadow-[0_18px_42px_rgba(6,78,59,0.11)]">
           <div className="flex items-start justify-between gap-3">
-            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#047857]">Tiket Topup</p><h2 className="mt-1 text-lg font-black text-slate-950">{statusLabel(ticket.status)}</h2></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#047857]">Permintaan Top Up</p><h2 className="mt-1 text-lg font-black text-slate-950">{statusLabel(ticket.status)}</h2></div>
             <button type="button" onClick={() => void load()} className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-[#047857]" aria-label="Muat ulang"><RefreshCcw className="h-4 w-4" /></button>
           </div>
           <div className="mt-5 space-y-3 rounded-2xl bg-emerald-50 p-4">
@@ -171,7 +171,7 @@ export function RetailTopupClient({ authToken, initialAmount = 0 }: Props) {
           {String(ticket.status).toLowerCase() === "ticket" ? <div className="mt-4 grid gap-2">
             <button type="button" onClick={() => void updateTicket("confirm")} disabled={Boolean(action)} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#047857] text-xs font-black text-white disabled:opacity-60">{action === "confirm" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Saya Sudah Transfer</button>
             <button type="button" onClick={() => void updateTicket("cancel")} disabled={Boolean(action)} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 text-xs font-black text-slate-600 disabled:opacity-60">{action === "cancel" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}Batalkan Tiket</button>
-          </div> : <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-700">Pembayaran sedang diverifikasi. Tekan muat ulang untuk melihat status terbaru.</p>}
+          </div> : <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-700">Permintaan sudah masuk ke panel admin. Saldo akan bertambah setelah admin menyetujui pembayaran.</p>}
         </section>
       ) : (
         <form className="space-y-4" onSubmit={createTicket}>

@@ -57,7 +57,7 @@ func (r *DepositRepository) CreateTicketRequest(ctx context.Context, memberID, b
 SELECT COUNT(*)
 FROM public.deposit_request
 WHERE member_id = $1
-  AND status = 'ticket'
+  AND status IN ('ticket', 'pending')
   AND LOWER(TRIM(COALESCE(metode, ''))) <> 'qris'
 `, memberID).Scan(&activeCount); err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ LIMIT 1
 
 		err = tx.QueryRowContext(ctx, `
 INSERT INTO public.deposit_request (member_id, bank_id, bank_nama, bank_nomor_rekening, bank_atas_nama, amount, requested_amount, unique_code, metode, bukti_url, status, note, ref_id)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'','ticket','',$10)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'','pending','Menunggu persetujuan admin',$10)
 RETURNING id
 `, memberID, bankID, strings.TrimSpace(bankNama), strings.TrimSpace(bankNomorRekening), strings.TrimSpace(bankAtasNama), ticketAmount, requestedAmount, uniqueCode, strings.TrimSpace(metode), strings.TrimSpace(refID)).Scan(&insertedID)
 		if err != nil {
