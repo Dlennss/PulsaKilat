@@ -1,1 +1,5 @@
-export { default } from "@/app/(dashboard)/dashboard/wallet/members/page";
+import { redirect } from "next/navigation";
+
+export default function AdminWalletMembersRedirect() {
+  redirect("/dashboard/admin/master/members?scope=retail");
+}

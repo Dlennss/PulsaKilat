@@ -50,7 +50,6 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     { href: "/dashboard/admin", label: "Dashboard" },
     { href: "/dashboard/admin/komisi", label: "Komisi & Laporan" },
     { href: "/dashboard/admin/deposits", label: "Permintaan Deposit" },
-    { href: "/dashboard/admin/wallet/members", label: "Dompet Member" },
     { href: "/dashboard/admin/transaksi/member", label: "Transaksi Member" },
     { href: "/dashboard/admin/transaksi/aplikasi", label: "Transaksi Aplikasi" },
     { href: "/dashboard/admin/transaksi/provider", label: "Transaksi Provider" },

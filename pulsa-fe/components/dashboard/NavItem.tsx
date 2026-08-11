@@ -50,7 +50,6 @@ const iconByHref = {
   "/dashboard/admin/transaksi/aplikasi/provider": PlugZap,
   "/dashboard/admin/transaksi/guest-refund": RefreshCcw,
   "/dashboard/admin/deposits": CircleDollarSign,
-  "/dashboard/admin/wallet/members": Wallet,
   "/dashboard/admin/retail-withdraws": Download,
   "/dashboard/admin/bank": Landmark,
   "/dashboard/admin/master/produk": Package,

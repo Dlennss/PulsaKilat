@@ -146,7 +146,6 @@ export const adminNavSections: NavSection[] = [
     title: "Keuangan",
     items: [
       { href: "/dashboard/admin/deposits", label: "Top Up Pengguna" },
-      { href: "/dashboard/admin/wallet/members", label: "Saldo Pengguna" },
       { href: "/dashboard/admin/retail-withdraws", label: "Penarikan Agent" },
       { href: "/dashboard/admin/bank", label: "Rekening Bank" },
     ],
