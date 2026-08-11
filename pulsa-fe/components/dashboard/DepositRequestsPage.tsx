@@ -378,6 +378,7 @@ export default function DepositRequestsPage({
 
   function renderAmount(row: DepositReq, align: "left" | "right" = "left") {
     const approvedAmount = Number(row.approved_amount || 0);
+    const requestedAmount = Number(row.requested_amount || 0);
     const corrected = row.status === "approved" && approvedAmount > 0 && approvedAmount !== Number(row.amount || 0);
     const copied = copiedAmountID === row.id;
 
@@ -400,6 +401,7 @@ export default function DepositRequestsPage({
           </Button>
         </div>
         {copied ? <div className="text-[11px] font-medium text-emerald-200">Tersalin</div> : null}
+        {requestedAmount > 0 && requestedAmount !== Number(row.amount || 0) ? <div className="text-xs font-medium text-emerald-200">Saldo masuk Rp {fmtID(requestedAmount)}</div> : null}
         {corrected ? <div className="text-xs font-medium text-amber-200">Saldo masuk Rp {fmtID(approvedAmount)}</div> : null}
       </div>
     );
@@ -440,7 +442,7 @@ export default function DepositRequestsPage({
 
   async function approve(row: DepositReq) {
     const ticketAmount = Number(row.amount || 0);
-    const defaultAmount = Number(row.approved_amount || row.amount || 0);
+    const defaultAmount = Number(row.approved_amount || row.requested_amount || row.amount || 0);
     const result = await Swal.fire<{ approvedAmount: number; bankRefIDs: string[] }>({
       background: "#0b1220",
       color: "#e5e7eb",

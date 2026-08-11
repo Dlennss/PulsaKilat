@@ -103,16 +103,16 @@ func (r *DepositRepository) Approve(ctx context.Context, reqID, adminID, approve
 	}
 	defer tx.Rollback()
 
-	var memberID, amount int64
+	var memberID, amount, requestedAmount int64
 	var bankID sql.NullInt64
 	var status, metode, memberName string
 	err = tx.QueryRowContext(ctx, `
-SELECT d.member_id, d.bank_id, d.amount, d.status, COALESCE(d.metode, ''), COALESCE(m.nama, '')
+SELECT d.member_id, d.bank_id, d.amount, COALESCE(d.requested_amount, 0), d.status, COALESCE(d.metode, ''), COALESCE(m.nama, '')
 FROM public.deposit_request d
 LEFT JOIN public.member m ON m.id = d.member_id
 WHERE d.id = $1
 FOR UPDATE OF d
-`, reqID).Scan(&memberID, &bankID, &amount, &status, &metode, &memberName)
+`, reqID).Scan(&memberID, &bankID, &amount, &requestedAmount, &status, &metode, &memberName)
 	if err != nil {
 		return "", 0, err
 	}
@@ -123,6 +123,9 @@ FOR UPDATE OF d
 		return "", 0, errors.New("invalid amount")
 	}
 	creditAmount := amount
+	if requestedAmount > 0 {
+		creditAmount = requestedAmount
+	}
 	if approvedAmount > 0 {
 		creditAmount = approvedAmount
 	}
