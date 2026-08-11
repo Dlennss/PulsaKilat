@@ -255,7 +255,7 @@ export default function FeeKategoriAplikasiPage() {
       <div className="relative inline-flex" data-action-dropdown>
         <Button
           size="sm"
-          className="h-8 w-8 px-0 bg-linear-to-r from-sky-500 to-cyan-500 text-white hover:opacity-90"
+          className="h-8 w-8 bg-emerald-700 px-0 text-white hover:bg-emerald-600"
           onClick={() => setOpenActionKey((prev) => (prev === String(x.id) ? null : String(x.id)))}
           aria-label="Aksi"
         >

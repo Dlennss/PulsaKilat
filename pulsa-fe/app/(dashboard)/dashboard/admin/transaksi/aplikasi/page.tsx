@@ -283,7 +283,7 @@ export default function AdminAppOrdersPage() {
               {mobileFilterOpen ? "Tutup Filter" : "Buka Filter"}
             </span>
             {activeFilterCount > 0 ? (
-              <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-xs font-semibold text-cyan-200">{activeFilterCount}</span>
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{activeFilterCount}</span>
             ) : null}
           </Button>
         </div>
@@ -293,7 +293,7 @@ export default function AdminAppOrdersPage() {
         className={`${mobileFilterOpen ? "block" : "hidden"} rounded-2xl border border-white/10 bg-linear-to-br from-slate-900/85 via-slate-900/65 to-slate-800/45 p-3 shadow-[0_22px_48px_-34px_rgba(56,189,248,0.75)] md:block`}
       >
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-300 md:hidden">
-          <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-300" />
+          <SlidersHorizontal className="h-3.5 w-3.5 text-emerald-600" />
           Filter Order
         </div>
         <div className="grid grid-cols-2 gap-2 xl:grid-cols-6">
@@ -353,7 +353,7 @@ export default function AdminAppOrdersPage() {
                 applyFilters();
                 setMobileFilterOpen(false);
               }}
-              className="h-10 bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+              className="h-10 bg-emerald-700 text-white hover:bg-emerald-600"
             >
               Terapkan
             </Button>

@@ -1116,7 +1116,7 @@ export default function AdminBankPage() {
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
             <div className="font-medium text-white">{manualBank?.nama || "-"}</div>
             <div className="text-white/75">{manualBank?.atas_nama || "-"}</div>
-            <div className="font-mono text-cyan-200">{manualBank?.nomor_rekening || "-"}</div>
+            <div className="font-mono text-emerald-700">{manualBank?.nomor_rekening || "-"}</div>
             <div className="text-emerald-300">Saldo: Rp {fmtID(Number(manualBank?.saldo || 0))}</div>
           </div>
           <div className="grid gap-1.5">
@@ -1172,7 +1172,7 @@ export default function AdminBankPage() {
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
             <div className="font-medium text-white">{providerTopupBank?.nama || "-"}</div>
             <div className="text-white/75">{providerTopupBank?.atas_nama || "-"}</div>
-            <div className="font-mono text-cyan-200">{providerTopupBank?.nomor_rekening || "-"}</div>
+            <div className="font-mono text-emerald-700">{providerTopupBank?.nomor_rekening || "-"}</div>
             <div className="text-emerald-300">Saldo rekening: Rp {fmtID(Number(providerTopupBank?.saldo || 0))}</div>
           </div>
           <div className="grid gap-1.5">

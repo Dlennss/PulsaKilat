@@ -1257,7 +1257,7 @@ export default function AdminMembersPage() {
                 Batal
               </Button>
               <Button
-                className="h-10 border-0 bg-linear-to-r from-violet-500 via-fuchsia-500 to-indigo-500 text-white shadow-[0_12px_30px_-15px_rgba(168,85,247,0.8)] hover:from-violet-400 hover:via-fuchsia-400 hover:to-indigo-400"
+                className="h-10 border-0 bg-emerald-700 text-white shadow-[0_12px_30px_-15px_rgba(4,120,87,0.45)] hover:bg-emerald-600"
                 onClick={doAdjust}
                 disabled={adjustSubmitting}
               >
@@ -1268,13 +1268,13 @@ export default function AdminMembersPage() {
           }
         >
           <div className="space-y-4">
-            <div className="rounded-xl border border-cyan-300/20 bg-linear-to-r from-cyan-500/10 via-sky-500/8 to-indigo-500/10 p-3">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
               <div className="text-base font-semibold text-slate-100">Adjust Saldo</div>
               <div className="mt-1 text-sm text-slate-300">
                 Member #{adjMember.id} {adjMember.email}
               </div>
               <div className="mt-1 text-xs text-slate-400">
-                Saldo saat ini: <span className="font-medium text-cyan-200">{fmtIDR(adjMember.saldo)}</span>
+                Saldo saat ini: <span className="font-medium text-emerald-700">{fmtIDR(adjMember.saldo)}</span>
               </div>
             </div>
 
@@ -1283,7 +1283,7 @@ export default function AdminMembersPage() {
                 <div className="text-xs font-semibold uppercase tracking-wider text-slate-300">Direction</div>
                 <div className="flex gap-2">
                   <Button
-                    className={`h-10 border-0 ${direction === "credit" ? "bg-linear-to-r from-cyan-500 to-blue-600 text-white shadow-[0_12px_28px_-15px_rgba(6,182,212,0.9)]" : "bg-slate-800/80 text-slate-300 hover:bg-slate-700"}`}
+                    className={`h-10 border-0 ${direction === "credit" ? "bg-emerald-700 text-white shadow-[0_12px_28px_-15px_rgba(4,120,87,0.45)]" : "bg-slate-800/80 text-slate-300 hover:bg-slate-700"}`}
                     onClick={() => setDirection("credit")}
                     disabled={adjustSubmitting}
                   >
@@ -1378,7 +1378,7 @@ export default function AdminMembersPage() {
                 Simpan Relasi
               </Button>
               <Button
-                className="border-0 bg-linear-to-r from-sky-500 to-indigo-600 text-white hover:from-sky-400 hover:to-indigo-500"
+                className="border-0 bg-emerald-700 text-white hover:bg-emerald-600"
                 onClick={() => void applyHierarchy(true)}
                 disabled={hierarchySaving}
               >
@@ -1430,7 +1430,7 @@ export default function AdminMembersPage() {
                             <Button
                               key={`${item.id}-${role}`}
                               variant={hierarchyTargetMember?.id === item.id && hierarchyTargetRole === role ? "default" : "outline"}
-                              className={hierarchyTargetMember?.id === item.id && hierarchyTargetRole === role ? "border-0 bg-linear-to-r from-sky-500 to-indigo-600 text-white" : ""}
+                              className={hierarchyTargetMember?.id === item.id && hierarchyTargetRole === role ? "border-0 bg-emerald-700 text-white" : ""}
                               onClick={() => selectHierarchyTarget(item, role)}
                               disabled={hierarchySaving}
                             >
@@ -1543,7 +1543,7 @@ export default function AdminMembersPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-xs uppercase tracking-wide text-slate-500">{item.aktif ? "Aktif" : "Nonaktif"}</div>
-                        <div className="mt-1 text-sm font-semibold text-cyan-200">Rp {fmtIDR(item.saldo)}</div>
+                        <div className="mt-1 text-sm font-semibold text-emerald-700">Rp {fmtIDR(item.saldo)}</div>
                       </div>
                     </div>
                   </div>
@@ -1689,7 +1689,7 @@ export default function AdminMembersPage() {
                 </label>
 
                 <Button
-                  className="h-11 border-0 bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-[0_12px_30px_-15px_rgba(16,185,129,0.8)] hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-400"
+                  className="h-11 border-0 bg-emerald-700 text-white shadow-[0_12px_30px_-15px_rgba(4,120,87,0.45)] hover:bg-emerald-600"
                   onClick={doUpsertFeeCategory}
                   disabled={feeCategorySaving}
                 >
@@ -1775,7 +1775,7 @@ export default function AdminMembersPage() {
                 Batal
               </Button>
               <Button
-                className="border-0 bg-linear-to-r from-violet-500 to-fuchsia-500 text-white hover:from-violet-400 hover:to-fuchsia-400"
+                className="border-0 bg-emerald-700 text-white hover:bg-emerald-600"
                 onClick={doSetFee}
                 disabled={savingFee}
               >

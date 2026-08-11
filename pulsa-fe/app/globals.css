@@ -161,98 +161,94 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   margin: 0;
 }
 
-/* Admin legacy pages still use older slate/dark utility classes.
-   Scope the bridge to admin only so the rest of PulsaKilat keeps its own theme. */
+/* Admin legacy pages still contain older dark utilities. Keep the compatibility
+   layer scoped and token-specific so hover utilities are not applied permanently. */
 .admin-dashboard-surface {
   min-height: 100%;
+  background: #eef8f3;
   color: #052e26;
 }
 
-.admin-dashboard-surface [class*="bg-slate-950"],
-.admin-dashboard-surface [class*="bg-slate-900"],
-.admin-dashboard-surface [class*="bg-slate-800"] {
-  background-color: #064e3b !important;
-  background-image: linear-gradient(135deg, #052e26 0%, #064e3b 58%, #047857 130%) !important;
-  border-color: rgba(187, 247, 208, 0.24) !important;
+.admin-dashboard-surface :where(
+  [class~="bg-slate-950/30"], [class~="bg-slate-950/35"],
+  [class~="bg-slate-950/40"], [class~="bg-slate-950/45"],
+  [class~="bg-slate-950/50"], [class~="bg-slate-950/55"],
+  [class~="bg-slate-950/60"], [class~="bg-slate-950/70"],
+  [class~="bg-slate-950/80"], [class~="bg-slate-950/95"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/40"],
+  [class~="bg-slate-900/50"], [class~="bg-slate-900/55"],
+  [class~="bg-slate-900/60"], [class~="bg-slate-900/70"],
+  [class~="bg-slate-900/80"], [class~="bg-slate-900/95"],
+  [class~="bg-zinc-900"]
+) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #d7e9df !important;
 }
 
-.admin-dashboard-surface [class*="bg-slate-700"],
-.admin-dashboard-surface [class*="bg-slate-600"] {
-  background-color: #047857 !important;
-  border-color: rgba(187, 247, 208, 0.32) !important;
+.admin-dashboard-surface :where(
+  [class*="from-slate-900"], [class*="via-slate-900"],
+  [class*="to-slate-800"]
+) {
+  background-color: #ffffff !important;
+  background-image: none !important;
 }
 
-.admin-dashboard-surface [class*="bg-slate-500"] {
-  background-color: rgba(4, 120, 87, 0.16) !important;
+.admin-dashboard-surface [class*="from-cyan-500/15"][class*="to-indigo-500/15"] {
+  background-color: #ecfdf5 !important;
+  background-image: none !important;
 }
 
-.admin-dashboard-surface [class*="bg-slate-100"],
-.admin-dashboard-surface [class*="bg-slate-50"] {
+.admin-dashboard-surface :where(
+  [class~="bg-slate-50"], [class~="bg-slate-100"],
+  [class~="bg-slate-200"], [class~="bg-slate-700"],
+  [class~="bg-slate-800/80"]
+) {
   background-color: #f0fdf4 !important;
 }
 
-.admin-dashboard-surface [class*="border-white/10"],
-.admin-dashboard-surface [class*="border-white/15"],
-.admin-dashboard-surface [class*="border-white/20"] {
-  border-color: rgba(187, 247, 208, 0.24) !important;
+.admin-dashboard-surface :where(
+  [class~="border-white/8"], [class~="border-white/10"],
+  [class~="border-white/12"], [class~="border-white/15"],
+  [class~="border-white/20"]
+) {
+  border-color: #d7e9df !important;
 }
 
-.admin-dashboard-surface [class*="text-slate-950"],
-.admin-dashboard-surface [class*="text-slate-900"],
-.admin-dashboard-surface [class*="text-slate-800"],
-.admin-dashboard-surface [class*="text-slate-700"],
-.admin-dashboard-surface [class*="text-slate-600"] {
+.admin-dashboard-surface :where(
+  [class~="text-slate-50"], [class~="text-slate-100"],
+  [class~="text-slate-200"], [class~="text-slate-300"],
+  [class~="text-slate-600"], [class~="text-slate-700"],
+  [class~="text-slate-800"], [class~="text-slate-900"],
+  [class~="text-slate-950"], [class~="text-zinc-100"]
+) {
   color: #052e26 !important;
 }
 
-.admin-dashboard-surface [class*="text-slate-500"],
-.admin-dashboard-surface [class*="text-slate-400"],
-.admin-dashboard-surface [class*="text-gray-500"],
-.admin-dashboard-surface [class*="text-gray-400"] {
-  color: #3f6f63 !important;
+.admin-dashboard-surface :where(
+  [class~="text-slate-400"], [class~="text-slate-500"],
+  [class~="text-gray-400"], [class~="text-gray-500"]
+) {
+  color: #52756b !important;
 }
 
-.admin-dashboard-surface [class*="bg-slate-950"] [class*="text-slate-100"],
-.admin-dashboard-surface [class*="bg-slate-950"] [class*="text-slate-200"],
-.admin-dashboard-surface [class*="bg-slate-950"] [class*="text-slate-300"],
-.admin-dashboard-surface [class*="bg-slate-950"] [class*="text-slate-400"],
-.admin-dashboard-surface [class*="bg-slate-900"] [class*="text-slate-100"],
-.admin-dashboard-surface [class*="bg-slate-900"] [class*="text-slate-200"],
-.admin-dashboard-surface [class*="bg-slate-900"] [class*="text-slate-300"],
-.admin-dashboard-surface [class*="bg-slate-900"] [class*="text-slate-400"],
-.admin-dashboard-surface [class*="bg-slate-800"] [class*="text-slate-100"],
-.admin-dashboard-surface [class*="bg-slate-800"] [class*="text-slate-200"],
-.admin-dashboard-surface [class*="bg-slate-800"] [class*="text-slate-300"],
-.admin-dashboard-surface [class*="bg-slate-800"] [class*="text-slate-400"] {
-  color: #ecfdf5 !important;
+.admin-dashboard-surface :where(input, select, textarea)[class*="bg-slate-"] {
+  color: #052e26 !important;
+  border-color: #cfe4d9 !important;
+  background: #f8fffb !important;
+  color-scheme: light;
 }
 
-.admin-dashboard-surface [class*="bg-slate-950"] input,
-.admin-dashboard-surface [class*="bg-slate-950"] select,
-.admin-dashboard-surface [class*="bg-slate-950"] textarea,
-.admin-dashboard-surface [class*="bg-slate-900"] input,
-.admin-dashboard-surface [class*="bg-slate-900"] select,
-.admin-dashboard-surface [class*="bg-slate-900"] textarea,
-.admin-dashboard-surface [class*="bg-slate-800"] input,
-.admin-dashboard-surface [class*="bg-slate-800"] select,
-.admin-dashboard-surface [class*="bg-slate-800"] textarea {
-  color: #ecfdf5 !important;
-  border-color: rgba(187, 247, 208, 0.28) !important;
-  background: rgba(5, 46, 38, 0.72) !important;
+.admin-dashboard-surface :where(input, textarea)::placeholder {
+  color: #78958d !important;
 }
 
-.admin-dashboard-surface input::placeholder,
-.admin-dashboard-surface textarea::placeholder {
-  color: rgba(63, 111, 99, 0.72) !important;
-}
-
-.admin-dashboard-surface [class*="bg-slate-950"] input::placeholder,
-.admin-dashboard-surface [class*="bg-slate-950"] textarea::placeholder,
-.admin-dashboard-surface [class*="bg-slate-900"] input::placeholder,
-.admin-dashboard-surface [class*="bg-slate-900"] textarea::placeholder,
-.admin-dashboard-surface [class*="bg-slate-800"] input::placeholder,
-.admin-dashboard-surface [class*="bg-slate-800"] textarea::placeholder {
-  color: rgba(209, 250, 229, 0.72) !important;
+.admin-dashboard-surface :where(
+  .fixed[class~="bg-slate-950/70"],
+  .fixed[class~="bg-slate-950/75"]
+) {
+  background-color: rgba(2, 44, 34, 0.7) !important;
+  background-image: none !important;
 }
 
 /* Link */

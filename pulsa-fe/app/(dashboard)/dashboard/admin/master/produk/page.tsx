@@ -360,7 +360,7 @@ export default function AdminMasterProdukPage() {
       <div className="relative inline-flex" data-action-dropdown>
         <Button
           size="sm"
-          className="h-8 w-8 px-0 bg-linear-to-r from-sky-500 to-cyan-500 text-white hover:opacity-90"
+          className="h-8 w-8 bg-emerald-700 px-0 text-white hover:bg-emerald-600"
           onClick={() => setOpenActionKey((prev) => (prev === String(x.id) ? null : String(x.id)))}
           aria-label="Aksi"
         >
@@ -432,7 +432,7 @@ export default function AdminMasterProdukPage() {
             {mobileFilterOpen ? "Tutup Filter" : "Buka Filter"}
           </span>
           {activeFilterCount > 0 ? (
-            <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-xs font-semibold text-cyan-200">{activeFilterCount}</span>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{activeFilterCount}</span>
           ) : null}
         </Button>
       </div>
@@ -483,7 +483,7 @@ export default function AdminMasterProdukPage() {
                 <div className="mt-2 max-h-52 overflow-auto rounded-md border border-white/10">
                   <button
                     type="button"
-                    className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-white/10 ${groupName === "" ? "bg-cyan-500/15 text-cyan-200" : "text-slate-200"}`}
+                    className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-emerald-50 ${groupName === "" ? "bg-emerald-100 text-emerald-800" : "text-slate-200"}`}
                     onClick={() => {
                       setGroupName("");
                       setPage(1);
@@ -496,7 +496,7 @@ export default function AdminMasterProdukPage() {
                     <button
                       key={g}
                       type="button"
-                      className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-white/10 ${groupName === g ? "bg-cyan-500/15 text-cyan-200" : "text-slate-200"}`}
+                      className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-emerald-50 ${groupName === g ? "bg-emerald-100 text-emerald-800" : "text-slate-200"}`}
                       onClick={() => {
                         setGroupName(g);
                         setPage(1);
@@ -618,7 +618,7 @@ export default function AdminMasterProdukPage() {
               key={p}
               variant={p === page ? "outline" : "ghost"}
               size="sm"
-              className={p === page ? "border-cyan-400/70 bg-cyan-500/10 text-cyan-200" : "border-transparent"}
+              className={p === page ? "border-emerald-300 bg-emerald-100 text-emerald-800" : "border-transparent"}
               onClick={() => setPage(p)}
             >
               {p}

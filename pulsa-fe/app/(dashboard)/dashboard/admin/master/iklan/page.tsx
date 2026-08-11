@@ -226,7 +226,7 @@ export default function AdminMasterIklanPage() {
       <div className="relative inline-flex" data-action-dropdown>
         <Button
           size="sm"
-          className="h-8 w-8 px-0 bg-linear-to-r from-sky-500 to-cyan-500 text-white hover:opacity-90"
+          className="h-8 w-8 bg-emerald-700 px-0 text-white hover:bg-emerald-600"
           onClick={() => setOpenActionKey((prev) => (prev === String(x.id) ? null : String(x.id)))}
           aria-label="Aksi"
         >
@@ -327,7 +327,7 @@ export default function AdminMasterIklanPage() {
               value={keterangan}
               onChange={(e) => setKeterangan(e.target.value)}
               placeholder="Isi keterangan singkat yang tampil di atas gambar."
-              className="min-h-24 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-500"
+              className="min-h-24 rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm text-emerald-950 outline-none transition placeholder:text-emerald-700/50 focus:border-emerald-500"
             />
           </div>
 
@@ -368,7 +368,7 @@ export default function AdminMasterIklanPage() {
                 type="checkbox"
                 checked={aktif}
                 onChange={(e) => setAktif(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-sky-500"
+                className="h-4 w-4 rounded border-emerald-300 bg-white text-emerald-600"
               />
               Iklan aktif
             </label>

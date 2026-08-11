@@ -388,7 +388,7 @@ export default function DepositRequestsPage({
           <span>Rp {fmtID(row.amount)}</span>
           <Button
             type="button"
-            className="h-7 w-7 rounded-lg px-0 text-cyan-100"
+            className="h-7 w-7 rounded-lg px-0 text-emerald-700"
             variant="outline"
             onClick={(event) => {
               event.stopPropagation();
@@ -561,7 +561,7 @@ export default function DepositRequestsPage({
       id: "amount",
       header: "Nominal",
       thClassName: "whitespace-nowrap",
-      tdClassName: "whitespace-nowrap text-cyan-200 font-semibold",
+      tdClassName: "whitespace-nowrap font-semibold text-emerald-700",
       render: (d) => renderAmount(d),
     },
     {
@@ -580,7 +580,7 @@ export default function DepositRequestsPage({
         <div className="min-w-55">
           <div className="font-medium text-slate-100">{d.bank_nama || "-"}</div>
           <div className="text-xs text-slate-300">{d.bank_atas_nama || "-"}</div>
-          <div className="font-mono text-xs text-cyan-200">{d.bank_nomor_rekening || "-"}</div>
+          <div className="font-mono text-xs text-emerald-700">{d.bank_nomor_rekening || "-"}</div>
         </div>
       ),
     },
@@ -603,7 +603,7 @@ export default function DepositRequestsPage({
   return (
     <div className="space-y-4 p-2">
       <div className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,.95),rgba(30,41,59,.82))] px-5 py-5 shadow-[0_18px_60px_rgba(2,6,23,.28)]">
-        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-200">
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-700">
           <CalendarRange className="h-3.5 w-3.5" />
           Deposit Monitor
         </div>
@@ -747,7 +747,7 @@ export default function DepositRequestsPage({
                   <div className="mt-0.5 truncate text-xs leading-5 text-slate-300">{d.bank_nama || "-"}</div>
                   <div className="truncate text-xs leading-5 text-slate-400">a.n. {d.bank_atas_nama || "-"}</div>
                 </div>
-                <div className="shrink-0 text-sm font-semibold leading-5 text-cyan-100">
+                <div className="shrink-0 text-sm font-semibold leading-5 text-emerald-700">
                   {renderAmount(d, "right")}
                 </div>
               </div>
