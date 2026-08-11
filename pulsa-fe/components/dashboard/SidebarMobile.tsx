@@ -10,9 +10,10 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onLogout: () => void;
+  contextLabel?: string;
 };
 
-export function SidebarMobile({ sections, open, onClose, onLogout }: Props) {
+export function SidebarMobile({ sections, open, onClose, onLogout, contextLabel = "Control Center" }: Props) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   if (!open) return null;
@@ -23,8 +24,11 @@ export function SidebarMobile({ sections, open, onClose, onLogout }: Props) {
         className="flex h-full w-72 flex-col border-r border-emerald-950/20 bg-[radial-gradient(circle_at_20%_0%,rgba(190,242,100,0.18),transparent_30%),linear-gradient(180deg,#052e26_0%,#064e3b_46%,#047857_100%)] p-4 shadow-[0_24px_60px_rgba(6,78,59,0.18)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <BrandLogo variant="dark" />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <BrandLogo variant="dark" />
+            <p className="mt-2 text-center text-[9px] font-black uppercase tracking-[0.16em] text-lime-100">{contextLabel}</p>
+          </div>
           <button
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/25 bg-white text-[#064e3b]"

@@ -27,6 +27,8 @@ func (s *UserService) Create(ctx context.Context, email, nama, password, pin, ro
 		role != helper.RoleUser &&
 		role != helper.RoleRetailAgent &&
 		role != helper.RoleRetailMaster &&
+		role != helper.RoleRetailMarketing &&
+		role != helper.RoleRetailAnalyst &&
 		role != helper.RoleH2HAgent &&
 		role != helper.RoleH2HMaster &&
 		role != helper.RoleOperatorTrx &&
@@ -95,6 +97,8 @@ func (s *UserService) Update(ctx context.Context, in repository.UserUpdateInput,
 		in.Role != helper.RoleUser &&
 		in.Role != helper.RoleRetailAgent &&
 		in.Role != helper.RoleRetailMaster &&
+		in.Role != helper.RoleRetailMarketing &&
+		in.Role != helper.RoleRetailAnalyst &&
 		in.Role != helper.RoleH2HAgent &&
 		in.Role != helper.RoleH2HMaster &&
 		in.Role != helper.RoleOperatorTrx &&

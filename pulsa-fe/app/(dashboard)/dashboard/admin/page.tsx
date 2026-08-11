@@ -162,7 +162,7 @@ export default function AdminHome() {
               <div className="pointer-events-none absolute bottom-0 right-20 h-24 w-24 rounded-full border border-white/15" />
               <p className="relative inline-flex items-center gap-2 rounded-full border border-white bg-[#052e26] px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-white">
                 <Zap className="h-3.5 w-3.5 fill-white text-white" />
-                Admin PulsaKilat
+                Super Admin PulsaKilat
               </p>
               <h1 className="relative mt-4 text-3xl font-black tracking-normal sm:text-4xl">
                 Ringkasan Operasional
@@ -173,7 +173,7 @@ export default function AdminHome() {
               <div className="relative mt-5 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#052e26] bg-white px-3 py-1.5 text-xs font-black text-[#052e26]">
                   <BadgeCheck className="h-4 w-4" />
-                  Admin aktif
+                  Super Admin aktif
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full border border-white bg-[#052e26] px-3 py-1.5 text-xs font-black text-white">
                   <Shield className="h-4 w-4" />
@@ -259,6 +259,31 @@ export default function AdminHome() {
               </Link>
             );
           })}
+        </section>
+
+        <section className="grid gap-3 lg:grid-cols-2">
+          <Link
+            href="/dashboard/master"
+            className="group flex min-h-28 items-center justify-between gap-4 rounded-[24px] border border-emerald-200 bg-white p-5 shadow-[0_16px_34px_rgba(6,78,59,0.07)] transition hover:border-emerald-500"
+          >
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Pemantauan Lapangan</p>
+              <p className="mt-2 text-lg font-black text-slate-950">Buka Panel Marketing</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Pantau pendaftaran agent, dokumen survei, dan portofolio binaan.</p>
+            </div>
+            <ArrowUpRight className="h-6 w-6 shrink-0 text-emerald-700" />
+          </Link>
+          <Link
+            href="/dashboard/master/operator"
+            className="group flex min-h-28 items-center justify-between gap-4 rounded-[24px] border border-emerald-200 bg-white p-5 shadow-[0_16px_34px_rgba(6,78,59,0.07)] transition hover:border-emerald-500"
+          >
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Pengawasan Kredit</p>
+              <p className="mt-2 text-lg font-black text-slate-950">Buka Panel Operator Kredit</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Pantau keputusan, limit, penarikan, tagihan, dan arsip kredit.</p>
+            </div>
+            <ArrowUpRight className="h-6 w-6 shrink-0 text-emerald-700" />
+          </Link>
         </section>
       </div>
     </div>

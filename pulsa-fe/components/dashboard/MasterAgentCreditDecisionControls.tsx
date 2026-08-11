@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, RotateCcw, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, LockKeyhole, RotateCcw, UnlockKeyhole, XCircle } from "lucide-react";
 
 type Props = {
   applicationId: number;
@@ -13,6 +13,7 @@ type Props = {
   analystRecommendation?: string;
   analystRecommendedAmount?: number;
   status: string;
+  loanStatus?: string;
   mode?: "marketing" | "master" | "analyst" | "admin";
   canApprove?: boolean;
   approveBlockReason?: string;
@@ -147,6 +148,7 @@ export function MasterAgentCreditDecisionControls({
   analystRecommendation = "",
   analystRecommendedAmount = 0,
   status,
+  loanStatus = "",
   mode = "master",
   canApprove = true,
   approveBlockReason = "",
@@ -160,6 +162,9 @@ export function MasterAgentCreditDecisionControls({
   const [signatureData, setSignatureData] = useState("");
   const [riskLevel, setRiskLevel] = useState("perhatian");
   const [riskScore, setRiskScore] = useState("50");
+  const [statusEditorOpen, setStatusEditorOpen] = useState(false);
+  const [statusReason, setStatusReason] = useState("");
+  const [statusBusy, setStatusBusy] = useState(false);
   const isFinal = status === "approved" || status === "rejected" || status === "analysis_rejected" || status === "master_rejected";
   const isMarketingReview = (mode === "marketing" || mode === "master") && (status === "submitted" || status === "marketing_review");
   const isAdminReview = mode === "admin" && ["submitted", "marketing_review", "analysis_review", "master_review", "ready_to_disburse"].includes(status);
@@ -167,6 +172,41 @@ export function MasterAgentCreditDecisionControls({
   const needsReviewerSignature = isMarketingReview;
   const approveLabel = isMarketingReview ? "Kirim ke Operator" : mode === "analyst" || mode === "admin" ? "Setujui Pengajuan" : "Kirim ke Operator";
   const rejectLabel = "Tolak";
+  const creditSuspended = loanStatus === "suspended";
+
+  async function changeCreditOperationalStatus() {
+    if (statusBusy) return;
+    if (!statusReason.trim()) {
+      setError("Alasan perubahan status kredit wajib diisi");
+      return;
+    }
+    setStatusBusy(true);
+    setError("");
+    try {
+      const token = window.localStorage.getItem("auth_token") || "";
+      const response = await fetch("/api/admin/agent-credit/loans/status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          application_id: applicationId,
+          suspended: !creditSuspended,
+          reason: statusReason.trim(),
+        }),
+      });
+      const body = (await response.json().catch(() => ({}))) as ApiBody;
+      if (!response.ok || !body.ok) throw new Error(body.error || "Status kredit gagal diubah");
+      setStatusEditorOpen(false);
+      setStatusReason("");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Status kredit gagal diubah");
+    } finally {
+      setStatusBusy(false);
+    }
+  }
 
   async function decide(decision: DecisionAction) {
     if (busy) return;
@@ -225,19 +265,56 @@ export function MasterAgentCreditDecisionControls({
 
   if (isFinal && !editing) {
     return (
-      <div className={status === "approved" ? "rounded-2xl border border-emerald-200 bg-emerald-50 p-2.5 text-emerald-700" : "rounded-2xl border border-rose-200 bg-rose-50 p-2.5 text-rose-600"}>
-        <div className="flex items-center gap-2">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white shadow-sm">
-            {status === "approved" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-          </span>
-          <span className="min-w-0 flex-1">
-          <span className="block text-sm font-black">{status === "approved" ? "Disetujui Operator" : "Ditolak Operator"}</span>
-          <span className="mt-0.5 block truncate text-[10px] font-bold opacity-70">
-              {status === "approved" ? "Limit agent sudah aktif dan bisa dipantau." : "Agent akan melihat pemberitahuan dan bisa memperbaiki data."}
+      <div className="space-y-2">
+        <div className={creditSuspended ? "rounded-2xl border border-amber-300 bg-amber-50 p-2.5 text-amber-800" : status === "approved" ? "rounded-2xl border border-emerald-200 bg-emerald-50 p-2.5 text-emerald-700" : "rounded-2xl border border-rose-200 bg-rose-50 p-2.5 text-rose-600"}>
+          <div className="flex items-center gap-2">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white shadow-sm">
+              {creditSuspended ? <LockKeyhole className="h-5 w-5" /> : status === "approved" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
             </span>
-          </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-black">{creditSuspended ? "Kredit Dibekukan Super Admin" : status === "approved" ? "Disetujui Operator" : "Ditolak Operator"}</span>
+              <span className="mt-0.5 block truncate text-[10px] font-bold opacity-70">
+                {creditSuspended ? "Saldo kredit tersimpan tetapi tidak dapat dimutasi oleh agent." : status === "approved" ? "Limit agent sudah aktif dan bisa dipantau." : "Agent akan melihat pemberitahuan dan bisa memperbaiki data."}
+              </span>
+            </span>
+          </div>
+          {marketingNote || analystNote ? <p className="mt-2 rounded-2xl bg-white/70 px-3 py-2 text-[10px] font-bold leading-4 opacity-80">{marketingNote || analystNote}</p> : null}
         </div>
-        {marketingNote || analystNote ? <p className="mt-2 rounded-2xl bg-white/70 px-3 py-2 text-[10px] font-bold leading-4 opacity-80">{marketingNote || analystNote}</p> : null}
+        {mode === "admin" && status === "approved" && ["active", "due", "overdue", "suspended"].includes(loanStatus) ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            {!statusEditorOpen ? (
+              <button
+                type="button"
+                onClick={() => setStatusEditorOpen(true)}
+                className={creditSuspended ? "inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 text-[11px] font-black text-white" : "inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-[11px] font-black text-amber-800"}
+              >
+                {creditSuspended ? <UnlockKeyhole className="h-4 w-4" /> : <LockKeyhole className="h-4 w-4" />}
+                {creditSuspended ? "Aktifkan Kembali Kredit" : "Bekukan Kredit Agent"}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <label className="block">
+                  <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Alasan Super Admin</span>
+                  <textarea
+                    value={statusReason}
+                    onChange={(event) => setStatusReason(event.target.value)}
+                    rows={2}
+                    placeholder={creditSuspended ? "Alasan mengaktifkan kembali kredit" : "Contoh: pemeriksaan risiko atau tunggakan"}
+                    className="mt-1 w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold outline-none focus:border-emerald-400"
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => { setStatusEditorOpen(false); setStatusReason(""); setError(""); }} disabled={statusBusy} className="h-10 rounded-xl bg-slate-100 text-[10px] font-black text-slate-600">Batal</button>
+                  <button type="button" onClick={() => void changeCreditOperationalStatus()} disabled={statusBusy} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#052e26] text-[10px] font-black text-white disabled:opacity-60">
+                    {statusBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Simpan Status
+                  </button>
+                </div>
+              </div>
+            )}
+            {error ? <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
+          </div>
+        ) : null}
       </div>
     );
   }

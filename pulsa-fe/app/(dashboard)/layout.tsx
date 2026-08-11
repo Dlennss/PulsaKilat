@@ -8,7 +8,7 @@ import { HeaderMobile } from "@/components/dashboard/HeaderMobile";
 import { MainContent } from "@/components/dashboard/MainContent";
 import { SidebarDesktop } from "@/components/dashboard/SidebarDesktop";
 import { SidebarMobile } from "@/components/dashboard/SidebarMobile";
-import { adminNavSections, analystNavSections, auditorNavSections, getMemberNavSections, masterNavSections, operatorNavSections, staffNavSections, walletNavSections, type H2HRole } from "@/components/dashboard/nav";
+import { adminNavSections, analystNavSections, auditorNavSections, getMemberNavSections, masterNavSections, operatorNavSections, staffNavSections, superAdminPanelSwitcher, walletNavSections, type H2HRole, type NavSection } from "@/components/dashboard/nav";
 
 type AppRole = "admin" | "staff" | "auditor" | "member" | "agent_member" | "master_member" | "operator_trx" | "operator_wallet" | "user" | "agent" | "master" | "marketing" | "analis";
 
@@ -35,6 +35,10 @@ function filterMasterNavForRole(role: AppRole | null) {
       items: section.items.filter((item) => !masterOnlyPrefixes.some((prefix) => item.href === prefix || item.href.startsWith(`${prefix}/`))),
     }))
     .filter((section) => section.items.length > 0);
+}
+
+function withSuperAdminSwitcher(sections: NavSection[]): NavSection[] {
+  return [superAdminPanelSwitcher, ...sections];
 }
 
 function targetPathByRole(role: AppRole): string {
@@ -167,7 +171,14 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
       const inWalletArea = pathname.startsWith("/dashboard/wallet");
       const inMasterArea = pathname.startsWith("/dashboard/master");
 
-      if ((normalizedRole === "admin" || normalizedRole === "staff") && !inAdminArea) {
+      const adminOperationalArea = inAdminArea || inMasterArea || inOperatorArea || inWalletArea || inAuditorArea;
+
+      if (normalizedRole === "admin" && !adminOperationalArea) {
+        router.replace("/dashboard/admin");
+        return;
+      }
+
+      if (normalizedRole === "staff" && !inAdminArea) {
         router.replace("/dashboard/admin");
         return;
       }
@@ -231,10 +242,11 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
 
   const navSections = useMemo(() => {
     if (pathname.startsWith("/dashboard/admin")) return currentRole === "staff" ? staffNavSections : adminNavSections;
-    if (pathname.startsWith("/dashboard/auditor")) return auditorNavSections;
-    if (pathname.startsWith("/dashboard/operator")) return operatorNavSections;
-    if (pathname.startsWith("/dashboard/wallet")) return walletNavSections;
-    if (pathname.startsWith("/dashboard/master")) return filterMasterNavForRole(currentRole);
+    if (pathname.startsWith("/dashboard/auditor")) return currentRole === "admin" ? withSuperAdminSwitcher(auditorNavSections) : auditorNavSections;
+    if (pathname.startsWith("/dashboard/operator")) return currentRole === "admin" ? withSuperAdminSwitcher(operatorNavSections) : operatorNavSections;
+    if (pathname.startsWith("/dashboard/wallet")) return currentRole === "admin" ? withSuperAdminSwitcher(walletNavSections) : walletNavSections;
+    if (pathname.startsWith("/dashboard/master/operator")) return currentRole === "admin" ? withSuperAdminSwitcher(analystNavSections) : filterMasterNavForRole(currentRole);
+    if (pathname.startsWith("/dashboard/master")) return currentRole === "admin" ? withSuperAdminSwitcher(masterNavSections) : filterMasterNavForRole(currentRole);
     const h2hRole: H2HRole =
       currentRole === "agent_member" || currentRole === "master_member" ? currentRole : "member";
     return getMemberNavSections(h2hRole);
@@ -280,7 +292,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
   return (
     <div className="min-h-screen bg-[#eef8f3] text-slate-950">
       <div className="flex min-h-screen">
-        <SidebarDesktop sections={navSections} onLogout={logout} />
+        <SidebarDesktop sections={navSections} onLogout={logout} contextLabel={currentRole === "admin" ? "Super Admin" : "Control Center"} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <HeaderMobile onOpenMenu={() => setOpen(true)} />
@@ -288,7 +300,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
         </div>
       </div>
 
-      <SidebarMobile sections={navSections} open={open} onClose={() => setOpen(false)} onLogout={logout} />
+      <SidebarMobile sections={navSections} open={open} onClose={() => setOpen(false)} onLogout={logout} contextLabel={currentRole === "admin" ? "Super Admin" : "Control Center"} />
     </div>
   );
 }

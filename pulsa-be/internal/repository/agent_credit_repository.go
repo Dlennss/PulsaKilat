@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -45,6 +46,15 @@ type AgentCreditDecisionInput struct {
 	MarketingNote  string
 	AnalystNote    string
 	Recommendation string
+	ActorRole      string
+}
+
+type AgentCreditLoanStatusResult struct {
+	ApplicationID         int64  `json:"application_id"`
+	MemberID              int64  `json:"member_id"`
+	Status                string `json:"status"`
+	CreditAvailableAmount int64  `json:"credit_available_amount"`
+	OutstandingAmount     int64  `json:"outstanding_amount"`
 }
 
 type AgentCreditProfile struct {
@@ -252,6 +262,73 @@ VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0))
 		return nil, err
 	}
 	return &newRank, nil
+}
+
+func (r *AgentCreditRepository) SetLoanOperationalStatus(ctx context.Context, applicationID, actorID int64, suspend bool, reason string) (*AgentCreditLoanStatusResult, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var result AgentCreditLoanStatusResult
+	var loanID int64
+	var previousStatus string
+	var dueDate time.Time
+	err = tx.QueryRowContext(ctx, `
+SELECT id, member_id, status, available_amount, outstanding_amount, due_date
+FROM public.agent_credit_loan
+WHERE application_id = $1
+FOR UPDATE
+`, applicationID).Scan(
+		&loanID,
+		&result.MemberID,
+		&previousStatus,
+		&result.CreditAvailableAmount,
+		&result.OutstandingAmount,
+		&dueDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if result.OutstandingAmount <= 0 || previousStatus == "paid" || previousStatus == "cancelled" || previousStatus == "defaulted" {
+		return nil, errors.New("kredit yang sudah selesai tidak dapat diubah")
+	}
+
+	nextStatus := "suspended"
+	if !suspend {
+		nextStatus = "active"
+		if time.Now().After(dueDate) {
+			nextStatus = "overdue"
+		}
+	}
+	if previousStatus == nextStatus {
+		result.ApplicationID = applicationID
+		result.Status = nextStatus
+		return &result, nil
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+UPDATE public.agent_credit_loan
+SET status = $2, updated_at = now()
+WHERE id = $1
+`, loanID, nextStatus); err != nil {
+		return nil, err
+	}
+	if err := insertAuditLogTx(ctx, tx, actorID, "super_admin", "agent_credit_operational_status_changed", "agent_credit_loan", loanID, map[string]any{
+		"status": previousStatus,
+	}, map[string]any{
+		"status":         nextStatus,
+		"application_id": applicationID,
+	}, reason); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	result.ApplicationID = applicationID
+	result.Status = nextStatus
+	return &result, nil
 }
 
 func (r *AgentCreditRepository) FindOpenEarlyApplicationID(ctx context.Context, memberID int64) (int64, error) {
@@ -897,7 +974,11 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	if err != nil {
 		return nil, err
 	}
-	if err := insertAuditLogTx(ctx, tx, in.MarketingID, "marketing", "agent_credit_marketing_review", "agent_credit_application", in.ID, map[string]any{
+	actorRole := in.ActorRole
+	if actorRole == "" {
+		actorRole = "marketing"
+	}
+	if err := insertAuditLogTx(ctx, tx, in.MarketingID, actorRole, "agent_credit_marketing_review", "agent_credit_application", in.ID, map[string]any{
 		"status": oldStatus,
 	}, map[string]any{
 		"status": in.Status,
@@ -1051,7 +1132,11 @@ WHERE application_id = $1 AND status <> 'paid'
 			return nil, err
 		}
 	}
-	if err := insertAuditLogTx(ctx, tx, in.AnalystID, "admin_or_operator", "agent_credit_final_decision", "agent_credit_application", in.ID, map[string]any{
+	actorRole := in.ActorRole
+	if actorRole == "" {
+		actorRole = "operator_credit"
+	}
+	if err := insertAuditLogTx(ctx, tx, in.AnalystID, actorRole, "agent_credit_final_decision", "agent_credit_application", in.ID, map[string]any{
 		"status": oldStatus,
 	}, map[string]any{
 		"status":          in.Status,

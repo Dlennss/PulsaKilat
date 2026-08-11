@@ -62,6 +62,12 @@ type AgentCreditRankChangeInput struct {
 	Reason   string `json:"reason"`
 }
 
+type AgentCreditLoanStatusInput struct {
+	ApplicationID int64  `json:"application_id"`
+	Suspended     bool   `json:"suspended"`
+	Reason        string `json:"reason"`
+}
+
 func isCreditReviewer(role string) bool {
 	normalized := helper.NormalizeRole(role)
 	return normalized == helper.RoleAdmin ||
@@ -213,14 +219,16 @@ func (s *AgentCreditService) ListMyApplications(ctx context.Context, auth helper
 }
 
 func (s *AgentCreditService) ListRanks(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditRank, error) {
-	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAnalyst {
+	role := helper.NormalizeRole(auth.Role)
+	if role != helper.RoleRetailAnalyst && role != helper.RoleAdmin {
 		return nil, errors.New("operator kredit only")
 	}
 	return s.repo.ListActiveRanks(ctx)
 }
 
 func (s *AgentCreditService) ChangeMemberCreditRank(ctx context.Context, auth helper.AuthInfo, in AgentCreditRankChangeInput) (*repository.AgentCreditRank, error) {
-	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAnalyst {
+	role := helper.NormalizeRole(auth.Role)
+	if role != helper.RoleRetailAnalyst && role != helper.RoleAdmin {
 		return nil, errors.New("operator kredit only")
 	}
 	if in.MemberID <= 0 || in.RankID <= 0 {
@@ -231,6 +239,20 @@ func (s *AgentCreditService) ChangeMemberCreditRank(ctx context.Context, auth he
 		return nil, errors.New("catatan keputusan wajib diisi")
 	}
 	return s.repo.ChangeMemberCreditRank(ctx, in.MemberID, in.RankID, auth.MemberID, reason)
+}
+
+func (s *AgentCreditService) SetLoanOperationalStatus(ctx context.Context, auth helper.AuthInfo, in AgentCreditLoanStatusInput) (*repository.AgentCreditLoanStatusResult, error) {
+	if helper.NormalizeRole(auth.Role) != helper.RoleAdmin {
+		return nil, errors.New("super admin only")
+	}
+	if in.ApplicationID <= 0 {
+		return nil, errors.New("pengajuan kredit tidak valid")
+	}
+	reason := strings.TrimSpace(in.Reason)
+	if reason == "" {
+		return nil, errors.New("alasan perubahan status kredit wajib diisi")
+	}
+	return s.repo.SetLoanOperationalStatus(ctx, in.ApplicationID, auth.MemberID, in.Suspended, reason)
 }
 
 func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditDecisionInput) (*repository.AgentCreditApplication, error) {
@@ -256,9 +278,12 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 
 	switch role {
 	case helper.RoleAdmin, helper.RoleStaff:
+		if role == helper.RoleAdmin && (in.ReviewerMode == "marketing" || in.ReviewerMode == "master") {
+			return s.decideAsMarketing(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), "super_admin")
+		}
 		return s.decideAsAdmin(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount)
 	case helper.RoleRetailMarketing:
-		return s.decideAsMarketing(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData))
+		return s.decideAsMarketing(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), "marketing")
 	case helper.RoleRetailAnalyst:
 		return s.decideAsAnalyst(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount)
 	case helper.RoleRetailMaster:
@@ -298,6 +323,7 @@ func (s *AgentCreditService) decideAsAdmin(ctx context.Context, adminID, applica
 			ApprovedAmount: approvedAmount,
 			AnalystNote:    fallbackNote(note, "Admin menyetujui pengajuan kredit secara manual."),
 			Recommendation: "approved_by_admin",
+			ActorRole:      "super_admin",
 		}, signatureData, riskLevel, riskScore)
 	case "reject", "rejected", "tolak":
 		return s.repo.AnalystFinalDecision(ctx, repository.AgentCreditDecisionInput{
@@ -307,13 +333,14 @@ func (s *AgentCreditService) decideAsAdmin(ctx context.Context, adminID, applica
 			ApprovedAmount: 0,
 			AnalystNote:    fallbackNote(note, "Ditolak oleh admin."),
 			Recommendation: "rejected_by_admin",
+			ActorRole:      "super_admin",
 		}, signatureData, riskLevel, riskScore)
 	default:
 		return nil, errors.New("admin wajib memilih setuju atau tolak")
 	}
 }
 
-func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData string) (*repository.AgentCreditApplication, error) {
+func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData, actorRole string) (*repository.AgentCreditApplication, error) {
 	if reviewState.Status != "submitted" && reviewState.Status != "marketing_review" {
 		return nil, errors.New("status pengajuan belum bisa diverifikasi marketing")
 	}
@@ -344,13 +371,18 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 		if !strings.HasPrefix(signatureData, "data:image/") {
 			return nil, errors.New("tanda tangan marketing wajib diisi")
 		}
+		defaultReviewNote := "Marketing sudah verifikasi lapangan dan dokumen."
+		if actorRole == "super_admin" {
+			defaultReviewNote = "Super Admin sudah memverifikasi dokumen dan survei lapangan."
+		}
 		return s.repo.MarketingReviewApplication(ctx, repository.AgentCreditDecisionInput{
 			ID:             applicationID,
 			MarketingID:    marketingID,
 			Status:         "analysis_review",
-			MarketingNote:  fallbackNote(note, "Marketing sudah verifikasi lapangan dan dokumen."),
+			MarketingNote:  fallbackNote(note, defaultReviewNote),
 			Recommendation: "marketing_verified",
 			ApprovedAmount: 0,
+			ActorRole:      actorRole,
 		}, signatureData)
 	case "reject", "rejected", "tolak":
 		return nil, errors.New("marketing hanya bisa verifikasi dan mengirim pengajuan ke operator")
@@ -385,6 +417,7 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 			ApprovedAmount: approvedAmount,
 			AnalystNote:    fallbackNote(note, "Operator menyetujui risiko dan nominal. Pinjaman saldo aktif."),
 			Recommendation: "approved",
+			ActorRole:      "operator_credit",
 		}, signatureData, riskLevel, riskScore)
 	case "reject", "rejected", "tolak":
 		return s.repo.AnalystFinalDecision(ctx, repository.AgentCreditDecisionInput{
@@ -394,6 +427,7 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 			ApprovedAmount: 0,
 			AnalystNote:    fallbackNote(note, "Ditolak oleh operator."),
 			Recommendation: "rejected",
+			ActorRole:      "operator_credit",
 		}, signatureData, riskLevel, riskScore)
 	default:
 		return nil, errors.New("operator wajib memilih setuju atau tolak")

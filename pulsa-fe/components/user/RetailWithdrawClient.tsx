@@ -90,9 +90,9 @@ export function RetailWithdrawClient({ authToken }: Props) {
       setItems(Array.isArray(listJSON.items) ? listJSON.items : []);
       setMainBalance(profileRes.ok && profileJSON?.ok ? Number(profileJSON?.profile?.saldo || 0) : 0);
       setCreditBalance(applications.reduce((total: number, item: { credit_available_amount?: number; loan_status?: string }) => {
-        return String(item.loan_status || "").toLowerCase() === "paid"
-          ? total
-          : total + Math.max(0, Number(item.credit_available_amount || 0));
+        return String(item.loan_status || "").toLowerCase() === "active"
+          ? total + Math.max(0, Number(item.credit_available_amount || 0))
+          : total;
       }, 0));
     } catch (loadError) {
       const message = loadError instanceof Error ? loadError.message : "";

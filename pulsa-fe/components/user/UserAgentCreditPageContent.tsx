@@ -363,6 +363,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const unsignedPendingApplication = Boolean(isPendingStatus && latestApplication && !latestApplication.has_agent_signature);
   const hasOpenApplication = Boolean(isPendingStatus && !unsignedPendingApplication);
   const isPaidOff = latestApplication?.status === "approved" && String(latestApplication.loan_status || "").toLowerCase() === "paid";
+  const isCreditSuspended = latestApplication?.status === "approved" && String(latestApplication.loan_status || "").toLowerCase() === "suspended";
   const isApproved = latestApplication?.status === "approved" && !isPaidOff;
   const canReapply = latestApplication?.status === "rejected" || latestApplication?.status === "analysis_rejected" || latestApplication?.status === "master_rejected";
   const canRefill = Boolean(isPaidOff);
@@ -374,10 +375,10 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const requestedAmount = defaultCreditAmount;
   const totalPaidAmount = applications.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
   const totalActiveCredit = applications.reduce((sum, item) => sum + Math.max(0, Number(item.outstanding_amount || 0)), 0);
-  const totalAvailableCredit = applications.reduce((sum, item) => sum + Math.max(0, Number(item.credit_available_amount || 0)), 0);
+  const totalAvailableCredit = applications.reduce((sum, item) => String(item.loan_status || "").toLowerCase() === "suspended" ? sum : sum + Math.max(0, Number(item.credit_available_amount || 0)), 0);
   const currentOutstanding = Math.max(0, Number(latestApplication?.outstanding_amount || 0));
   const statusIsApproved = latestApplication?.status === "approved";
-  const currentAvailableCredit = isApproved
+  const currentAvailableCredit = isApproved && !isCreditSuspended
     ? Math.max(0, Number(latestApplication?.credit_available_amount ?? creditLimitAmount))
     : 0;
   const applicantDefaults = latestApplication?.applicant_data || {};
@@ -397,12 +398,12 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const rejectedApplications = applications.filter((item) => isRejectedStatus(item.status)).length;
   const listApplications = applications.length ? applications : [];
   const statusLabel = (item: AgentCreditApplication) => {
-    if (item.status === "approved") return isPaidStatus(item) ? "Lunas" : "Diterima";
+    if (item.status === "approved") return String(item.loan_status || "").toLowerCase() === "suspended" ? "Dibekukan" : isPaidStatus(item) ? "Lunas" : "Diterima";
     if (isRejectedStatus(item.status)) return "Ditolak";
     return "Menunggu";
   };
   const statusClassName = (item: AgentCreditApplication) => {
-    if (item.status === "approved") return "bg-emerald-100 text-emerald-800";
+    if (item.status === "approved") return String(item.loan_status || "").toLowerCase() === "suspended" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800";
     if (isRejectedStatus(item.status)) return "bg-rose-100 text-rose-700";
     return "bg-amber-100 text-amber-800";
   };
@@ -421,15 +422,19 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
       ? "Pengajuan sedang diproses"
       : statusIsPaid
         ? "Tagihan kredit sudah lunas"
-        : "Limit kredit agent sudah aktif";
-  const statusBandLabel = statusIsRejected ? "DITOLAK" : statusIsWaiting ? "MENUNGGU" : statusIsPaid ? "LUNAS" : "DITERIMA";
+        : isCreditSuspended
+          ? "Kredit agent sedang dibekukan"
+          : "Limit kredit agent sudah aktif";
+  const statusBandLabel = statusIsRejected ? "DITOLAK" : statusIsWaiting ? "MENUNGGU" : statusIsPaid ? "LUNAS" : isCreditSuspended ? "DIBEKUKAN" : "DITERIMA";
   const statusBandSubcopy = statusIsRejected
     ? "Lihat catatan dan ajukan ulang"
     : statusIsWaiting
       ? "Menunggu keputusan tim PulsaKilat"
       : statusIsPaid
         ? "Tidak ada tagihan berjalan"
-        : "Diterima tim verifikasi";
+        : isCreditSuspended
+          ? "Mutasi dan penarikan kredit dihentikan sementara"
+          : "Diterima tim verifikasi";
   const marketingFinished = Boolean(latestApplication && (
     latestApplication.status === "analysis_review" ||
     latestApplication.status === "master_review" ||

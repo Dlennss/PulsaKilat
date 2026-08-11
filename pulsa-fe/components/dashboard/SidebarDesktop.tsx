@@ -8,9 +8,10 @@ import { type NavSection } from "./nav";
 type Props = {
   sections: NavSection[];
   onLogout: () => void;
+  contextLabel?: string;
 };
 
-export function SidebarDesktop({ sections, onLogout }: Props) {
+export function SidebarDesktop({ sections, onLogout, contextLabel = "Control Center" }: Props) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   return (
@@ -20,7 +21,7 @@ export function SidebarDesktop({ sections, onLogout }: Props) {
           <BrandLogo variant="dark" />
         </div>
         <p className="mt-3 text-center text-[11px] font-black uppercase tracking-[0.18em] text-lime-100">
-          Control Center
+          {contextLabel}
         </p>
       </div>
 

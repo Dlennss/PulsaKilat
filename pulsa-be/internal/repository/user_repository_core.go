@@ -20,7 +20,7 @@ func rolesForScope(scope string) []string {
 	case "retail":
 		return []string{"user", "agent", "master", "marketing", "analis"}
 	case "internal":
-		return []string{"admin", "auditor", "operator_trx", "operator_wallet"}
+		return []string{"admin", "staff", "auditor", "operator_trx", "operator_wallet"}
 	default:
 		return nil
 	}

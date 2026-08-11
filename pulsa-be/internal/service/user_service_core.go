@@ -25,6 +25,8 @@ func isValidManageableRole(role string) bool {
 		role == helper.RoleUser ||
 		role == helper.RoleRetailAgent ||
 		role == helper.RoleRetailMaster ||
+		role == helper.RoleRetailMarketing ||
+		role == helper.RoleRetailAnalyst ||
 		role == helper.RoleH2HAgent ||
 		role == helper.RoleH2HMaster ||
 		role == helper.RoleOperatorTrx ||

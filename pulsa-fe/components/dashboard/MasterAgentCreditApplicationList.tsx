@@ -867,6 +867,7 @@ export function MasterAgentCreditApplicationList({
                       analystRecommendation={item.analyst_recommendation}
                       analystRecommendedAmount={item.analyst_recommended_amount}
                       status={item.status}
+                      loanStatus={item.loan_status}
                       mode={mode}
                       canApprove={canApprove}
                       approveBlockReason={approveBlockReason}
@@ -887,6 +888,7 @@ export function MasterAgentCreditApplicationList({
                           analystRecommendation={item.analyst_recommendation}
                           analystRecommendedAmount={item.analyst_recommended_amount}
                           status={item.status}
+                          loanStatus={item.loan_status}
                           mode={mode}
                           canApprove={canApprove}
                           approveBlockReason={approveBlockReason}
