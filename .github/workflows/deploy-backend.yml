@@ -111,4 +111,13 @@ jobs:
               systemctl is-active --quiet $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx
             '"
           sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "curl --fail --silent --show-error http://127.0.0.1:8083/health >/dev/null && curl --fail --silent --show-error http://127.0.0.1:3003/login >/dev/null"
+            "for attempt in \$(seq 1 60); do
+               if curl --fail --silent http://127.0.0.1:8083/health >/dev/null && curl --fail --silent http://127.0.0.1:3003/login >/dev/null; then
+                 echo 'PulsaKilat backend dan frontend siap.'
+                 exit 0
+               fi
+               sleep 2
+             done
+             echo 'Service belum siap setelah 120 detik.' >&2
+             systemctl --no-pager --full status '$BACKEND_SERVICE_NAME' '$FRONTEND_SERVICE_NAME' || true
+             exit 1"

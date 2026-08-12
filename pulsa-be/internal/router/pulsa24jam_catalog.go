@@ -36,9 +36,9 @@ func startPulsa24JamCatalogSync(db *sql.DB, client *provider.Pulsa24JamAdapter) 
 		}
 		log.Printf("pulsa24jam product sync selesai: %d produk", result.Synced)
 	}
-	// Katalog harus tersedia sebelum route aplikasi mulai melayani pengguna.
-	run()
 	go func() {
+		// Jangan menahan startup HTTP; validasi live tetap dilakukan sebelum order dibuat.
+		run()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for range ticker.C {
