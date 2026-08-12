@@ -29,9 +29,37 @@ type TeamActivity = {
   created_at: string;
 };
 
+type ApiResult = {
+  ok: boolean;
+  status: number;
+  data: Record<string, unknown>;
+  error: string;
+};
+
 function authHeader(): Record<string, string> {
   const token = localStorage.getItem("auth_token") || "";
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function fetchAdminData(url: string, headers: Record<string, string>): Promise<ApiResult> {
+  let lastError = "Koneksi ke server terputus";
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers, cache: "no-store" });
+      const data = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const error = typeof data.error === "string" ? data.error : "Data belum dapat dimuat";
+      if (response.ok) return { ok: true, status: response.status, data, error: "" };
+      return { ok: false, status: response.status, data, error };
+    } catch (cause) {
+      lastError = cause instanceof Error && cause.message !== "Failed to fetch"
+        ? cause.message
+        : "Koneksi ke server terputus";
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+  }
+
+  return { ok: false, status: 0, data: {}, error: lastError };
 }
 
 function roleLabel(role: string) {
@@ -80,23 +108,31 @@ function TeamMonitoringContent() {
     setError("");
     try {
       const headers = authHeader();
-      const [marketingResponse, operatorResponse, activityResponse] = await Promise.all([
-        fetch("/api/admin/members?scope=retail&role=marketing&limit=200", { headers, cache: "no-store" }),
-        fetch("/api/admin/members?scope=retail&role=analis&limit=200", { headers, cache: "no-store" }),
-        fetch(`/api/admin/agent-credit/team-activity?limit=100${role ? `&role=${role}` : ""}`, { headers, cache: "no-store" }),
+      const [marketingResult, operatorResult, activityResult] = await Promise.all([
+        fetchAdminData("/api/admin/members?scope=retail&role=marketing&limit=200", headers),
+        fetchAdminData("/api/admin/members?scope=retail&role=analis&limit=200", headers),
+        fetchAdminData(`/api/admin/agent-credit/team-activity?limit=100${role ? `&role=${role}` : ""}`, headers),
       ]);
-      const [marketingData, operatorData, activityData] = await Promise.all([
-        marketingResponse.json().catch(() => ({})),
-        operatorResponse.json().catch(() => ({})),
-        activityResponse.json().catch(() => ({})),
-      ]);
-      if (!marketingResponse.ok || !operatorResponse.ok || !activityResponse.ok) {
-        throw new Error(activityData.error || marketingData.error || operatorData.error || "Data pemantauan belum dapat dimuat");
-      }
-      const marketingRows = Array.isArray(marketingData.items) ? marketingData.items : marketingData.rows || [];
-      const operatorRows = Array.isArray(operatorData.items) ? operatorData.items : operatorData.rows || [];
+
+      const unauthorized = [marketingResult, operatorResult, activityResult].some((item) => item.status === 401 || item.status === 403);
+      if (unauthorized) throw new Error("Sesi login Admin tidak valid. Silakan login kembali.");
+
+      const marketingRows = marketingResult.ok
+        ? (Array.isArray(marketingResult.data.items) ? marketingResult.data.items : Array.isArray(marketingResult.data.rows) ? marketingResult.data.rows : []) as TeamMember[]
+        : [];
+      const operatorRows = operatorResult.ok
+        ? (Array.isArray(operatorResult.data.items) ? operatorResult.data.items : Array.isArray(operatorResult.data.rows) ? operatorResult.data.rows : []) as TeamMember[]
+        : [];
+      const activityRows = activityResult.ok && Array.isArray(activityResult.data.items)
+        ? activityResult.data.items as TeamActivity[]
+        : [];
+
       setMembers([...marketingRows, ...operatorRows]);
-      setActivities(Array.isArray(activityData.items) ? activityData.items : []);
+      setActivities(activityRows);
+
+      const failures = [marketingResult, operatorResult, activityResult].filter((item) => !item.ok);
+      if (failures.length === 3) throw new Error("Data pemantauan belum dapat dimuat. Silakan muat ulang.");
+      if (failures.length > 0) setError("Sebagian data belum dapat dimuat. Sistem akan mencoba kembali saat Muat Ulang ditekan.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Data pemantauan belum dapat dimuat");
     } finally {
