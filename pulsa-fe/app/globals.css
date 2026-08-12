@@ -199,6 +199,15 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   background-image: none !important;
 }
 
+.admin-dashboard-surface thead[class*="from-cyan-500"] {
+  background-color: #065f46 !important;
+  background-image: none !important;
+}
+
+.admin-dashboard-surface thead[class*="from-cyan-500"] th {
+  color: #ffffff !important;
+}
+
 .admin-dashboard-surface :where(
   [class~="bg-slate-50"], [class~="bg-slate-100"],
   [class~="bg-slate-200"], [class~="bg-slate-700"],

@@ -1389,7 +1389,7 @@ export default function AdminMembersPage() {
           }
         >
           <div className="space-y-4">
-            <div className="rounded-xl border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
               Gunakan modal ini untuk <span className="font-semibold">menambahkan akun ini ke agent atau master yang sudah ada</span>. Pilih upline di bawah, lalu simpan. Jika komisi historis ingin langsung masuk ke dompet upline, gunakan <span className="font-semibold">Simpan + Komisi Historis</span>.
             </div>
 
@@ -1453,7 +1453,7 @@ export default function AdminMembersPage() {
                 Akun ini akan menjadi downline dari agent/master yang dipilih. Komisi tetap memakai nilai flat per transaksi dari akun upline itu. Harga jual produk tetap mengikuti harga dasar + fee retail/H2H yang sudah berlaku.
               </div>
               {hierarchyTargetMember ? (
-                <div className="mt-3 rounded-lg border border-sky-300/20 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
+                <div className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">
                   Downline terpilih: <span className="font-semibold">#{hierarchyTargetMember.id} {hierarchyTargetMember.email}</span> akan dijadikan <span className="font-semibold">{roleLabel(hierarchyTargetRole)}</span>.
                 </div>
               ) : null}
@@ -1461,12 +1461,12 @@ export default function AdminMembersPage() {
 
             {hierarchyPreview ? (
               <div className="space-y-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-4">
-                <div className="text-sm font-semibold text-emerald-100">Preview Histori</div>
+                <div className="text-sm font-bold text-emerald-900">Preview Histori</div>
                 <div className="text-sm text-emerald-50">
                   Total transaksi sukses historis downline ini: <span className="font-semibold">{fmtIDR(hierarchyPreview.transaction_count)}</span>
                 </div>
                 {hierarchyPreview.derived_master_from_agent ? (
-                  <div className="text-xs text-emerald-100/80">Master otomatis mengikuti master yang terpasang pada agent terpilih.</div>
+                  <div className="text-xs font-medium text-emerald-800">Master otomatis mengikuti master yang terpasang pada agent terpilih.</div>
                 ) : null}
                 {hierarchyPreview.agent ? (
                   <div className="rounded-lg border border-emerald-300/20 bg-slate-950/35 p-3 text-sm text-slate-200">
@@ -1519,7 +1519,7 @@ export default function AdminMembersPage() {
           }
         >
           <div className="space-y-4">
-            <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
               Menampilkan akun yang saat ini berada langsung di bawah <span className="font-semibold">{downlineViewerMember.nama}</span>.
             </div>
 
@@ -1589,7 +1589,7 @@ export default function AdminMembersPage() {
           }
         >
           <div className="space-y-4">
-            <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <div className="rounded-xl border border-amber-400 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
               Komisi dibayar <span className="font-semibold">flat per transaksi sukses</span>. Setiap akun hanya memakai <span className="font-semibold">satu nilai komisi</span> sesuai role akun saat ini.
             </div>
             <div className="grid gap-4">
@@ -1641,7 +1641,7 @@ export default function AdminMembersPage() {
           }
         >
           <div className="space-y-4">
-            <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <div className="rounded-xl border border-amber-400 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
               Kategori fee H2H yang dipakai transaksi adalah <span className="font-semibold">DANA, GOPAY, OVO, LINKAJA, SHOPEEPAY, BANK, dan LAINNYA</span>. Retail memakai fee terpisah dan tidak ikut terbaca di jalur ini.
             </div>
 
@@ -1731,7 +1731,7 @@ export default function AdminMembersPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="border-rose-400/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                              className="border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100"
                               onClick={() => void doDeleteFeeCategory(row)}
                               disabled={feeCategoryDeletingID === row.id}
                             >

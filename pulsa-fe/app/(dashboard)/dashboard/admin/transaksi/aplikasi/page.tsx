@@ -78,14 +78,14 @@ function money(v: number) {
 
 function statusTone(status: string) {
   const s = (status || "").toLowerCase();
-  if (s === "success") return "border border-emerald-400/30 bg-linear-to-r from-emerald-500/18 to-emerald-400/8 text-emerald-200 shadow-[0_10px_24px_-18px_rgba(16,185,129,0.9)]";
-  if (s === "paid") return "border border-sky-400/30 bg-linear-to-r from-sky-500/18 to-cyan-400/8 text-sky-200 shadow-[0_10px_24px_-18px_rgba(14,165,233,0.85)]";
-  if (s === "processing_provider") return "border border-violet-400/30 bg-linear-to-r from-violet-500/18 to-indigo-400/8 text-violet-200 shadow-[0_10px_24px_-18px_rgba(139,92,246,0.85)]";
+  if (s === "success") return "border border-emerald-400 bg-emerald-100 text-emerald-900";
+  if (s === "paid") return "border border-sky-400 bg-sky-100 text-sky-900";
+  if (s === "processing_provider") return "border border-violet-400 bg-violet-100 text-violet-900";
   if (["failed", "cancelled", "expired"].includes(s)) {
-    return "border border-rose-400/30 bg-linear-to-r from-rose-500/18 to-red-400/8 text-rose-200 shadow-[0_10px_24px_-18px_rgba(244,63,94,0.9)]";
+    return "border border-rose-400 bg-rose-100 text-rose-900";
   }
-  if (s === "refunded") return "border border-amber-400/30 bg-linear-to-r from-amber-500/18 to-yellow-400/8 text-amber-200 shadow-[0_10px_24px_-18px_rgba(245,158,11,0.9)]";
-  return "border border-slate-400/20 bg-linear-to-r from-slate-500/18 to-slate-400/8 text-slate-200";
+  if (s === "refunded") return "border border-amber-400 bg-amber-100 text-amber-900";
+  return "border border-slate-400 bg-slate-100 text-slate-800";
 }
 
 export default function AdminAppOrdersPage() {

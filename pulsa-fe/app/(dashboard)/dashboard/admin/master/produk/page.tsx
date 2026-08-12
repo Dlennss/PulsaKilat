@@ -335,7 +335,7 @@ export default function AdminMasterProdukPage() {
         const tutup = (x.jam_tutup || "23:29").slice(0, 5);
         const is24h = buka === "00:00" && tutup === "23:59";
         return is24h
-          ? <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-300">24 Jam</span>
+          ? <span className="rounded-full border border-emerald-400 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900">24 Jam</span>
           : <span>{buka} - {tutup}</span>;
       },
     },
@@ -345,9 +345,9 @@ export default function AdminMasterProdukPage() {
       tdClassName: "whitespace-nowrap",
       render: (x) =>
         x.aktif ? (
-          <span className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">Aktif</span>
+          <span className="rounded-full border border-emerald-400 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900">Aktif</span>
         ) : (
-          <span className="rounded-full border border-rose-400/40 bg-rose-500/15 px-2 py-0.5 text-xs font-semibold text-rose-300">Nonaktif</span>
+          <span className="rounded-full border border-rose-400 bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-900">Nonaktif</span>
         ),
     },
   ];
@@ -386,7 +386,7 @@ export default function AdminMasterProdukPage() {
             </button>
             <button
               type="button"
-              className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-rose-300 transition hover:bg-rose-500/15"
+              className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-rose-800 transition hover:bg-rose-50"
               onClick={() => {
                 setOpenActionKey(null);
                 void remove(x);

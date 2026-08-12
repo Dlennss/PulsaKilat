@@ -657,7 +657,7 @@ export default function AdminBankPage() {
       header: "Saldo",
       tdClassName: "whitespace-nowrap overflow-visible",
       render: (item) => (
-        <span className="rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-emerald-300">
+        <span className="rounded-md border border-emerald-300 bg-emerald-100 px-2 py-1 font-bold text-emerald-900">
           Rp {fmtID(Number(item.saldo || 0))}
         </span>
       ),
@@ -668,11 +668,11 @@ export default function AdminBankPage() {
       tdClassName: "whitespace-nowrap",
       render: (item) =>
         item.aktif ? (
-          <span className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+          <span className="rounded-full border border-emerald-400 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900">
             Aktif
           </span>
         ) : (
-          <span className="rounded-full border border-rose-400/40 bg-rose-500/15 px-2 py-0.5 text-xs font-semibold text-rose-300">
+          <span className="rounded-full border border-rose-400 bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-900">
             Nonaktif
           </span>
         ),
@@ -721,7 +721,7 @@ export default function AdminBankPage() {
       header: "Arah",
       tdClassName: "whitespace-nowrap",
       render: (item) => (
-        <span className={item.arah.toLowerCase() === "credit" ? "text-emerald-300" : "text-rose-300"}>
+        <span className={item.arah.toLowerCase() === "credit" ? "font-semibold text-emerald-800" : "font-semibold text-rose-800"}>
           {item.arah}
         </span>
       ),
@@ -789,11 +789,11 @@ export default function AdminBankPage() {
   return (
     <div className="space-y-4 p-2">
       <div className="grid gap-3 md:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-white/10 bg-linear-to-br from-slate-900/85 via-slate-900/70 to-emerald-950/25 p-5 shadow-[0_16px_40px_-24px_rgba(16,185,129,0.35)]">
+        <div className="rounded-2xl border border-emerald-900 bg-[#064e3b] p-5 shadow-[0_16px_40px_-24px_rgba(6,78,59,0.35)]">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-lg font-semibold text-white">Bank Admin</div>
-              <div className="mt-1 text-sm text-white/60">
+              <div className="mt-1 text-sm font-medium text-emerald-100">
                 {isWalletMode
                   ? "Lihat data bank operasional, ubah status aktif/nonaktif, dan transfer saldo ke BCA OPERASIONAL."
                   : isOperatorMode
@@ -801,26 +801,26 @@ export default function AdminBankPage() {
                   : "Kelola master bank, koreksi saldo bank, dan transfer keluar dari saldo bank."}
               </div>
             </div>
-            <div className="grid h-12 w-12 place-items-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/25 bg-white/10 text-lime-300">
               <Landmark className="h-5 w-5" />
             </div>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-4">
-              <div className="text-sm text-emerald-100/80">{isOperatorMode ? "Data Rekening" : "Total Saldo Bank"}</div>
-              <div className="mt-1 text-2xl font-semibold text-emerald-50">{isOperatorMode ? "Terbatas" : `Rp ${fmtID(totalSaldoBank)}`}</div>
+            <div className="rounded-2xl border border-white/25 bg-white/10 px-4 py-4">
+              <div className="text-sm font-semibold text-emerald-100">{isOperatorMode ? "Data Rekening" : "Total Saldo Bank"}</div>
+              <div className="mt-1 text-2xl font-black text-white">{isOperatorMode ? "Terbatas" : `Rp ${fmtID(totalSaldoBank)}`}</div>
             </div>
-            <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 px-4 py-4">
-              <div className="text-sm text-sky-100/80">Jumlah Bank</div>
-              <div className="mt-1 text-2xl font-semibold text-sky-50">{items.length}</div>
+            <div className="rounded-2xl border border-lime-200 bg-lime-300 px-4 py-4">
+              <div className="text-sm font-semibold text-emerald-950">Jumlah Bank</div>
+              <div className="mt-1 text-2xl font-black text-emerald-950">{items.length}</div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-linear-to-br from-slate-900/85 via-slate-900/70 to-cyan-950/25 p-5 shadow-[0_16px_40px_-24px_rgba(34,211,238,0.28)]">
-          <div className="text-base font-semibold text-white">{isWalletMode ? "Akses Operator Wallet" : isOperatorMode ? "Akses Operator Transaksi" : "Aksi Cepat"}</div>
-          <div className="mt-1 text-sm text-white/60">
+        <div className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-[0_16px_40px_-24px_rgba(6,78,59,0.18)]">
+          <div className="text-base font-bold text-emerald-950">{isWalletMode ? "Akses Operator Wallet" : isOperatorMode ? "Akses Operator Transaksi" : "Aksi Cepat"}</div>
+          <div className="mt-1 text-sm font-medium text-emerald-900/75">
             {isWalletMode
               ? "Operator wallet bisa transfer saldo dari bank internal lain ke BCA OPERASIONAL 3432738881."
               : isOperatorMode
@@ -846,7 +846,7 @@ export default function AdminBankPage() {
       <div className="rounded-2xl border border-white/10 bg-card/80 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.8)]">
         <div className="border-b border-white/10 bg-linear-to-r from-white/10 via-white/5 to-transparent px-4 py-3">
           <div className="text-lg font-semibold">Daftar Bank</div>
-          <div className="text-xs text-white/55">
+          <div className="text-xs font-medium text-emerald-900/70">
             {isWalletMode
               ? "Gunakan aksi untuk aktif/nonaktifkan bank, transfer ke BCA OPERASIONAL, atau melihat histori."
               : isOperatorMode
@@ -902,8 +902,8 @@ export default function AdminBankPage() {
                       type="button"
                       className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
                         actionMenu.item.aktif
-                          ? "text-rose-200 hover:bg-rose-500/15"
-                          : "text-emerald-200 hover:bg-emerald-500/15"
+                          ? "text-rose-800 hover:bg-rose-50"
+                          : "text-emerald-800 hover:bg-emerald-50"
                       }`}
                       onClick={() => {
                         const item = actionMenu.item;
@@ -917,7 +917,7 @@ export default function AdminBankPage() {
                     {canTransferToBCAOperational(actionMenu.item) ? (
                       <button
                         type="button"
-                        className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-sky-200 transition hover:bg-sky-500/15"
+                        className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
                         onClick={() => {
                           const item = actionMenu.item;
                           setActionMenu(null);
@@ -964,7 +964,7 @@ export default function AdminBankPage() {
                   <>
                     <button
                       type="button"
-                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-amber-200 transition hover:bg-amber-500/15"
+                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-50"
                       onClick={() => {
                         const item = actionMenu.item;
                         setActionMenu(null);
@@ -980,7 +980,7 @@ export default function AdminBankPage() {
                     </button>
                     <button
                       type="button"
-                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-sky-200 transition hover:bg-sky-500/15"
+                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
                       onClick={() => {
                         const item = actionMenu.item;
                         setActionMenu(null);
@@ -1115,9 +1115,9 @@ export default function AdminBankPage() {
         <div className="grid gap-3">
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
             <div className="font-medium text-white">{manualBank?.nama || "-"}</div>
-            <div className="text-white/75">{manualBank?.atas_nama || "-"}</div>
+            <div className="font-medium text-emerald-950">{manualBank?.atas_nama || "-"}</div>
             <div className="font-mono text-emerald-700">{manualBank?.nomor_rekening || "-"}</div>
-            <div className="text-emerald-300">Saldo: Rp {fmtID(Number(manualBank?.saldo || 0))}</div>
+            <div className="font-semibold text-emerald-700">Saldo: Rp {fmtID(Number(manualBank?.saldo || 0))}</div>
           </div>
           <div className="grid gap-1.5">
             <label className="text-sm font-medium">Nominal</label>
@@ -1171,9 +1171,9 @@ export default function AdminBankPage() {
         <div className="grid gap-3">
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
             <div className="font-medium text-white">{providerTopupBank?.nama || "-"}</div>
-            <div className="text-white/75">{providerTopupBank?.atas_nama || "-"}</div>
+            <div className="font-medium text-emerald-950">{providerTopupBank?.atas_nama || "-"}</div>
             <div className="font-mono text-emerald-700">{providerTopupBank?.nomor_rekening || "-"}</div>
-            <div className="text-emerald-300">Saldo rekening: Rp {fmtID(Number(providerTopupBank?.saldo || 0))}</div>
+            <div className="font-semibold text-emerald-700">Saldo rekening: Rp {fmtID(Number(providerTopupBank?.saldo || 0))}</div>
           </div>
           <div className="grid gap-1.5">
             <label className="text-sm font-medium">Provider</label>

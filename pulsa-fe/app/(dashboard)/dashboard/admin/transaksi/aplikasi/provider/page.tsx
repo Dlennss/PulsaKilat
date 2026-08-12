@@ -39,10 +39,10 @@ function money(v: number) {
 
 function statusTone(status: string) {
   const s = (status || "").toLowerCase();
-  if (s === "success") return "border border-emerald-400/30 bg-linear-to-r from-emerald-500/18 to-emerald-400/8 text-emerald-200";
-  if (s === "pending") return "border border-amber-400/30 bg-linear-to-r from-amber-500/18 to-yellow-400/8 text-amber-200";
-  if (s === "failed") return "border border-rose-400/30 bg-linear-to-r from-rose-500/18 to-red-400/8 text-rose-200";
-  return "border border-slate-400/20 bg-linear-to-r from-slate-500/18 to-slate-400/8 text-slate-200";
+  if (s === "success") return "border border-emerald-400 bg-emerald-100 text-emerald-900";
+  if (s === "pending") return "border border-amber-400 bg-amber-100 text-amber-900";
+  if (s === "failed") return "border border-rose-400 bg-rose-100 text-rose-900";
+  return "border border-slate-400 bg-slate-100 text-slate-800";
 }
 
 export default function AdminAppProviderTrxPage() {

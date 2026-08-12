@@ -400,9 +400,9 @@ export default function DepositRequestsPage({
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           </Button>
         </div>
-        {copied ? <div className="text-[11px] font-medium text-emerald-200">Tersalin</div> : null}
-        {requestedAmount > 0 && requestedAmount !== Number(row.amount || 0) ? <div className="text-xs font-medium text-emerald-200">Saldo masuk Rp {fmtID(requestedAmount)}</div> : null}
-        {corrected ? <div className="text-xs font-medium text-amber-200">Saldo masuk Rp {fmtID(approvedAmount)}</div> : null}
+        {copied ? <div className="text-[11px] font-bold text-emerald-800">Tersalin</div> : null}
+        {requestedAmount > 0 && requestedAmount !== Number(row.amount || 0) ? <div className="text-xs font-bold text-emerald-800">Saldo masuk Rp {fmtID(requestedAmount)}</div> : null}
+        {corrected ? <div className="text-xs font-bold text-amber-800">Saldo masuk Rp {fmtID(approvedAmount)}</div> : null}
       </div>
     );
   }
@@ -602,13 +602,13 @@ export default function DepositRequestsPage({
 
   return (
     <div className="space-y-4 p-2">
-      <div className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,.95),rgba(30,41,59,.82))] px-5 py-5 shadow-[0_18px_60px_rgba(2,6,23,.28)]">
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-700">
+      <div className="rounded-3xl border border-emerald-900 bg-[linear-gradient(135deg,#064e3b,#047857)] px-5 py-5 shadow-[0_18px_46px_rgba(6,78,59,.22)]">
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/70 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-800">
           <CalendarRange className="h-3.5 w-3.5" />
           Deposit Monitor
         </div>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white">{title}</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{description}</p>
+        <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-emerald-100">{description}</p>
       </div>
 
       <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-[0_18px_60px_rgba(2,6,23,.2)] backdrop-blur">
