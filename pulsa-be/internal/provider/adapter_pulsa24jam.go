@@ -128,23 +128,70 @@ type Pulsa24JamProduct struct {
 }
 
 type pulsa24JamProductsResponse struct {
-	OK       bool                `json:"ok"`
-	Commands string              `json:"commands"`
-	Message  string              `json:"message"`
-	Msg      string              `json:"msg"`
-	Items    []Pulsa24JamProduct `json:"items"`
+	OK       *bool           `json:"ok"`
+	Success  *bool           `json:"success"`
+	Commands string          `json:"commands"`
+	Command  string          `json:"command"`
+	Message  string          `json:"message"`
+	Msg      string          `json:"msg"`
+	Items    json.RawMessage `json:"items"`
+	Products json.RawMessage `json:"products"`
+	Data     json.RawMessage `json:"data"`
 }
 
-// Products mengambil katalog aplikasi langsung dari endpoint produk Pulsa24Jam.
+type pulsa24JamProductWire struct {
+	ID             int64           `json:"id"`
+	SKU            string          `json:"sku"`
+	Code           string          `json:"code"`
+	Product        string          `json:"product"`
+	ProductCode    string          `json:"product_code"`
+	KodeProduk     string          `json:"kode_produk"`
+	Name           string          `json:"name"`
+	Nama           string          `json:"nama"`
+	ProductName    string          `json:"product_name"`
+	NamaProduk     string          `json:"nama_produk"`
+	GroupName      string          `json:"group_name"`
+	Group          string          `json:"group"`
+	CategoryName   string          `json:"kategori_nama"`
+	Category       string          `json:"category"`
+	Kategori       string          `json:"kategori"`
+	BrandName      string          `json:"brand_nama"`
+	Brand          string          `json:"brand"`
+	PriceType      string          `json:"tipe_harga"`
+	Type           string          `json:"type"`
+	AppBasePrice   *int64          `json:"harga_dasar_app"`
+	Price          *int64          `json:"price"`
+	Harga          *int64          `json:"harga"`
+	AdditionalFee  *int64          `json:"fee_tambahan"`
+	MaximumNominal *int64          `json:"maksimal_nominal"`
+	MaximumAmount  *int64          `json:"maximum_amount"`
+	Active         *bool           `json:"aktif"`
+	ActiveEnglish  *bool           `json:"active"`
+	Status         json.RawMessage `json:"status"`
+	CreatedAt      *time.Time      `json:"dibuat_pada"`
+	UpdatedAt      *time.Time      `json:"diubah_pada"`
+}
+
+// Products meminta katalog H2H memakai command PRODUK. PIN hanya dikirim dari backend.
 func (a *Pulsa24JamAdapter) Products(ctx context.Context, product string) ([]Pulsa24JamProduct, error) {
 	if !a.Configured() {
 		return nil, fmt.Errorf("pulsa24jam credential belum lengkap")
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, a.appProductsURL(), nil)
+	payload := pulsa24JamPayRequest{
+		Commands: "PRODUK",
+		Product:  strings.TrimSpace(product),
+		PIN:      a.PIN,
+	}
+	rawPayload, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.trxURL(), bytes.NewReader(rawPayload))
 	if err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Accept", "application/json")
+	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("X-Api-Key", a.APIKey)
 
 	res, err := a.Client.Do(httpReq)
@@ -160,12 +207,17 @@ func (a *Pulsa24JamAdapter) Products(ctx context.Context, product string) ([]Pul
 	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, fmt.Errorf("response produk Pulsa24Jam tidak valid: %w", err)
 	}
-	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices || !out.OK {
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices || (out.OK != nil && !*out.OK) || (out.Success != nil && !*out.Success) {
 		return nil, fmt.Errorf("produk Pulsa24Jam gagal: %s", firstNonEmpty(out.Message, out.Msg, string(body)))
 	}
+	wires, err := decodePulsa24JamProductWires(out)
+	if err != nil {
+		return nil, fmt.Errorf("response produk Pulsa24Jam tidak valid: %w", err)
+	}
 	requestedSKU := strings.ToUpper(strings.TrimSpace(product))
-	items := make([]Pulsa24JamProduct, 0, len(out.Items))
-	for _, item := range out.Items {
+	items := make([]Pulsa24JamProduct, 0, len(wires))
+	for _, wire := range wires {
+		item := wire.product()
 		if !item.Active {
 			continue
 		}
@@ -174,7 +226,80 @@ func (a *Pulsa24JamAdapter) Products(ctx context.Context, product string) ([]Pul
 		}
 		items = append(items, item)
 	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf("katalog Pulsa24Jam tidak berisi produk aktif")
+	}
 	return items, nil
+}
+
+func decodePulsa24JamProductWires(out pulsa24JamProductsResponse) ([]pulsa24JamProductWire, error) {
+	for _, raw := range []json.RawMessage{out.Items, out.Products, out.Data} {
+		if len(raw) == 0 || string(raw) == "null" {
+			continue
+		}
+		var items []pulsa24JamProductWire
+		if err := json.Unmarshal(raw, &items); err == nil {
+			return items, nil
+		}
+		var nested struct {
+			Items    []pulsa24JamProductWire `json:"items"`
+			Products []pulsa24JamProductWire `json:"products"`
+		}
+		if err := json.Unmarshal(raw, &nested); err == nil {
+			if len(nested.Items) > 0 {
+				return nested.Items, nil
+			}
+			if len(nested.Products) > 0 {
+				return nested.Products, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("daftar produk tidak ditemukan")
+}
+
+func (w pulsa24JamProductWire) product() Pulsa24JamProduct {
+	active := true
+	if w.Active != nil {
+		active = *w.Active
+	} else if w.ActiveEnglish != nil {
+		active = *w.ActiveEnglish
+	} else if len(w.Status) > 0 {
+		var statusString string
+		if json.Unmarshal(w.Status, &statusString) == nil {
+			status := strings.ToUpper(strings.TrimSpace(statusString))
+			active = status == "ACTIVE" || status == "AKTIF" || status == "OPEN" || status == "1" || status == "AVAILABLE"
+		} else {
+			var statusNumber int
+			if json.Unmarshal(w.Status, &statusNumber) == nil {
+				active = statusNumber == 1
+			}
+		}
+	}
+	return Pulsa24JamProduct{
+		ID:             w.ID,
+		SKU:            firstNonEmpty(w.SKU, w.Code, w.Product, w.ProductCode, w.KodeProduk),
+		Name:           firstNonEmpty(w.Nama, w.Name, w.ProductName, w.NamaProduk),
+		GroupName:      firstNonEmpty(w.GroupName, w.Group),
+		CategoryName:   firstNonEmpty(w.CategoryName, w.Category, w.Kategori),
+		BrandName:      firstNonEmpty(w.BrandName, w.Brand),
+		PriceType:      firstNonEmpty(w.PriceType, w.Type),
+		AppBasePrice:   w.AppBasePrice,
+		Price:          firstInt64Pointer(w.Price, w.Harga),
+		AdditionalFee:  w.AdditionalFee,
+		MaximumNominal: firstInt64Pointer(w.MaximumNominal, w.MaximumAmount),
+		Active:         active,
+		CreatedAt:      w.CreatedAt,
+		UpdatedAt:      w.UpdatedAt,
+	}
+}
+
+func firstInt64Pointer(values ...*int64) *int64 {
+	for _, value := range values {
+		if value != nil {
+			return value
+		}
+	}
+	return nil
 }
 
 func (a *Pulsa24JamAdapter) Pay(ctx context.Context, req PayRequest) (*PayResponse, error) {
@@ -330,15 +455,6 @@ func (a *Pulsa24JamAdapter) trxURL() string {
 		return base + "/trx"
 	}
 	return base + "/v1/trx"
-}
-
-func (a *Pulsa24JamAdapter) appProductsURL() string {
-	base := strings.TrimRight(strings.TrimSpace(a.BaseURL), "/")
-	base = strings.TrimSuffix(base, "/trx")
-	if strings.HasSuffix(base, "/v1") {
-		return base + "/app/produk"
-	}
-	return base + "/v1/app/produk"
 }
 
 func firstNonEmpty(values ...string) string {
