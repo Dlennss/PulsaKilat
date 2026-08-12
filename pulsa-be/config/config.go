@@ -299,7 +299,7 @@ func Load() Config {
 		Pulsa24JamMemberID:      getEnvAny("", "PULSA24JAM_MEMBERID", "PULSA24JAM_MEMBER_ID"),
 		Pulsa24JamAPIKey:        mustEnv("PULSA24JAM_API_KEY"),
 		Pulsa24JamPIN:           mustEnv("PULSA24JAM_PIN"),
-		Pulsa24JamPassword:      mustEnv("PULSA24JAM_PASSWORD"),
+		Pulsa24JamPassword:      getEnv("PULSA24JAM_PASSWORD", ""),
 		Pulsa24JamSecret:        getEnv("PULSA24JAM_SECRET", ""),
 		Pulsa24JamCallbackToken: getEnv("PULSA24JAM_CALLBACK_TOKEN", ""),
 		Pulsa24JamTimeout:       p24to,

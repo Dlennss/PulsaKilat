@@ -47,6 +47,14 @@ func (s *AppOrderService) Create(ctx context.Context, in repository.AppOrderCrea
 	if !pricingRow.Aktif {
 		return nil, fmt.Errorf("produk tidak aktif")
 	}
+	providerCode := strings.TrimSpace(pricingRow.YuscomSKU)
+	if providerCode == "" {
+		providerCode = strings.TrimSpace(produk.SKU)
+	}
+	liveProduct, err := s.validatePulsa24JamProduct(ctx, providerCode)
+	if err != nil {
+		return nil, err
+	}
 
 	feeKategoriID := produk.KategoriID
 	feeRow, err := s.kategoriFeeRepo.GetByKategoriIDActive(ctx, produk.KategoriID)
@@ -73,6 +81,13 @@ func (s *AppOrderService) Create(ctx context.Context, in repository.AppOrderCrea
 	}
 
 	hargaDasar := pricingRow.Harga
+	if liveProduct.AppBasePrice != nil {
+		hargaDasar = *liveProduct.AppBasePrice
+	} else if liveProduct.Price != nil {
+		hargaDasar = *liveProduct.Price
+	} else if liveProduct.AdditionalFee != nil {
+		hargaDasar = *liveProduct.AdditionalFee
+	}
 	isCheckProduct := isAppCheckProduct(produk)
 	billingAmount, err := s.resolveBillingAmountFromSourceCheck(ctx, produk, buyerType, memberID, in)
 	if err != nil {

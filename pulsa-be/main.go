@@ -228,7 +228,7 @@ func main() {
 	}
 
 	var p24 provider.Client
-	if cfg.Pulsa24JamBaseURL != "" && cfg.Pulsa24JamAPIKey != "" && cfg.Pulsa24JamPIN != "" && cfg.Pulsa24JamPassword != "" {
+	if cfg.Pulsa24JamBaseURL != "" && cfg.Pulsa24JamAPIKey != "" && cfg.Pulsa24JamPIN != "" {
 		p24 = provider.NewPulsa24JamAdapter(provider.Pulsa24JamConfig{
 			BaseURL:       cfg.Pulsa24JamBaseURL,
 			MemberID:      cfg.Pulsa24JamMemberID,

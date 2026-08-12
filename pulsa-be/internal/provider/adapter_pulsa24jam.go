@@ -53,7 +53,7 @@ func NewPulsa24JamAdapter(cfg Pulsa24JamConfig) *Pulsa24JamAdapter {
 }
 
 func (a *Pulsa24JamAdapter) Configured() bool {
-	return a != nil && a.BaseURL != "" && a.APIKey != "" && a.PIN != "" && a.Password != ""
+	return a != nil && a.BaseURL != "" && a.APIKey != "" && a.PIN != ""
 }
 
 func (a *Pulsa24JamAdapter) Name() string { return Pulsa24JamProviderName }

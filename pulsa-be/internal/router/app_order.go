@@ -14,9 +14,11 @@ import (
 
 func AppOrderRouter(mux *http.ServeMux, db *sql.DB, jwtSecret []byte, ysClient *yuscom.Client, gmClient *gemilang.Client, extraClients ...provider.Client) {
 	var p24Client provider.Client
+	var p24Adapter *provider.Pulsa24JamAdapter
 	for _, client := range extraClients {
 		if client != nil && client.Name() == provider.Pulsa24JamProviderName {
 			p24Client = client
+			p24Adapter, _ = client.(*provider.Pulsa24JamAdapter)
 			break
 		}
 	}
@@ -29,6 +31,7 @@ func AppOrderRouter(mux *http.ServeMux, db *sql.DB, jwtSecret []byte, ysClient *
 	appProviderRepo := repository.NewAppOrderProviderTrxRepository(db)
 	billingCheckRepo := repository.NewAppBillingCheckRepository(db)
 	svc := service.NewAppOrderService(orderRepo, paymentRepo, produkRepo, pricingRepo, feeRepo, appProviderRepo, billingCheckRepo)
+	svc.SetPulsa24JamClient(p24Adapter)
 	billingCheckSvc := service.NewAppBillingCheckService(billingCheckRepo, produkRepo, pricingRepo, p24Client)
 	callbackRepo := repository.NewProviderCallbackRepository(db)
 	fulfillmentSvc := service.NewAppOrderFulfillmentService(orderRepo, appProviderRepo, callbackRepo, pricingRepo, ysClient, gmClient, extraClients...)

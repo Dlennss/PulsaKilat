@@ -1,12 +1,14 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 	"unicode"
 
 	"pulsa2/internal/helper"
+	"pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 )
 
@@ -18,6 +20,29 @@ type AppOrderService struct {
 	kategoriFeeRepo  *repository.KategoriFeeAppRepository
 	appProviderRepo  *repository.AppOrderProviderTrxRepository
 	billingCheckRepo *repository.AppBillingCheckRepository
+	pulsa24JamClient *provider.Pulsa24JamAdapter
+}
+
+func (s *AppOrderService) SetPulsa24JamClient(client *provider.Pulsa24JamAdapter) {
+	s.pulsa24JamClient = client
+}
+
+func (s *AppOrderService) validatePulsa24JamProduct(ctx context.Context, productCode string) (*provider.Pulsa24JamProduct, error) {
+	if s.pulsa24JamClient == nil || !s.pulsa24JamClient.Configured() {
+		return nil, fmt.Errorf("koneksi katalog Pulsa24Jam belum dikonfigurasi")
+	}
+	items, err := s.pulsa24JamClient.Products(ctx, productCode)
+	if err != nil {
+		return nil, fmt.Errorf("gagal memeriksa produk Pulsa24Jam: %w", err)
+	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf("produk tidak tersedia di Pulsa24Jam")
+	}
+	item := items[0]
+	if !item.Active {
+		return nil, fmt.Errorf("produk sedang tidak aktif di Pulsa24Jam")
+	}
+	return &item, nil
 }
 
 const appOrderPaymentFeeBps int64 = 7
