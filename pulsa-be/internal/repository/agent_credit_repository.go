@@ -91,8 +91,13 @@ SELECT
   a.created_at
 FROM public.audit_log a
 LEFT JOIN public.member m ON m.id = a.actor_id
-WHERE a.actor_role IN ('marketing', 'operator_credit', 'super_admin')
-  AND ($1 = '' OR a.actor_role = $1)
+WHERE a.actor_role IN ('marketing', 'master', 'operator_credit', 'analis', 'super_admin', 'admin')
+  AND (
+    $1 = ''
+    OR ($1 = 'marketing' AND a.actor_role IN ('marketing', 'master'))
+    OR ($1 = 'operator_credit' AND a.actor_role IN ('operator_credit', 'analis'))
+    OR ($1 = 'super_admin' AND a.actor_role IN ('super_admin', 'admin'))
+  )
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT $2
 `, actorRole, limit)
@@ -127,6 +132,8 @@ type AgentCreditApplication struct {
 	MemberName               string               `json:"member_name"`
 	MemberEmail              string               `json:"member_email"`
 	MemberPhone              string               `json:"member_phone"`
+	MarketingID              int64                `json:"marketing_id"`
+	AnalystID                int64                `json:"analyst_id"`
 	RequestedAmount          int64                `json:"requested_amount"`
 	ApprovedAmount           int64                `json:"approved_amount"`
 	Status                   string               `json:"status"`
@@ -571,7 +578,7 @@ func (r *AgentCreditRepository) GetApplicationCreditLimit(ctx context.Context, a
 }
 
 func (r *AgentCreditRepository) ListApplications(ctx context.Context, limit int) ([]AgentCreditApplication, error) {
-	if limit <= 0 || limit > 100 {
+	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
 
@@ -582,6 +589,8 @@ SELECT
   COALESCE(m.nama, '') AS member_name,
   COALESCE(m.email, '') AS member_email,
   COALESCE(m.phone, '') AS member_phone,
+  COALESCE(a.marketing_id, 0) AS marketing_id,
+  COALESCE(a.analyst_id, 0) AS analyst_id,
   a.requested_amount,
   a.approved_amount,
   a.status,
@@ -678,6 +687,8 @@ LIMIT $1
 			&item.MemberName,
 			&item.MemberEmail,
 			&item.MemberPhone,
+			&item.MarketingID,
+			&item.AnalystID,
 			&item.RequestedAmount,
 			&item.ApprovedAmount,
 			&item.Status,

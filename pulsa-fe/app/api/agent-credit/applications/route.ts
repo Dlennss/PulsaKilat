@@ -15,21 +15,26 @@ async function proxy(path: string, method: "GET" | "POST", req?: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const body = method === "POST" && req ? await req.text() : undefined;
-  const res = await fetch(`${apiBase()}${path}`, {
-    method,
-    headers: {
-      Authorization: token,
-      "Content-Type": "application/json",
-    },
-    body,
-    cache: "no-store",
-  });
-  const text = await res.text();
-  return new NextResponse(text, {
-    status: res.status,
-    headers: { "Content-Type": "application/json" },
-  });
+  try {
+    const body = method === "POST" && req ? await req.text() : undefined;
+    const res = await fetch(`${apiBase()}${path}`, {
+      method,
+      headers: {
+        Authorization: token,
+        "Content-Type": "application/json",
+      },
+      body,
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+    const text = await res.text();
+    return new NextResponse(text, {
+      status: res.status,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch {
+    return NextResponse.json({ ok: false, error: "Layanan pengajuan kredit belum dapat dihubungi" }, { status: 502 });
+  }
 }
 
 export async function GET(req: Request) {

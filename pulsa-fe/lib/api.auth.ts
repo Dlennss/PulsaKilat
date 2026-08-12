@@ -12,6 +12,8 @@ export type AgentCreditApplication = {
   member_name: string;
   member_email: string;
   member_phone: string;
+  marketing_id?: number;
+  analyst_id?: number;
   agent_name?: string;
   agent_email?: string;
   store_name?: string;

@@ -218,7 +218,7 @@ func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.A
 	if !isCreditReviewer(auth.Role) {
 		return nil, errors.New("reviewer only")
 	}
-	return s.repo.ListApplications(ctx, 50)
+	return s.repo.ListApplications(ctx, 200)
 }
 
 func (s *AgentCreditService) ListMyApplications(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditApplication, error) {
