@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, AlertTriangle, CheckCircle2, Clock3, RefreshCcw,
+  Activity, CheckCircle2, Clock3, RefreshCcw,
   ShieldCheck, UserCog, Users, XCircle,
 } from "lucide-react";
 
@@ -96,26 +96,6 @@ function dateTime(value?: string) {
   }).format(date);
 }
 
-function isToday(value?: string) {
-  if (!value) return false;
-  const date = new Date(value);
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear()
-    && date.getMonth() === now.getMonth()
-    && date.getDate() === now.getDate();
-}
-
-function isThisMonth(value?: string) {
-  if (!value) return false;
-  const date = new Date(value);
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-}
-
-function olderThan24Hours(value: string) {
-  return Date.now() - new Date(value).getTime() > 24 * 60 * 60 * 1000;
-}
-
 function TeamMonitoringContent() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [activities, setActivities] = useState<TeamActivity[]>([]);
@@ -128,7 +108,6 @@ function TeamMonitoringContent() {
     setError("");
     const results = await Promise.all([
       fetchAdminData("/api/admin/members?scope=retail&role=marketing&limit=200"),
-      fetchAdminData("/api/admin/members?scope=retail&role=analis&limit=10"),
       fetchAdminData("/api/admin/agent-credit/team-activity?limit=100"),
       fetchAdminData("/api/agent-credit/applications"),
     ]);
@@ -142,9 +121,9 @@ function TeamMonitoringContent() {
     const rows = (result: ApiResult) => result.ok
       ? (Array.isArray(result.data.items) ? result.data.items : Array.isArray(result.data.rows) ? result.data.rows : [])
       : [];
-    setMembers([...(rows(results[0]) as TeamMember[]), ...(rows(results[1]) as TeamMember[])]);
-    setActivities(rows(results[2]) as TeamActivity[]);
-    setApplications(rows(results[3]) as CreditApplication[]);
+    setMembers(rows(results[0]) as TeamMember[]);
+    setActivities(rows(results[1]) as TeamActivity[]);
+    setApplications(rows(results[2]) as CreditApplication[]);
 
     const failures = results.filter((item) => !item.ok);
     if (failures.length === results.length) setError("Data pemantauan belum dapat dimuat. Silakan muat ulang.");
@@ -159,17 +138,8 @@ function TeamMonitoringContent() {
   }, [loadData]);
 
   const marketing = useMemo(() => members.filter((item) => item.role === "marketing"), [members]);
-  const operator = useMemo(() => members.find((item) => item.role === "analis"), [members]);
   const marketingQueue = applications.filter((item) => MARKETING_QUEUE.has(item.status));
   const operatorQueue = applications.filter((item) => OPERATOR_QUEUE.has(item.status));
-  const overdueLoans = applications.filter((item) => item.loan_status === "overdue");
-  const approvedThisMonth = applications.filter((item) => item.status === "approved" && isThisMonth(item.loan_approved_at || item.updated_at));
-  const slowMarketing = marketingQueue.filter((item) => olderThan24Hours(item.updated_at)).length;
-  const slowOperator = operatorQueue.filter((item) => olderThan24Hours(item.updated_at)).length;
-
-  const operatorActivities = activities.filter((item) => item.actor_role === "operator_credit" || item.actor_role === "analis");
-  const operatorApprovedToday = applications.filter((item) => item.status === "approved" && isToday(item.updated_at)).length;
-  const operatorRejectedToday = applications.filter((item) => item.status === "rejected" && isToday(item.updated_at)).length;
 
   return (
     <main className="-m-2 min-h-screen bg-[#eef7f2] p-3 text-slate-950 sm:p-5 lg:p-7">
@@ -203,7 +173,7 @@ function TeamMonitoringContent() {
 
         {error ? <div className="rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">{error}</div> : null}
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
+        <section>
           <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div><h2 className="text-lg font-black">Kinerja Marketing</h2><p className="mt-1 text-xs font-semibold text-slate-600">Ringkasan penanganan kredit per akun marketing.</p></div>
@@ -226,23 +196,9 @@ function TeamMonitoringContent() {
             </div>
           </div>
 
-          <aside className="rounded-[24px] border border-emerald-200 bg-[#063f33] p-5 text-white shadow-[0_14px_34px_rgba(6,78,59,0.18)]">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-200">Penanggung Jawab</p><h2 className="mt-2 text-xl font-black">Operator Kredit</h2></div><span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-lime-300"><ShieldCheck className="h-5 w-5" /></span></div>
-            <div className="mt-5 rounded-2xl border border-white/15 bg-white/8 p-4"><div className="flex items-center justify-between gap-3"><div><p className="font-black">{operator?.nama || "Belum ada operator"}</p><p className="mt-1 text-xs text-emerald-100">{operator?.email || "Akun operator belum dibuat"}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-black ${operator?.aktif ? "bg-lime-300 text-emerald-950" : "bg-rose-200 text-rose-900"}`}>{operator?.aktif ? "Aktif" : "Nonaktif"}</span></div></div>
-            <dl className="mt-4 grid grid-cols-2 gap-3">
-              {[{ label: "Antrean", value: operatorQueue.length }, { label: "Disetujui Hari Ini", value: operatorApprovedToday }, { label: "Ditolak Hari Ini", value: operatorRejectedToday }, { label: "Aktivitas Terakhir", value: operatorActivities.length ? dateTime(operatorActivities[0].created_at) : "Belum ada", small: true }].map((item) => <div key={item.label} className="min-h-24 rounded-2xl bg-white p-3 text-[#063f33]"><dt className="text-[10px] font-black uppercase text-slate-600">{item.label}</dt><dd className={`mt-2 font-black ${item.small ? "text-xs leading-5" : "text-2xl"}`}>{loading ? "..." : item.value}</dd></div>)}
-            </dl>
-          </aside>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="rounded-[24px] border border-amber-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
-            <h2 className="flex items-center gap-2 text-lg font-black"><AlertTriangle className="h-5 w-5 text-amber-600" /> Perlu Perhatian</h2>
-            <div className="mt-4 space-y-2">
-              {[{ label: "Menunggu marketing lebih dari 24 jam", value: slowMarketing }, { label: "Menunggu operator lebih dari 24 jam", value: slowOperator }, { label: "Kredit melewati jatuh tempo", value: overdueLoans.length }, { label: "Disetujui bulan ini", value: approvedThisMonth.length }].map((item) => <div key={item.label} className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-amber-50 px-3"><span className="text-sm font-bold text-slate-700">{item.label}</span><strong className="text-lg text-amber-800">{loading ? "..." : item.value}</strong></div>)}
-            </div>
-          </div>
-
+        <section>
           <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
             <div className="border-b border-slate-200 px-5 py-4"><h2 className="flex items-center gap-2 text-lg font-black"><Activity className="h-5 w-5 text-emerald-700" /> Aktivitas Kredit Terbaru</h2></div>
             <div className="max-h-[360px] divide-y divide-slate-100 overflow-y-auto">
