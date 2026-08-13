@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
-import { getAppServerSession } from "@/lib/server-auth";
-
-type SessionShape = {
-  backendToken?: string;
-};
+import { getBackendAuthorization } from "@/lib/server-auth";
 
 const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083";
 
 async function proxy(path: string, method: "GET" | "POST", req?: Request) {
-  const session = (await getAppServerSession()) as SessionShape | null;
-  const incomingAuthorization = String(req?.headers.get("authorization") || "").trim();
-  const token = incomingAuthorization || (session?.backendToken ? `Bearer ${session.backendToken}` : "");
+  const token = await getBackendAuthorization(req);
   if (!token) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }

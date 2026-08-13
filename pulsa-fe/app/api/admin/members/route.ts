@@ -3,7 +3,8 @@ import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import { requireApiBase, forwardAuth } from "@/lib/adminApi";
+import { requireApiBase } from "@/lib/adminApi";
+import { getBackendAuthorization } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
@@ -23,8 +24,7 @@ function sqlLiteral(value: string) {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-async function fallbackAgentRows(req: Request, qs: URLSearchParams) {
-  const auth = forwardAuth(new Headers(req.headers));
+async function fallbackAgentRows(auth: string, qs: URLSearchParams) {
   const dsn = databaseUrl();
   if (!auth || !dsn || qs.get("role") !== "agent") return null;
 
@@ -76,7 +76,7 @@ SELECT json_build_object(
 
 export async function GET(req: Request) {
   const base = requireApiBase();
-  const auth = forwardAuth(new Headers(req.headers));
+  const auth = await getBackendAuthorization(req);
   const url = new URL(req.url);
   const qs = new URLSearchParams(url.searchParams);
 
@@ -103,11 +103,11 @@ export async function GET(req: Request) {
       return NextResponse.json(j, { status: r.status });
     }
 
-    const fallback = await fallbackAgentRows(req, qs);
+    const fallback = await fallbackAgentRows(auth, qs);
     if (fallback) return NextResponse.json(fallback);
     return NextResponse.json(j, { status: r.status });
   } catch {
-    const fallback = await fallbackAgentRows(req, qs);
+    const fallback = await fallbackAgentRows(auth, qs);
     if (fallback) return NextResponse.json(fallback);
     return NextResponse.json({ ok: false, error: "Gagal mengambil data member" }, { status: 502 });
   }

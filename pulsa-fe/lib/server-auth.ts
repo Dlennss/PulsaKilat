@@ -29,3 +29,10 @@ export async function getAppServerSession(): Promise<AppServerSession | null> {
     },
   };
 }
+
+export async function getBackendAuthorization(req?: Request): Promise<string> {
+  const session = await getAppServerSession();
+  if (session?.backendToken) return `Bearer ${session.backendToken}`;
+
+  return String(req?.headers.get("authorization") || "").trim();
+}

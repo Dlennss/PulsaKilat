@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { forwardAuth, requireApiBase } from "@/lib/adminApi";
+import { requireApiBase } from "@/lib/adminApi";
+import { getBackendAuthorization } from "@/lib/server-auth";
 
 export async function GET(req: Request) {
   const base = requireApiBase();
-  const auth = forwardAuth(new Headers(req.headers));
+  const auth = await getBackendAuthorization(req);
   const query = new URL(req.url).searchParams.toString();
   try {
     const response = await fetch(`${base}/v1/admin/agent-credit/team-activity?${query}`, {

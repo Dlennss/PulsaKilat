@@ -50,16 +50,11 @@ type ApiResult = {
 const MARKETING_QUEUE = new Set(["submitted", "marketing_review"]);
 const OPERATOR_QUEUE = new Set(["analysis_review", "ready_to_disburse"]);
 
-function authHeader(): Record<string, string> {
-  const token = localStorage.getItem("auth_token") || "";
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function fetchAdminData(url: string, headers: Record<string, string>): Promise<ApiResult> {
+async function fetchAdminData(url: string): Promise<ApiResult> {
   let lastError = "Koneksi ke server terputus";
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const response = await fetch(url, { headers, cache: "no-store" });
+      const response = await fetch(url, { cache: "no-store", credentials: "same-origin" });
       const data = await response.json().catch(() => ({})) as Record<string, unknown>;
       const error = typeof data.error === "string" ? data.error : "Data belum dapat dimuat";
       return response.ok
@@ -131,15 +126,14 @@ function TeamMonitoringContent() {
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
-    const headers = authHeader();
     const results = await Promise.all([
-      fetchAdminData("/api/admin/members?scope=retail&role=marketing&limit=200", headers),
-      fetchAdminData("/api/admin/members?scope=retail&role=analis&limit=10", headers),
-      fetchAdminData("/api/admin/agent-credit/team-activity?limit=100", headers),
-      fetchAdminData("/api/agent-credit/applications", headers),
+      fetchAdminData("/api/admin/members?scope=retail&role=marketing&limit=200"),
+      fetchAdminData("/api/admin/members?scope=retail&role=analis&limit=10"),
+      fetchAdminData("/api/admin/agent-credit/team-activity?limit=100"),
+      fetchAdminData("/api/agent-credit/applications"),
     ]);
 
-    if (results.some((item) => item.status === 401 || item.status === 403)) {
+    if (results.every((item) => item.status === 401)) {
       setError("Sesi login Admin tidak valid. Silakan login kembali.");
       setLoading(false);
       return;
@@ -154,6 +148,7 @@ function TeamMonitoringContent() {
 
     const failures = results.filter((item) => !item.ok);
     if (failures.length === results.length) setError("Data pemantauan belum dapat dimuat. Silakan muat ulang.");
+    else if (failures.some((item) => item.status === 403)) setError("Sebagian data tidak dapat diakses oleh akun ini.");
     else if (failures.length > 0) setError("Sebagian data belum dapat dimuat. Tekan Muat Ulang untuk mencoba kembali.");
     setLoading(false);
   }, []);
