@@ -185,14 +185,14 @@ function SurveyImagePreview({ file, alt }: { file: File; alt: string }) {
   }, [file]);
 
   if (!src) {
-    return <div className="h-32 w-full animate-pulse bg-emerald-50" />;
+    return <div className="h-16 w-20 shrink-0 animate-pulse bg-emerald-50 sm:w-24" />;
   }
 
   return (
     <img
       src={src}
       alt={alt}
-      className="h-32 w-full bg-slate-100 object-contain sm:h-36"
+      className="h-16 w-20 shrink-0 bg-slate-100 object-contain sm:w-24"
     />
   );
 }
@@ -315,24 +315,19 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
           const Icon = field.icon;
           const picked = files[field.key];
           return (
-            <label key={field.key} className={picked ? "group cursor-pointer overflow-hidden rounded-2xl border border-emerald-300 bg-white transition hover:border-[#047857] hover:shadow-[0_10px_24px_rgba(4,120,87,0.12)]" : "flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-3 transition hover:border-[#047857] hover:bg-emerald-50"}>
+            <label key={field.key} className={picked ? "group flex min-h-20 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border border-emerald-300 bg-white p-2 transition hover:border-[#047857] hover:bg-emerald-50/40" : "flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-2 transition hover:border-[#047857] hover:bg-emerald-50"}>
               {picked ? (
                 <>
-                  <span className="relative block overflow-hidden border-b border-emerald-100">
+                  <span className="block shrink-0 overflow-hidden rounded-xl border border-emerald-100">
                     <SurveyImagePreview file={picked} alt={`Preview ${field.name}`} />
-                    <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-700 px-2.5 py-1 text-[9px] font-black text-white shadow-sm">
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-black text-slate-950">{field.name}</span>
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase text-[#047857]">
                       <CheckCircle2 className="h-3 w-3" strokeWidth={2.8} />
                       Siap disimpan
                     </span>
-                  </span>
-                  <span className="flex items-center gap-3 px-3 py-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100">
-                      <Icon className="h-4 w-4" strokeWidth={2.4} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-black text-slate-950">{field.name}</span>
-                      <span className="mt-0.5 block text-[10px] font-semibold text-[#047857]">Ketuk foto untuk mengganti</span>
-                    </span>
+                    <span className="mt-1 block text-[9px] font-semibold text-slate-500">Ketuk untuk mengganti</span>
                   </span>
                 </>
               ) : (
