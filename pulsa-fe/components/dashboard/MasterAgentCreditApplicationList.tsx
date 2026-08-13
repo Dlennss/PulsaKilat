@@ -2,7 +2,7 @@
 
 import { Camera, CheckCircle2, ChevronDown, Download, Eye, FileDown, FileSignature, Loader2, Printer, ReceiptText, Search, SlidersHorizontal, Store, Upload, UserRound, UsersRound, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 import { MasterAgentCreditDecisionControls } from "@/components/dashboard/MasterAgentCreditDecisionControls";
 import { MasterAgentCreditDocumentButton } from "@/components/dashboard/MasterAgentCreditDocumentButton";
@@ -174,6 +174,29 @@ function readSurveyImage(file: File | null): Promise<StoredSurveyImage | null> {
   });
 }
 
+function SurveyImagePreview({ file, alt }: { file: File; alt: string }) {
+  const [src, setSrc] = useState("");
+
+  useEffect(() => {
+    const reader = new FileReader();
+    reader.onload = () => setSrc(String(reader.result || ""));
+    reader.readAsDataURL(file);
+    return () => reader.abort();
+  }, [file]);
+
+  if (!src) {
+    return <div className="h-32 w-full animate-pulse bg-emerald-50" />;
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-32 w-full bg-slate-100 object-contain sm:h-36"
+    />
+  );
+}
+
 function missingSurveyDocumentLabels(item: AgentCreditApplication) {
   const documents = [
     { key: "ktp", label: "Foto KTP" },
@@ -292,15 +315,37 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
           const Icon = field.icon;
           const picked = files[field.key];
           return (
-            <label key={field.key} className={picked ? "flex cursor-pointer items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 transition hover:border-[#047857]" : "flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-3 transition hover:border-[#047857] hover:bg-emerald-50"}>
-              <span className={picked ? "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#047857] ring-1 ring-emerald-100" : "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100"}>
-                <Icon className="h-5 w-5" strokeWidth={2.4} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-black text-slate-950">{field.name}</span>
-                <span className={picked ? "mt-0.5 block truncate text-[10px] font-black text-[#047857]" : "mt-0.5 block truncate text-[10px] font-semibold text-slate-400"}>{picked?.name || field.desc}</span>
-              </span>
-              {picked ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#047857]" strokeWidth={2.6} /> : null}
+            <label key={field.key} className={picked ? "group cursor-pointer overflow-hidden rounded-2xl border border-emerald-300 bg-white transition hover:border-[#047857] hover:shadow-[0_10px_24px_rgba(4,120,87,0.12)]" : "flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-3 transition hover:border-[#047857] hover:bg-emerald-50"}>
+              {picked ? (
+                <>
+                  <span className="relative block overflow-hidden border-b border-emerald-100">
+                    <SurveyImagePreview file={picked} alt={`Preview ${field.name}`} />
+                    <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-700 px-2.5 py-1 text-[9px] font-black text-white shadow-sm">
+                      <CheckCircle2 className="h-3 w-3" strokeWidth={2.8} />
+                      Siap disimpan
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-3 px-3 py-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100">
+                      <Icon className="h-4 w-4" strokeWidth={2.4} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-black text-slate-950">{field.name}</span>
+                      <span className="mt-0.5 block text-[10px] font-semibold text-[#047857]">Ketuk foto untuk mengganti</span>
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857] ring-1 ring-emerald-100">
+                    <Icon className="h-5 w-5" strokeWidth={2.4} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-black text-slate-950">{field.name}</span>
+                    <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">{field.desc}</span>
+                  </span>
+                </>
+              )}
               <input
                 type="file"
                 accept="image/*"
