@@ -148,7 +148,7 @@ function TeamMonitoringContent() {
 
     const failures = results.filter((item) => !item.ok);
     if (failures.length === results.length) setError("Data pemantauan belum dapat dimuat. Silakan muat ulang.");
-    else if (failures.some((item) => item.status === 403)) setError("Sebagian data tidak dapat diakses oleh akun ini.");
+    else if (failures.some((item) => item.status === 403)) setError("Sebagian data operasional belum dapat dimuat. Tekan Muat Ulang untuk mencoba kembali.");
     else if (failures.length > 0) setError("Sebagian data belum dapat dimuat. Tekan Muat Ulang untuk mencoba kembali.");
     setLoading(false);
   }, []);

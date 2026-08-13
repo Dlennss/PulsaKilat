@@ -101,6 +101,12 @@ async function refreshDashboardTokenIfNeeded(token: string, claims: JwtClaims): 
 
     localStorage.setItem("auth_token", nextToken);
     localStorage.setItem("auth_source", "refresh");
+    await fetch("/api/auth/persist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: nextToken }),
+      cache: "no-store",
+    }).catch(() => undefined);
     return { token: nextToken, claims: nextClaims };
   } catch {
     return { token, claims };

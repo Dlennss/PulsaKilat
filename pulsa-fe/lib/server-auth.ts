@@ -12,22 +12,23 @@ export type AppServerSession = {
 export const PK_AUTH_COOKIE = "pk_auth_token";
 
 export async function getAppServerSession(): Promise<AppServerSession | null> {
-  const session = (await getServerSession(authOptions)) as AppServerSession | null;
-  if (session?.backendToken) return session;
-
   const token = (await cookies()).get(PK_AUTH_COOKIE)?.value || "";
   const claims = decodeJwt(token);
-  if (!token || !claims) return null;
+  const tokenIsActive = Boolean(token && claims && (!claims.exp || claims.exp * 1000 > Date.now()));
+  if (tokenIsActive && claims) {
+    const role = typeof claims.role === "string" ? claims.role : "user";
+    return {
+      backendToken: token,
+      user: {
+        name: "",
+        email: "",
+        role,
+      },
+    };
+  }
 
-  const role = typeof claims.role === "string" ? claims.role : "user";
-  return {
-    backendToken: token,
-    user: {
-      name: "",
-      email: "",
-      role,
-    },
-  };
+  const session = (await getServerSession(authOptions)) as AppServerSession | null;
+  return session?.backendToken ? session : null;
 }
 
 export async function getBackendAuthorization(req?: Request): Promise<string> {
