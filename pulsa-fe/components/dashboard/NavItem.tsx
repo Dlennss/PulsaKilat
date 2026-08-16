@@ -61,6 +61,7 @@ const iconByHref = {
   "/dashboard/master/tambah-agent": UserPlus,
   "/dashboard/master/input-pinjaman-manual": FileText,
   "/dashboard/master/pinjaman": Camera,
+  "/dashboard/master/tugas-revisi": RefreshCcw,
   "/dashboard/master/akun-agent": Users,
   "/dashboard/master/profil-agent": Activity,
   "/dashboard/master/riwayat-pinjaman": ReceiptText,

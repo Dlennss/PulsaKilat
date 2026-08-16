@@ -208,6 +208,7 @@ type AgentCreditReviewState struct {
 	MarketingVerified        bool
 	MasterVerified           bool
 	AnalystVerified          bool
+	RevisionResolved         bool
 }
 
 func (r *AgentCreditRepository) CreateApplication(ctx context.Context, in AgentCreditApplicationInput) (*AgentCreditApplication, error) {
@@ -427,7 +428,8 @@ SELECT
   COALESCE(document_data->'selfie_marketing'->>'data_url', document_data->'selfie'->>'data_url', '') <> '',
   COALESCE(applicant_data->>'marketing_signature_data', '') <> '',
   COALESCE(applicant_data->>'master_signature_data', applicant_data->>'marketing_signature_data', '') <> '',
-  COALESCE(analyst_recommendation, '') = 'approved'
+  COALESCE(analyst_recommendation, '') = 'approved',
+  COALESCE(applicant_data->>'operator_revision_resolved_at', '') <> ''
 FROM public.agent_credit_application
 WHERE id = $1
 `, applicationID).Scan(
@@ -443,6 +445,7 @@ WHERE id = $1
 		&state.MarketingVerified,
 		&state.MasterVerified,
 		&state.AnalystVerified,
+		&state.RevisionResolved,
 	)
 	if err != nil {
 		return nil, err
@@ -1253,6 +1256,76 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 		&item.UpdatedAt,
 	)
 	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+	_ = json.Unmarshal(documentRaw, &item.DocumentData)
+	item.HasAgentSignature = item.AgentSignatureData != ""
+	return &item, nil
+}
+
+func (r *AgentCreditRepository) ReturnApplicationToMarketing(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
+	metaJSON, err := json.Marshal(map[string]any{
+		"operator_revision_requested_at": time.Now().UTC().Format(time.RFC3339),
+		"operator_revision_required":     true,
+		"operator_revision_resolved_at":  nil,
+	})
+	if err != nil {
+		return nil, err
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var item AgentCreditApplication
+	var applicantRaw, documentRaw []byte
+	err = tx.QueryRowContext(ctx, `
+UPDATE public.agent_credit_application
+SET
+  status = 'marketing_review',
+  analyst_user_id = $2,
+  analyst_reviewed_at = now(),
+  analyst_note = $3,
+  analyst_recommendation = 'revision_required',
+  analyst_recommended_amount = 0,
+  applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $4::jsonb,
+  updated_at = now()
+WHERE id = $1 AND status = 'analysis_review'
+RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
+  COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note,
+  COALESCE(analyst_note, ''), COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0),
+  created_at, updated_at
+`, in.ID, in.AnalystID, in.AnalystNote, string(metaJSON)).Scan(
+		&item.ID,
+		&item.MemberID,
+		&item.RequestedAmount,
+		&item.ApprovedAmount,
+		&item.Status,
+		&applicantRaw,
+		&documentRaw,
+		&item.AgentSignatureData,
+		&item.AgentSignatureAt,
+		&item.MarketingNote,
+		&item.AnalystNote,
+		&item.AnalystRecommendation,
+		&item.AnalystRecommendedAmount,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := insertAuditLogTx(ctx, tx, in.AnalystID, "operator_credit", "agent_credit_returned_to_marketing", "agent_credit_application", in.ID, map[string]any{
+		"status": "analysis_review",
+	}, map[string]any{
+		"status": "marketing_review",
+		"note":   in.AnalystNote,
+	}, in.AnalystNote); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)

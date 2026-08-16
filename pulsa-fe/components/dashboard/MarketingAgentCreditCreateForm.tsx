@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Check, FileSignature, Loader2, PlusCircle, Save, X } from "lucide-react";
+import { Camera, Check, FileSignature, Loader2, LocateFixed, MapPin, PlusCircle, Save, X } from "lucide-react";
 
 type ApiBody = {
   ok?: boolean;
@@ -29,6 +29,8 @@ type DocumentKey = "ktp" | "store" | "selfie_ktp" | "selfie_marketing";
 type MarketingAgentCreditCreateFormProps = {
   defaultOpen?: boolean;
 };
+
+type SurveyLocation = { latitude: number; longitude: number; accuracy: number };
 
 const emptyApplicant = {
   memberId: "",
@@ -83,6 +85,8 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
   const [agents, setAgents] = useState<AgentMember[]>([]);
   const [applicant, setApplicant] = useState(emptyApplicant);
   const [documents, setDocuments] = useState<Partial<Record<DocumentKey, StoredImage>>>({});
+  const [surveyLocation, setSurveyLocation] = useState<SurveyLocation | null>(null);
+  const [locating, setLocating] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
@@ -140,6 +144,26 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
     }
   }
 
+  function captureLocation() {
+    if (!navigator.geolocation) {
+      setMessage({ type: "error", text: "Perangkat ini tidak mendukung lokasi." });
+      return;
+    }
+    setLocating(true);
+    setMessage(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setSurveyLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy });
+        setLocating(false);
+      },
+      () => {
+        setMessage({ type: "error", text: "Lokasi belum dapat diambil. Izinkan akses lokasi lalu coba lagi." });
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const requiredText = [applicant.memberId, applicant.agentName, applicant.storeName, applicant.nik, applicant.whatsapp, applicant.monthlyTransactions, applicant.familyName, applicant.familyRelation, applicant.familyWhatsapp, applicant.homeAddress, applicant.storeAddress];
@@ -149,6 +173,21 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
     }
     if (!/^\d{16}$/.test(applicant.nik.replace(/\D/g, ""))) {
       setMessage({ type: "error", text: "NIK wajib terdiri dari 16 angka." });
+      return;
+    }
+    const phone = applicant.whatsapp.replace(/\D/g, "").replace(/^62/, "0");
+    const familyPhone = applicant.familyWhatsapp.replace(/\D/g, "").replace(/^62/, "0");
+    if (!/^08\d{8,12}$/.test(phone) || !/^08\d{8,12}$/.test(familyPhone)) {
+      setMessage({ type: "error", text: "Nomor WhatsApp agent dan keluarga harus valid dan diawali 08." });
+      return;
+    }
+    if (phone === familyPhone) {
+      setMessage({ type: "error", text: "Nomor WhatsApp keluarga harus berbeda dari nomor agent." });
+      return;
+    }
+    const requestedAmount = Number(applicant.requestedAmount.replace(/[^\d]/g, ""));
+    if (!Number.isFinite(requestedAmount) || requestedAmount < 100000) {
+      setMessage({ type: "error", text: "Nominal kredit minimal Rp100.000 dan tidak boleh kosong." });
       return;
     }
     if (documentOptions.some((item) => !documents[item.key])) {
@@ -164,20 +203,22 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           member_id: Number(applicant.memberId),
-          requested_amount: Number(applicant.requestedAmount.replace(/[^\d]/g, "")),
+          requested_amount: requestedAmount,
           applicant_data: {
             agent_name: applicant.agentName.trim(),
             store_name: applicant.storeName.trim(),
             nik: applicant.nik.replace(/\D/g, ""),
-            whatsapp: applicant.whatsapp.trim(),
+            whatsapp: phone,
             email: applicant.email.trim(),
             monthly_transactions: Number(applicant.monthlyTransactions.replace(/[^\d]/g, "")),
             family_name: applicant.familyName.trim(),
             family_relation: applicant.familyRelation.trim(),
-            family_whatsapp: applicant.familyWhatsapp.trim(),
+            family_whatsapp: familyPhone,
             home_address: applicant.homeAddress.trim(),
             store_address: applicant.storeAddress.trim(),
             input_by: "marketing",
+            survey_taken_at: new Date().toISOString(),
+            survey_location: surveyLocation,
           },
           document_data: documents,
           agent_signature: "",
@@ -188,6 +229,7 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
       if (!response.ok || !body.ok) throw new Error(body.error || "Pengajuan gagal disimpan");
       setApplicant(emptyApplicant);
       setDocuments({});
+      setSurveyLocation(null);
       setMessage({ type: "success", text: "Pengajuan dan dokumen lapangan berhasil disimpan. Lanjutkan verifikasi melalui Antrean Survei." });
       router.refresh();
     } catch (error) {
@@ -236,12 +278,17 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
                 <div className="grid gap-2 sm:grid-cols-2">
                   {documentOptions.map((item) => {
                     const saved = documents[item.key];
-                    return <label key={item.key} className={saved ? "flex min-h-28 cursor-pointer flex-col justify-between rounded-lg border border-emerald-300 bg-emerald-50 p-3" : "flex min-h-28 cursor-pointer flex-col justify-between rounded-lg border border-dashed border-emerald-300 bg-white p-3 transition hover:bg-emerald-50"}>
+                    return <label key={item.key} className={saved ? "flex min-h-20 cursor-pointer items-center gap-2 overflow-hidden rounded-lg border border-emerald-300 bg-white p-2" : "flex min-h-20 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-emerald-300 bg-white p-3 transition hover:bg-emerald-50"}>
                       <input type="file" accept="image/*" capture={item.key === "selfie_ktp" || item.key === "selfie_marketing" ? "user" : "environment"} className="sr-only" onChange={(event) => void captureDocument(item.key, event)} />
-                      <span className={saved ? "grid h-8 w-8 place-items-center rounded-lg bg-emerald-700 text-white" : "grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700"}>{saved ? <Check className="h-4 w-4" /> : <Camera className="h-4 w-4" />}</span>
-                      <span><span className="block text-xs font-black text-slate-950">{item.label}</span><span className="mt-1 block truncate text-[10px] font-semibold text-slate-500">{saved ? saved.name : item.helper}</span><span className="mt-2 block text-[10px] font-black text-emerald-700">{saved ? "Tersimpan - ketuk untuk ganti" : "Buka kamera"}</span></span>
+                      {saved ? <img src={saved.data_url} alt={`Preview ${item.label}`} className="h-16 w-20 shrink-0 rounded-lg bg-slate-100 object-contain" /> : <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><Camera className="h-4 w-4" /></span>}
+                      <span className="min-w-0 flex-1"><span className="block text-xs font-black text-slate-950">{item.label}</span><span className="mt-1 block text-[10px] font-semibold text-slate-500">{saved ? "Foto siap disimpan" : item.helper}</span><span className="mt-1 block text-[10px] font-black text-emerald-700">{saved ? "Ketuk untuk ganti" : "Buka kamera"}</span></span>
+                      {saved ? <Check className="h-4 w-4 shrink-0 text-emerald-700" /> : null}
                     </label>;
                   })}
+                </div>
+                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-emerald-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-2"><MapPin className="h-4 w-4 shrink-0 text-emerald-700" /><div className="min-w-0"><p className="text-[10px] font-black text-slate-700">Lokasi kunjungan (opsional)</p><p className="truncate text-[9px] font-semibold text-slate-500">{surveyLocation ? `${surveyLocation.latitude.toFixed(6)}, ${surveyLocation.longitude.toFixed(6)} · akurasi ${Math.round(surveyLocation.accuracy)} m` : "Belum diambil"}</p></div></div>
+                  <button type="button" onClick={captureLocation} disabled={locating} className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-50 px-3 text-[10px] font-black text-emerald-800 disabled:opacity-50">{locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}{surveyLocation ? "Ambil Ulang" : "Ambil Lokasi"}</button>
                 </div>
               </fieldset>
             </div>

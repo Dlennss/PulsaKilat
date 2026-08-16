@@ -218,7 +218,21 @@ func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.A
 	if !isCreditReviewer(auth.Role) {
 		return nil, errors.New("reviewer only")
 	}
-	return s.repo.ListApplications(ctx, 200)
+	items, err := s.repo.ListApplications(ctx, 200)
+	if err != nil {
+		return nil, err
+	}
+	if helper.NormalizeRole(auth.Role) != helper.RoleRetailMarketing {
+		return items, nil
+	}
+	owned := make([]repository.AgentCreditApplication, 0, len(items))
+	for _, item := range items {
+		status := strings.ToLower(strings.TrimSpace(item.Status))
+		if item.MarketingID == auth.MemberID || (item.MarketingID == 0 && (status == "submitted" || status == "marketing_review")) {
+			owned = append(owned, item)
+		}
+	}
+	return owned, nil
 }
 
 func (s *AgentCreditService) ListMyApplications(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditApplication, error) {
@@ -357,6 +371,9 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 	}
 	switch decision {
 	case "approve", "approved", "setujui", "forward_to_analysis", "kirim_analis":
+		if reviewState.AnalystRecommendation == "revision_required" && !reviewState.RevisionResolved {
+			return nil, errors.New("perbaiki dokumen sesuai catatan operator sebelum dikirim ulang")
+		}
 		if !reviewState.TermsAccepted {
 			return nil, errors.New("agent wajib menyetujui syarat dan ketentuan sebelum dikirim ke operator")
 		}
@@ -440,8 +457,20 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 			Recommendation: "rejected",
 			ActorRole:      "operator_credit",
 		}, signatureData, riskLevel, riskScore)
+	case "revision", "return_to_marketing", "kembalikan_marketing":
+		if note == "" {
+			return nil, errors.New("catatan perbaikan untuk marketing wajib diisi")
+		}
+		return s.repo.ReturnApplicationToMarketing(ctx, repository.AgentCreditDecisionInput{
+			ID:             applicationID,
+			AnalystID:      analystID,
+			Status:         "marketing_review",
+			AnalystNote:    note,
+			Recommendation: "revision_required",
+			ActorRole:      "operator_credit",
+		})
 	default:
-		return nil, errors.New("operator wajib memilih setuju atau tolak")
+		return nil, errors.New("operator wajib memilih setuju, kembalikan ke marketing, atau tolak")
 	}
 }
 

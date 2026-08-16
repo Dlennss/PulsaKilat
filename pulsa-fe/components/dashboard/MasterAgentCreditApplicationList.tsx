@@ -94,6 +94,9 @@ function escapeHTML(value: unknown) {
 }
 
 function getDisplayStatus(item: AgentCreditApplication) {
+  if ((item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required") {
+    return "Perlu Revisi";
+  }
   if (item.status !== "approved") return getStatusLabel(item.status);
   const loanStatus = String(item.loan_status || "").toLowerCase();
   if (loanStatus === "paid") return "Lunas";
@@ -123,6 +126,9 @@ function getStatusClass(status: string) {
 }
 
 function getDisplayStatusClass(item: AgentCreditApplication) {
+  if ((item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required") {
+    return "bg-amber-100 text-amber-800";
+  }
   const loanStatus = String(item.loan_status || "").toLowerCase();
   if (item.status === "approved" && loanStatus === "paid") {
     return "bg-sky-100 text-sky-700";
@@ -238,20 +244,22 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
     { key: "selfie_ktp", name: "Selfie Pegang KTP", desc: "Wajah agent dan KTP terlihat jelas", icon: UserRound },
     { key: "selfie_marketing", name: "Foto Bersama Marketing", desc: "Agent dan marketing terlihat dalam satu foto", icon: UsersRound },
   ];
+  const needsRevision = item.analyst_recommendation === "revision_required";
   const savedCount = fields.filter((field) => Boolean(getStoredImageSrc(item, field.key))).length;
   const missingFields = fields.filter((field) => !getStoredImageSrc(item, field.key));
-  const selectedMissingCount = missingFields.filter((field) => Boolean(files[field.key])).length;
-  const canSave = missingFields.length > 0 && selectedMissingCount === missingFields.length;
-  const remainingCount = Math.max(0, missingFields.length - selectedMissingCount);
+  const editableFields = needsRevision ? fields : missingFields;
+  const selectedCount = editableFields.filter((field) => Boolean(files[field.key])).length;
+  const canSave = needsRevision ? selectedCount > 0 : missingFields.length > 0 && selectedCount === missingFields.length;
+  const remainingCount = Math.max(0, missingFields.length - selectedCount);
 
-  if (!missingFields.length) return <SurveyDocumentsCompleteNotice />;
+  if (!missingFields.length && !needsRevision) return <SurveyDocumentsCompleteNotice />;
 
   async function saveDocuments() {
     if (!canSave || busy) return;
     setBusy(true);
     setError("");
     try {
-      const entries = await Promise.all(missingFields.map(async (field) => [field.key, await readSurveyImage(files[field.key] || null)] as const));
+      const entries = await Promise.all(editableFields.map(async (field) => [field.key, await readSurveyImage(files[field.key] || null)] as const));
       const documentData = Object.fromEntries(entries.filter(([, image]) => image));
       const token = window.localStorage.getItem("auth_token") || "";
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -266,6 +274,7 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
           applicant_data: {
             survey_documents_by: "marketing",
             survey_documents_at: new Date().toISOString(),
+            operator_revision_resolved_at: needsRevision ? new Date().toISOString() : undefined,
           },
           document_data: documentData,
         }),
@@ -294,24 +303,30 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
             <Camera className="h-5 w-5" strokeWidth={2.4} />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-black text-slate-950">Lengkapi Foto Survey</p>
-            <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-500">Marketing upload foto lapangan. Setelah lengkap, form ini otomatis diringkas.</p>
+            <p className="text-sm font-black text-slate-950">{needsRevision ? "Perbaiki Dokumen Survey" : "Lengkapi Foto Survey"}</p>
+            <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-500">{needsRevision ? "Ganti foto sesuai catatan operator, lalu kirim ulang pengajuan." : "Marketing upload foto lapangan. Setelah lengkap, form ini otomatis diringkas."}</p>
           </div>
         </div>
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-[9px] font-black uppercase text-[#047857]">
           {savedCount}/4 tersimpan
         </span>
       </div>
+      {needsRevision ? (
+        <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3">
+          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-amber-700">Catatan Operator</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-amber-950">{item.analyst_note || "Dokumen perlu diperbaiki sebelum diperiksa ulang."}</p>
+        </div>
+      ) : null}
       <div className="rounded-[20px] border border-emerald-100 bg-white/80 p-2">
         <div className="mb-2 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2">
           <Camera className="h-5 w-5" strokeWidth={2.4} />
           <div className="min-w-0">
-            <p className="text-xs font-black text-slate-950">Foto yang masih perlu diambil</p>
-            <p className="text-[10px] font-semibold text-slate-500">{missingFields.length} dokumen belum lengkap</p>
+            <p className="text-xs font-black text-slate-950">{needsRevision ? "Pilih foto yang akan diganti" : "Foto yang masih perlu diambil"}</p>
+            <p className="text-[10px] font-semibold text-slate-500">{needsRevision ? "Minimal satu foto sesuai catatan operator" : `${missingFields.length} dokumen belum lengkap`}</p>
           </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-        {missingFields.map((field) => {
+        {editableFields.map((field) => {
           const Icon = field.icon;
           const picked = files[field.key];
           return (
@@ -360,7 +375,7 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
         className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#047857,#16a34a)] text-xs font-black text-white shadow-[0_12px_22px_rgba(4,120,87,0.16)] transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-        {busy ? "Menyimpan Dokumen" : canSave ? "Simpan Dokumen Marketing" : `Lengkapi ${remainingCount} foto lagi`}
+        {busy ? "Menyimpan Dokumen" : canSave ? needsRevision ? "Simpan Perbaikan Dokumen" : "Simpan Dokumen Marketing" : needsRevision ? "Pilih foto yang diperbaiki" : `Lengkapi ${remainingCount} foto lagi`}
       </button>
       {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
     </div>
@@ -506,6 +521,7 @@ export function MasterAgentCreditApplicationList({
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ApplicationFilter>("all");
+  const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<number | null>(null);
   const [previewProof, setPreviewProof] = useState<{ agentName: string; src: string; title: string } | null>(null);
   const [locallyCompletedDocs, setLocallyCompletedDocs] = useState<Record<number, boolean>>({});
@@ -515,6 +531,13 @@ export function MasterAgentCreditApplicationList({
     if (!trimmedQuery) return byFilter;
     return byFilter.filter((item) => searchableText(item).includes(trimmedQuery));
   }, [applications, filter, trimmedQuery]);
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(filteredApplications.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const pagedApplications = useMemo(
+    () => filteredApplications.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredApplications, safePage],
+  );
   const reportRows = useMemo(() => buildReportRows(filteredApplications), [filteredApplications]);
   const reportSummary = useMemo(() => summarizeReport(filteredApplications), [filteredApplications]);
   const reportTitle = "Laporan Keputusan Kredit Agent";
@@ -709,7 +732,7 @@ export function MasterAgentCreditApplicationList({
           <Search className="h-4 w-4" />
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); setPage(1); setOpenId(null); }}
             className="w-full bg-transparent outline-none placeholder:text-slate-400"
             placeholder="Cari nama agent"
           />
@@ -724,7 +747,7 @@ export function MasterAgentCreditApplicationList({
               <button
                 key={item.key}
                 type="button"
-                onClick={() => setFilter(item.key)}
+                onClick={() => { setFilter(item.key); setPage(1); setOpenId(null); }}
                 className={
                   active
                     ? "h-10 shrink-0 rounded-2xl bg-emerald-800 px-4 text-xs font-black text-white shadow-[0_10px_22px_rgba(5,122,69,0.18)]"
@@ -795,7 +818,7 @@ export function MasterAgentCreditApplicationList({
 
       <div className={useOperatorTable ? "mt-0 min-w-0 space-y-0 lg:overflow-hidden lg:rounded-b-2xl lg:border-x lg:border-b lg:border-slate-200" : "mt-4 min-w-0 space-y-3 sm:mt-5"}>
         {filteredApplications.length ? (
-          filteredApplications.map((item) => {
+          pagedApplications.map((item) => {
             const agentName = getApplicantText(item, "agent_name", item.member_name || "Agent");
             const storeName = getApplicantText(item, "store_name", "Toko belum diisi");
             const wa = getApplicantText(item, "whatsapp", item.member_phone || "-");
@@ -815,6 +838,7 @@ export function MasterAgentCreditApplicationList({
             const termsAccepted = isTruthy(item.applicant_data?.terms_accepted);
             const docsCompleteFromServer = docs.every((doc) => Boolean(doc.src));
             const docsComplete = docsCompleteFromServer || Boolean(locallyCompletedDocs[item.id]);
+            const needsOperatorRevision = item.analyst_recommendation === "revision_required";
             const masterSignature =
               typeof item.applicant_data?.master_signature_data === "string" && item.applicant_data.master_signature_data.startsWith("data:image/")
                 ? item.applicant_data.master_signature_data
@@ -889,7 +913,7 @@ export function MasterAgentCreditApplicationList({
                 {showActions && !useOperatorTable ? (
                   <div className="mt-3 space-y-3">
                     {(mode === "marketing" || mode === "master") && (item.status === "submitted" || item.status === "marketing_review") ? (
-                      docsComplete ? (
+                      docsComplete && !needsOperatorRevision ? (
                         <SurveyDocumentsCompleteNotice />
                       ) : (
                         <MarketingSurveyDocumentUploader
@@ -1071,6 +1095,18 @@ export function MasterAgentCreditApplicationList({
           </div>
         )}
       </div>
+      {filteredApplications.length > pageSize ? (
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[11px] font-bold text-slate-500">
+            Menampilkan {(safePage - 1) * pageSize + 1}-{Math.min(safePage * pageSize, filteredApplications.length)} dari {filteredApplications.length} data
+          </p>
+          <div className="grid grid-cols-[auto_auto_auto] items-center gap-2">
+            <button type="button" onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage === 1} className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-600 disabled:opacity-40">Sebelumnya</button>
+            <span className="min-w-16 text-center text-[10px] font-black text-slate-600">{safePage} / {pageCount}</span>
+            <button type="button" onClick={() => setPage(Math.min(pageCount, safePage + 1))} disabled={safePage === pageCount} className="h-9 rounded-xl bg-emerald-700 px-3 text-[10px] font-black text-white disabled:opacity-40">Berikutnya</button>
+          </div>
+        </div>
+      ) : null}
       {previewProof ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
           <section className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_28px_80px_rgba(15,23,42,0.35)]">
