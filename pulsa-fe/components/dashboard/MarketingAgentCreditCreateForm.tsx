@@ -200,7 +200,7 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
     try {
       const response = await fetch("/api/agent-credit/manual-applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify({
           member_id: Number(applicant.memberId),
           requested_amount: requestedAmount,

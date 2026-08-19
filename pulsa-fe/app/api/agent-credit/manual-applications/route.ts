@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
-import { getAppServerSession } from "@/lib/server-auth";
-
-type SessionShape = {
-  backendToken?: string;
-};
+import { getBackendAuthorization } from "@/lib/server-auth";
 
 const apiBase = () => process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || "http://127.0.0.1:8083";
 
 export async function POST(req: Request) {
-  const session = (await getAppServerSession()) as SessionShape | null;
-  const token = String(session?.backendToken || "").trim();
+  const token = await getBackendAuthorization(req);
   if (!token) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
@@ -17,7 +12,7 @@ export async function POST(req: Request) {
   const res = await fetch(`${apiBase()}/v1/master/agent-credit/applications`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: token,
       "Content-Type": "application/json",
     },
     body: await req.text(),
