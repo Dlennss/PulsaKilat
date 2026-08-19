@@ -15,18 +15,18 @@ concurrency:
 
 jobs:
   deploy-frontend:
-    name: Deploy frontend and restart production services
+    name: Build frontend artifact and deploy
     runs-on: ubuntu-latest
     env:
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
       SSH_PORT: ${{ secrets.SERVER_PORT || '22' }}
-      FRONTEND_SOURCE_DIR: ${{ secrets.FRONTEND_SOURCE_DIR || '/var/lib/syslog-ng/PulsaKilat/pulsa-fe' }}
       BACKEND_RELEASE_DIR: ${{ secrets.BACKEND_RELEASE_DIR || '/var/lib/syslog-ng/PulsaKilat/releases/pulsa-be/current' }}
       FRONTEND_RELEASE_DIR: ${{ secrets.FRONTEND_RELEASE_DIR || '/var/lib/syslog-ng/PulsaKilat/releases/pulsa-fe/current' }}
       BACKEND_SERVICE_NAME: ${{ secrets.BACKEND_SERVICE_NAME || 'pulsakilat-be.service' }}
       FRONTEND_SERVICE_NAME: ${{ secrets.FRONTEND_SERVICE_NAME || 'pulsakilat-fe.service' }}
+      FRONTEND_ENV: ${{ secrets.FRONTEND_ENV }}
 
     steps:
       - name: Checkout repository
@@ -40,12 +40,55 @@ jobs:
           test -n "$SERVER_USER" || (echo "SERVER_USER secret is required" && exit 1)
           test -n "$SERVER_PASSWORD" || (echo "SERVER_PASSWORD secret is required" && exit 1)
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: pulsa-fe/package-lock.json
+
+      - name: Install dependencies
+        working-directory: pulsa-fe
+        shell: bash
+        run: npm ci
+
+      - name: Write build environment
+        working-directory: pulsa-fe
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$FRONTEND_ENV" ]]; then
+            printf '%s\n' "$FRONTEND_ENV" > .env.production
+          fi
+
+      - name: Build standalone frontend
+        working-directory: pulsa-fe
+        shell: bash
+        run: npm run build
+
+      - name: Package frontend release
+        working-directory: pulsa-fe
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release
+          mkdir -p release/.next release/public
+          cp -a .next/standalone/. release/
+          cp -a .next/static release/.next/static
+          if [[ -d public ]]; then
+            cp -a public/. release/public/
+          fi
+          if [[ -f .env.production ]]; then
+            cp .env.production release/.env
+          fi
+          tar -C release -czf ../pulsakilat-fe-release.tar.gz .
+
       - name: Install deployment tools
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y sshpass rsync
+          sudo apt-get install -y sshpass
 
       - name: Prepare SSH connection
         shell: bash
@@ -54,75 +97,42 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "$SSH_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts
 
-      - name: Sync frontend source
+      - name: Upload frontend artifact
         shell: bash
         env:
           SSHPASS: ${{ secrets.SERVER_PASSWORD }}
         run: |
           set -euo pipefail
-          sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" "mkdir -p '$FRONTEND_SOURCE_DIR'"
-          sshpass -e rsync -az --delete \
-            -e "ssh -p $SSH_PORT" \
-            --exclude '.env' \
-            --exclude '.env.local' \
-            --exclude '.git' \
-            --exclude '.next' \
-            --exclude 'node_modules' \
-            --exclude 'releases' \
-            pulsa-fe/ "$SERVER_USER@$SERVER_HOST:$FRONTEND_SOURCE_DIR/"
+          sshpass -e scp -P "$SSH_PORT" pulsakilat-fe-release.tar.gz "$SERVER_USER@$SERVER_HOST:/tmp/pulsakilat-fe-release.tar.gz"
 
-      - name: Write frontend environment
-        shell: bash
-        env:
-          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
-          FRONTEND_ENV: ${{ secrets.FRONTEND_ENV }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$FRONTEND_ENV" ]]; then
-            echo "FRONTEND_ENV is empty; keeping the existing server environment."
-            exit 0
-          fi
-          printf '%s\n' "$FRONTEND_ENV" | sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "cat > '$FRONTEND_SOURCE_DIR/.env' && chmod 600 '$FRONTEND_SOURCE_DIR/.env'"
-
-      - name: Ensure Node.js 20 runtime on server
+      - name: Publish frontend release
         shell: bash
         env:
           SSHPASS: ${{ secrets.SERVER_PASSWORD }}
         run: |
           set -euo pipefail
-          NODE_MAJOR="$(sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "node -p 'process.versions.node.split(\".\")[0]' 2>/dev/null || echo 0")"
-
-          if [[ "$NODE_MAJOR" =~ ^[0-9]+$ ]] && (( NODE_MAJOR >= 20 )); then
-            sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" "node --version && npm --version"
-            exit 0
-          fi
-
-          sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "curl -fsSL https://deb.nodesource.com/setup_20.x -o /tmp/pulsakilat-node-setup.sh"
           printf '%s\n' "$SERVER_PASSWORD" | sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
             "sudo -S -p '' bash -c '
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get purge -y nodejs libnode-dev nodejs-doc npm || true
-              dpkg --remove --force-remove-reinstreq nodejs 2>/dev/null || true
-              dpkg --configure -a
-              apt-get install -f -y
-              bash /tmp/pulsakilat-node-setup.sh
-              apt-get install -y nodejs
-              rm -f /tmp/pulsakilat-node-setup.sh
+              set -euo pipefail
+              RELEASE_ROOT=\"\$(dirname \"$FRONTEND_RELEASE_DIR\")\"
+              BUILD_DIR=\"\$RELEASE_ROOT/build-${GITHUB_SHA::7}-\$(date +%Y%m%d%H%M%S)\"
+              TMP_LINK=\"\$RELEASE_ROOT/.current-tmp\"
+              install -d \"\$BUILD_DIR\"
+              tar -xzf /tmp/pulsakilat-fe-release.tar.gz -C \"\$BUILD_DIR\"
+              rm -f /tmp/pulsakilat-fe-release.tar.gz
+              if [ ! -f \"\$BUILD_DIR/.env\" ] && [ -f \"$FRONTEND_RELEASE_DIR/.env\" ]; then
+                cp \"$FRONTEND_RELEASE_DIR/.env\" \"\$BUILD_DIR/.env\"
+              fi
+              if [ ! -f \"\$BUILD_DIR/server.js\" ]; then
+                SERVER_ENTRY=\"\$(find \"\$BUILD_DIR\" -maxdepth 4 -name server.js | head -n 1)\"
+                test -n \"\$SERVER_ENTRY\" || (echo \"server.js tidak ditemukan di artifact frontend\" >&2 && exit 1)
+                ln -s \"\${SERVER_ENTRY#\$BUILD_DIR/}\" \"\$BUILD_DIR/server.js\"
+              fi
+              chown -R \"$SERVER_USER:$SERVER_USER\" \"\$BUILD_DIR\" || true
+              ln -sfn \"\$BUILD_DIR\" \"\$TMP_LINK\"
+              mv -Tf \"\$TMP_LINK\" \"$FRONTEND_RELEASE_DIR\"
+              find \"\$RELEASE_ROOT\" -maxdepth 1 -mindepth 1 -type d -name \"build-*\" | sort | head -n -3 | xargs -r rm -rf
             '"
-          sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "node --version && npm --version && node -e 'const major=Number(process.versions.node.split(\".\")[0]); if (major < 20) process.exit(1)'"
-
-      - name: Build and publish frontend release
-        shell: bash
-        env:
-          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
-        run: |
-          set -euo pipefail
-          sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "cd '$FRONTEND_SOURCE_DIR' && SOURCE_DIR='$FRONTEND_SOURCE_DIR' SKIP_SERVICE_RESTART=true bash scripts/deploy-prod-release.sh"
 
       - name: Restart PulsaKilat services and Nginx
         shell: bash
@@ -132,9 +142,10 @@ jobs:
           set -euo pipefail
           printf '%s\n' "$SERVER_PASSWORD" | sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
             "sudo -S -p '' bash -c '
+              set -euo pipefail
               install -d /etc/systemd/system/$BACKEND_SERVICE_NAME.d /etc/systemd/system/$FRONTEND_SERVICE_NAME.d
               printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$BACKEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=$BACKEND_RELEASE_DIR/pulsa-be\" > /etc/systemd/system/$BACKEND_SERVICE_NAME.d/release.conf
-              printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$FRONTEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 3003\" > /etc/systemd/system/$FRONTEND_SERVICE_NAME.d/release.conf
+              printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$FRONTEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=/usr/bin/env PORT=3003 HOSTNAME=127.0.0.1 node $FRONTEND_RELEASE_DIR/server.js\" > /etc/systemd/system/$FRONTEND_SERVICE_NAME.d/release.conf
               systemctl daemon-reload
               nginx -t
               systemctl restart $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx
