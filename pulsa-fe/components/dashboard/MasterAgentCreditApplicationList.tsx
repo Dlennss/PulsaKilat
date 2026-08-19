@@ -543,7 +543,7 @@ export function MasterAgentCreditApplicationList({
   const reportTitle = "Laporan Keputusan Kredit Agent";
   const reportSubtitle = `${filter === "all" ? "Semua status" : applicationFilters.find((item) => item.key === filter)?.label || filter}${trimmedQuery ? ` - pencarian "${query.trim()}"` : ""}`;
   const canExportReport = enableReportActions && filteredApplications.length > 0;
-  const useOperatorTable = mode === "analyst";
+  const useCompactTable = mode === "analyst" || mode === "marketing";
 
   async function exportXlsxReport() {
     if (!canExportReport) return;
@@ -804,19 +804,19 @@ export function MasterAgentCreditApplicationList({
         </div>
       ) : null}
 
-      {useOperatorTable && filteredApplications.length ? (
+      {useCompactTable && filteredApplications.length ? (
         <div className="mt-4 hidden overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 lg:block">
-          <div className="grid grid-cols-[minmax(220px,1.45fr)_140px_150px_150px_110px] items-center gap-3 border-b border-slate-200 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+          <div className="grid grid-cols-[minmax(220px,1.45fr)_150px_130px_145px_110px] items-center gap-3 border-b border-slate-200 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
             <span>Agent</span>
             <span>Status</span>
+            <span>Dokumen</span>
             <span>Nominal</span>
-            <span>Tanggal Masuk</span>
             <span className="text-center">Aksi</span>
           </div>
         </div>
       ) : null}
 
-      <div className={useOperatorTable ? "mt-0 min-w-0 space-y-0 lg:overflow-hidden lg:rounded-b-2xl lg:border-x lg:border-b lg:border-slate-200" : "mt-4 min-w-0 space-y-3 sm:mt-5"}>
+      <div className={useCompactTable ? "mt-0 min-w-0 space-y-0 lg:overflow-hidden lg:rounded-b-2xl lg:border-x lg:border-b lg:border-slate-200" : "mt-4 min-w-0 space-y-3 sm:mt-5"}>
         {filteredApplications.length ? (
           pagedApplications.map((item) => {
             const agentName = getApplicantText(item, "agent_name", item.member_name || "Agent");
@@ -839,6 +839,7 @@ export function MasterAgentCreditApplicationList({
             const docsCompleteFromServer = docs.every((doc) => Boolean(doc.src));
             const docsComplete = docsCompleteFromServer || Boolean(locallyCompletedDocs[item.id]);
             const needsOperatorRevision = item.analyst_recommendation === "revision_required";
+            const storedDocumentCount = docs.filter((doc) => Boolean(doc.src)).length;
             const masterSignature =
               typeof item.applicant_data?.master_signature_data === "string" && item.applicant_data.master_signature_data.startsWith("data:image/")
                 ? item.applicant_data.master_signature_data
@@ -869,12 +870,12 @@ export function MasterAgentCreditApplicationList({
               <article
                 key={item.id}
                 className={
-                  useOperatorTable
+                  useCompactTable
                     ? "min-w-0 border-b border-slate-100 bg-white p-3 transition last:border-b-0 hover:bg-emerald-50/30 lg:p-0"
                     : "min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)] sm:p-3"
                 }
               >
-                <div className={useOperatorTable ? "grid gap-3 lg:grid-cols-[minmax(220px,1.45fr)_140px_150px_150px_110px] lg:items-center lg:px-4 lg:py-3" : "grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center"}>
+                <div className={useCompactTable ? "grid gap-3 lg:grid-cols-[minmax(220px,1.45fr)_150px_130px_145px_110px] lg:items-center lg:px-4 lg:py-3" : "grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center"}>
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-950 text-xs font-black text-lime-300">
                       {agentName.slice(0, 2).toUpperCase()}
@@ -882,25 +883,30 @@ export function MasterAgentCreditApplicationList({
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="max-w-full truncate text-sm font-black text-slate-950">{agentName}</h3>
-                        <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getDisplayStatusClass(item)}`}>{getDisplayStatus(item)}</span>
+                        {!useCompactTable ? <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getDisplayStatusClass(item)}`}>{getDisplayStatus(item)}</span> : null}
                       </div>
                       <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{storeName}</p>
                       <p className="mt-1 truncate text-[11px] font-bold text-slate-400">WA {wa} · NIK {nik}</p>
                     </div>
                   </div>
-                  {useOperatorTable ? (
+                  {useCompactTable ? (
                     <div className="hidden lg:block">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getDisplayStatusClass(item)}`}>{getDisplayStatus(item)}</span>
+                      <p className="mt-1 text-[10px] font-bold text-slate-400">{formatDateTime(item.updated_at)}</p>
                     </div>
                   ) : null}
-                  <div className={useOperatorTable ? "rounded-xl bg-emerald-50 px-3 py-2 text-left lg:bg-transparent lg:px-0 lg:py-0" : "rounded-xl bg-emerald-50 px-3 py-2 text-left lg:text-center"}>
+                  {useCompactTable ? (
+                    <div className="rounded-xl bg-slate-50 px-3 py-2 text-left lg:bg-transparent lg:px-0 lg:py-0">
+                      <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Dokumen</p>
+                      <p className={`mt-0.5 text-sm font-black ${storedDocumentCount >= 4 ? "text-emerald-700" : "text-amber-700"}`}>{storedDocumentCount}/4</p>
+                      <p className="mt-0.5 text-[9px] font-bold text-slate-400">{docsComplete ? "Lengkap" : "Perlu dilengkapi"}</p>
+                    </div>
+                  ) : null}
+                  <div className={useCompactTable ? "rounded-xl bg-emerald-50 px-3 py-2 text-left lg:bg-transparent lg:px-0 lg:py-0" : "rounded-xl bg-emerald-50 px-3 py-2 text-left lg:text-center"}>
                     <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">{isPending ? "Diajukan" : "Sisa"}</p>
                     <p className="mt-0.5 text-sm font-black text-slate-950">{formatIDR(isPending ? item.requested_amount : outstanding)}</p>
                     {!isPending && approvedAmount ? <p className="mt-0.5 text-[9px] font-bold text-slate-400">Limit {formatIDR(approvedAmount)}</p> : null}
                   </div>
-                  {useOperatorTable ? (
-                    <div className="hidden text-xs font-bold text-slate-500 lg:block">{formatDateTime(item.updated_at)}</div>
-                  ) : null}
                   <button
                     type="button"
                     onClick={() => setOpenId((current) => (current === item.id ? null : item.id))}
@@ -910,9 +916,9 @@ export function MasterAgentCreditApplicationList({
                     <ChevronDown className={`h-4 w-4 transition ${openId === item.id ? "rotate-180" : ""}`} />
                   </button>
                 </div>
-                {showActions && !useOperatorTable ? (
+                {showActions && !useCompactTable ? (
                   <div className="mt-3 space-y-3">
-                    {(mode === "marketing" || mode === "master") && (item.status === "submitted" || item.status === "marketing_review") ? (
+                    {mode === "master" && (item.status === "submitted" || item.status === "marketing_review") ? (
                       docsComplete && !needsOperatorRevision ? (
                         <SurveyDocumentsCompleteNotice />
                       ) : (
@@ -941,8 +947,18 @@ export function MasterAgentCreditApplicationList({
 
                 {openId === item.id ? (
                   <div className="mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-2 sm:p-3">
-                    {showActions && useOperatorTable ? (
-                      <div className="mb-3">
+                    {showActions && useCompactTable ? (
+                      <div className="mb-3 space-y-3">
+                        {(mode === "marketing") && (item.status === "submitted" || item.status === "marketing_review") ? (
+                          docsComplete && !needsOperatorRevision ? (
+                            <SurveyDocumentsCompleteNotice />
+                          ) : (
+                            <MarketingSurveyDocumentUploader
+                              item={item}
+                              onComplete={() => setLocallyCompletedDocs((current) => ({ ...current, [item.id]: true }))}
+                            />
+                          )
+                        ) : null}
                         <MasterAgentCreditDecisionControls
                           applicationId={item.id}
                           requestedAmount={item.requested_amount}
