@@ -72,9 +72,12 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf release
-          mkdir -p release/.next release/public
+          mkdir -p release/.next release/public release/runtime/node
           cp -a .next/standalone/. release/
           cp -a .next/static release/.next/static
+          NODE_RUNTIME_DIR="$(dirname "$(dirname "$(command -v node)")")"
+          test -x "$NODE_RUNTIME_DIR/bin/node"
+          cp -a "$NODE_RUNTIME_DIR/." release/runtime/node/
           if [[ -d public ]]; then
             cp -a public/. release/public/
           fi
@@ -123,12 +126,13 @@ jobs:
               if [ ! -f \"\$BUILD_DIR/.env\" ] && [ -f \"$FRONTEND_RELEASE_DIR/.env\" ]; then
                 cp \"$FRONTEND_RELEASE_DIR/.env\" \"\$BUILD_DIR/.env\"
               fi
-              if [ ! -f \"\$BUILD_DIR/server.js\" ]; then
-                SERVER_ENTRY=\"\$(find \"\$BUILD_DIR\" -maxdepth 4 -name server.js | head -n 1)\"
-                test -n \"\$SERVER_ENTRY\" || (echo \"server.js tidak ditemukan di artifact frontend\" >&2 && exit 1)
-                ln -s \"\${SERVER_ENTRY#\$BUILD_DIR/}\" \"\$BUILD_DIR/server.js\"
-              fi
-              chown -R \"$SERVER_USER:$SERVER_USER\" \"\$BUILD_DIR\" || true
+               if [ ! -f \"\$BUILD_DIR/server.js\" ]; then
+                 SERVER_ENTRY=\"\$(find \"\$BUILD_DIR\" -maxdepth 4 -name server.js | head -n 1)\"
+                 test -n \"\$SERVER_ENTRY\" || (echo \"server.js tidak ditemukan di artifact frontend\" >&2 && exit 1)
+                 ln -s \"\${SERVER_ENTRY#\$BUILD_DIR/}\" \"\$BUILD_DIR/server.js\"
+               fi
+               test -x \"\$BUILD_DIR/runtime/node/bin/node\" || (echo \"runtime Node.js tidak ditemukan di artifact frontend\" >&2 && exit 1)
+               chown -R \"$SERVER_USER:$SERVER_USER\" \"\$BUILD_DIR\" || true
               ln -sfn \"\$BUILD_DIR\" \"\$TMP_LINK\"
               mv -Tf \"\$TMP_LINK\" \"$FRONTEND_RELEASE_DIR\"
               find \"\$RELEASE_ROOT\" -maxdepth 1 -mindepth 1 -type d -name \"build-*\" | sort | head -n -3 | xargs -r rm -rf
@@ -145,11 +149,14 @@ jobs:
               set -euo pipefail
               install -d /etc/systemd/system/$BACKEND_SERVICE_NAME.d /etc/systemd/system/$FRONTEND_SERVICE_NAME.d
               printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$BACKEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=$BACKEND_RELEASE_DIR/pulsa-be\" > /etc/systemd/system/$BACKEND_SERVICE_NAME.d/release.conf
-              printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$FRONTEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=/usr/bin/env PORT=3003 HOSTNAME=127.0.0.1 node $FRONTEND_RELEASE_DIR/server.js\" > /etc/systemd/system/$FRONTEND_SERVICE_NAME.d/release.conf
+              printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$FRONTEND_RELEASE_DIR\" \"Environment=PORT=3003\" \"Environment=HOSTNAME=127.0.0.1\" \"ExecStart=\" \"ExecStart=$FRONTEND_RELEASE_DIR/runtime/node/bin/node $FRONTEND_RELEASE_DIR/server.js\" > /etc/systemd/system/$FRONTEND_SERVICE_NAME.d/release.conf
               systemctl daemon-reload
               nginx -t
-              systemctl restart $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx
-              systemctl is-active --quiet $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx
+              if ! systemctl restart $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx || ! systemctl is-active --quiet $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx; then
+                journalctl -u $FRONTEND_SERVICE_NAME -n 120 --no-pager || true
+                systemctl --no-pager --full status $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx || true
+                exit 1
+              fi
             '"
           sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
             "for attempt in \$(seq 1 60); do
