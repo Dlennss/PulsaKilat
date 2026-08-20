@@ -24,6 +24,16 @@ func (r *RetailRepository) EnsureWithdrawSchema(ctx context.Context) error {
 	}
 	_, err := r.db.ExecContext(ctx, `
 ALTER TABLE public.retail_withdraw_request
+  ADD COLUMN IF NOT EXISTS bank_name TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS account_name TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS account_number TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS note TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS reject_reason TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS ref_id TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS processed_by BIGINT REFERENCES public.member(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   ADD COLUMN IF NOT EXISTS source_type TEXT NOT NULL DEFAULT 'main_balance',
   ADD COLUMN IF NOT EXISTS credit_loan_id BIGINT REFERENCES public.agent_credit_loan(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS credit_application_id BIGINT REFERENCES public.agent_credit_application(id) ON DELETE SET NULL;
