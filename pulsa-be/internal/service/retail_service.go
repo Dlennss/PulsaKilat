@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,9 +16,10 @@ import (
 )
 
 type RetailService struct {
-	repo      *repository.RetailRepository
-	bankRepo  *repository.BankRepository
-	p24Client provider.Client
+	repo           *repository.RetailRepository
+	bankRepo       *repository.BankRepository
+	p24Client      provider.Client
+	p24Catalog     *provider.Pulsa24JamAdapter
 }
 
 type RetailRegisterDownlineInput struct {
@@ -41,6 +43,7 @@ func NewRetailService(repo *repository.RetailRepository, bankRepo *repository.Ba
 	for _, client := range clients {
 		if client != nil && strings.EqualFold(client.Name(), provider.Pulsa24JamProviderName) {
 			s.p24Client = client
+			s.p24Catalog, _ = client.(*provider.Pulsa24JamAdapter)
 			break
 		}
 	}
@@ -172,11 +175,26 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 	if in.SourceType == "credit" && s.p24Client == nil {
 		return nil, errors.New("koneksi Pulsa24Jam untuk penarikan kredit belum aktif")
 	}
+	if in.SourceType == "credit" && s.p24Catalog == nil {
+		return nil, errors.New("katalog Pulsa24Jam untuk penarikan kredit belum aktif")
+	}
 	if in.Amount <= 0 {
 		return nil, errors.New("amount harus > 0")
 	}
 	if in.BankName == "" || in.AccountName == "" || in.AccountNumber == "" {
 		return nil, errors.New("data rekening wajib lengkap")
+	}
+
+	// Pulsa24Jam menerima SKU produk, bukan nama e-wallet seperti "gopay".
+	// Validasi SKU dilakukan sebelum saldo kredit ditahan agar saldo agent tidak
+	// berkurang bila nominal tujuan tidak tersedia di katalog provider.
+	providerProduct := ""
+	if in.SourceType == "credit" {
+		var resolveErr error
+		providerProduct, resolveErr = s.resolveCreditWithdrawProduct(ctx, in.BankName, in.Amount)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
 	}
 	refID := fmt.Sprintf("RWD-%s-%s", time.Now().Format("20060102150405"), strings.ToUpper(helper.RandHex(4)))
 	item, err := s.repo.CreateWithdrawRequest(ctx, actorID, in.Amount, in.SourceType, in.BankName, in.AccountName, in.AccountNumber, refID, in.Note)
@@ -186,14 +204,9 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 	if in.SourceType != "credit" {
 		return item, nil
 	}
-	product := retailWithdrawPulsa24JamProduct(in.BankName)
-	if product == "" {
-		_ = s.repo.RejectWithdrawRequest(ctx, item.ID, actorID, "produk tujuan penarikan tidak dikenali")
-		return nil, errors.New("produk tujuan penarikan tidak dikenali")
-	}
 	resp, payErr := s.p24Client.Pay(ctx, provider.PayRequest{
 		Command: "PAY",
-		Product: product,
+		Product: providerProduct,
 		Dest:    in.AccountNumber,
 		Qty:     in.Amount,
 		RefID:   refID,
@@ -216,13 +229,16 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 			reason = "penarikan ditolak Pulsa24Jam"
 		}
 		_ = s.repo.RejectWithdrawRequest(ctx, item.ID, actorID, reason)
+		if retailWithdrawProviderUnavailable(reason) {
+			return nil, errors.New("Pulsa24Jam belum dapat dihubungi. Saldo kredit telah dikembalikan")
+		}
 		return nil, fmt.Errorf("penarikan Pulsa24Jam gagal: %s", reason)
 	}
 	status := "processing_provider"
 	if retailPulsa24JamLooksSuccess(body, msg) {
 		status = "approved"
 	}
-	note := fmt.Sprintf("dikirim ke Pulsa24Jam product=%s dest=%s", product, in.AccountNumber)
+	note := fmt.Sprintf("dikirim ke Pulsa24Jam product=%s dest=%s", providerProduct, in.AccountNumber)
 	if msg != "" {
 		note += " | " + msg
 	}
@@ -230,6 +246,75 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 		return nil, err
 	}
 	return s.repo.GetWithdrawRequestByRefID(ctx, refID)
+}
+
+var retailWithdrawNominalPattern = regexp.MustCompile(`(?i)(?:rp\s*)?(\d{1,3}(?:[.\s]\d{3})+|\d{4,})`)
+
+func (s *RetailService) resolveCreditWithdrawProduct(ctx context.Context, destination string, amount int64) (string, error) {
+	if s == nil || s.p24Catalog == nil {
+		return "", errors.New("katalog Pulsa24Jam untuk penarikan kredit belum aktif")
+	}
+	items, err := s.p24Catalog.Products(ctx, "")
+	if err != nil {
+		return "", errors.New("katalog Pulsa24Jam belum dapat diakses. Silakan coba kembali")
+	}
+	destinationKey := retailWithdrawDestinationKey(destination)
+	for _, item := range items {
+		if !item.Active || !retailWithdrawProductMatches(item, destinationKey) {
+			continue
+		}
+		// SKU yang persis sama (misalnya GOPAY/DANA) adalah produk nominal bebas
+		// di sebagian katalog Pulsa24Jam, walau tipe harganya tertulis FIXED.
+		if retailWithdrawDestinationKey(item.SKU) == destinationKey ||
+			retailWithdrawOpenAmountProduct(item) ||
+			retailWithdrawProductNominal(item.Name) == amount {
+			return strings.TrimSpace(item.SKU), nil
+		}
+	}
+	return "", fmt.Errorf("produk %s nominal %d belum tersedia di Pulsa24Jam", strings.TrimSpace(destination), amount)
+}
+
+func retailWithdrawDestinationKey(raw string) string {
+	key := strings.ToUpper(strings.TrimSpace(raw))
+	return strings.NewReplacer(" ", "", "-", "", "_", "", ".", "").Replace(key)
+}
+
+func retailWithdrawProductMatches(item provider.Pulsa24JamProduct, destinationKey string) bool {
+	if destinationKey == "" {
+		return false
+	}
+	for _, value := range []string{item.BrandName, item.Name, item.GroupName, item.CategoryName, item.SKU} {
+		if strings.Contains(retailWithdrawDestinationKey(value), destinationKey) {
+			return true
+		}
+	}
+	return false
+}
+
+func retailWithdrawOpenAmountProduct(item provider.Pulsa24JamProduct) bool {
+	priceType := strings.ToUpper(strings.TrimSpace(item.PriceType))
+	return strings.Contains(priceType, "OPEN") || strings.Contains(priceType, "BEBAS") || strings.Contains(priceType, "NOMINAL")
+}
+
+func retailWithdrawProductNominal(name string) int64 {
+	match := retailWithdrawNominalPattern.FindStringSubmatch(name)
+	if len(match) < 2 {
+		return 0
+	}
+	normalized := strings.NewReplacer(".", "", " ", "").Replace(match[1])
+	var amount int64
+	_, _ = fmt.Sscan(normalized, &amount)
+	return amount
+}
+
+func retailWithdrawProviderUnavailable(reason string) bool {
+	lower := strings.ToLower(strings.TrimSpace(reason))
+	return strings.Contains(lower, "context deadline") ||
+		strings.Contains(lower, "dial tcp") ||
+		strings.Contains(lower, "connection refused") ||
+		strings.Contains(lower, "connection reset") ||
+		strings.Contains(lower, "i/o timeout") ||
+		strings.Contains(lower, " eof")
 }
 
 func retailWithdrawPulsa24JamProduct(bankName string) string {
