@@ -261,17 +261,37 @@ func (s *RetailService) resolveCreditWithdrawProduct(ctx context.Context, destin
 		return "", errors.New("katalog Pulsa24Jam belum dapat diakses. Silakan coba kembali")
 	}
 	destinationKey := retailWithdrawDestinationKey(destination)
+	var fixedFallback string
+	var openAmountFallback string
 	for _, item := range items {
 		if !item.Active || !retailWithdrawProductMatches(item, destinationKey) {
 			continue
 		}
-		// SKU yang persis sama (misalnya GOPAY/DANA) adalah produk nominal bebas
-		// di sebagian katalog Pulsa24Jam, walau tipe harganya tertulis FIXED.
-		if retailWithdrawDestinationKey(item.SKU) == destinationKey ||
-			retailWithdrawOpenAmountProduct(item) ||
-			retailWithdrawProductNominal(item.Name) == amount {
-			return strings.TrimSpace(item.SKU), nil
+
+		// Produk fixed Direct lebih aman dari produk Promo atau SKU e-wallet
+		// generik. Contoh: DANA 50.000 = UDDND50 dan GoPay 50.000 = UDGY50.
+		if retailWithdrawProductNominal(item.Name) == amount {
+			sku := strings.TrimSpace(item.SKU)
+			group := strings.ToUpper(strings.TrimSpace(item.GroupName))
+			if strings.Contains(group, "DIRECT") {
+				return sku, nil
+			}
+			if fixedFallback == "" {
+				fixedFallback = sku
+			}
+			continue
 		}
+		if retailWithdrawOpenAmountProduct(item) || retailWithdrawDestinationKey(item.SKU) == destinationKey {
+			if openAmountFallback == "" {
+				openAmountFallback = strings.TrimSpace(item.SKU)
+			}
+		}
+	}
+	if fixedFallback != "" {
+		return fixedFallback, nil
+	}
+	if openAmountFallback != "" {
+		return openAmountFallback, nil
 	}
 	return "", fmt.Errorf("produk %s nominal %d belum tersedia di Pulsa24Jam", strings.TrimSpace(destination), amount)
 }
