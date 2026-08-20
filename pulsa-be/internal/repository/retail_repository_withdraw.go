@@ -107,6 +107,27 @@ func (r *RetailRepository) GetWithdrawRequestByRefID(ctx context.Context, refID 
 	return &rows[0], nil
 }
 
+func (r *RetailRepository) UpdateWithdrawRequestProviderStatus(ctx context.Context, refID, status, note string) error {
+	refID = strings.TrimSpace(refID)
+	status = strings.TrimSpace(strings.ToLower(status))
+	if refID == "" || status == "" {
+		return errors.New("status penarikan provider tidak valid")
+	}
+	if status != "processing_provider" && status != "approved" && status != "rejected" {
+		return errors.New("status penarikan provider tidak didukung")
+	}
+	_, err := r.db.ExecContext(ctx, `
+UPDATE public.retail_withdraw_request
+SET status = $2,
+    note = TRIM(CONCAT(COALESCE(note, ''), CASE WHEN COALESCE(note, '') <> '' AND $3 <> '' THEN ' | ' ELSE '' END, $3)),
+    processed_at = CASE WHEN $2 IN ('approved','rejected') THEN now() ELSE processed_at END,
+    updated_at = now()
+WHERE ref_id = $1
+  AND status IN ('pending','processing_provider')
+`, refID, status, strings.TrimSpace(note))
+	return err
+}
+
 func (r *RetailRepository) ListWithdrawRequestsByMember(ctx context.Context, memberID int64, limit, offset int) ([]RetailWithdrawRequestRow, error) {
 	if limit <= 0 {
 		limit = 20
@@ -135,8 +156,13 @@ func (r *RetailRepository) AdminListWithdrawRequests(ctx context.Context, status
 	wheres := []string{"1=1"}
 	args := []any{}
 	if strings.TrimSpace(status) != "" && strings.TrimSpace(strings.ToLower(status)) != "all" {
-		args = append(args, strings.TrimSpace(strings.ToLower(status)))
-		wheres = append(wheres, fmt.Sprintf("lower(rw.status) = $%d", len(args)))
+		normalizedStatus := strings.TrimSpace(strings.ToLower(status))
+		if normalizedStatus == "pending" {
+			wheres = append(wheres, "lower(rw.status) IN ('pending','processing_provider')")
+		} else {
+			args = append(args, normalizedStatus)
+			wheres = append(wheres, fmt.Sprintf("lower(rw.status) = $%d", len(args)))
+		}
 	}
 	if strings.TrimSpace(search) != "%%" {
 		args = append(args, search)
@@ -348,7 +374,8 @@ FOR UPDATE
 `, reqID).Scan(&memberID, &amount, &refID, &status, &sourceType, &creditLoanID); err != nil {
 		return err
 	}
-	if strings.TrimSpace(strings.ToLower(status)) != "pending" {
+	normalizedStatus := strings.TrimSpace(strings.ToLower(status))
+	if normalizedStatus != "pending" && normalizedStatus != "processing_provider" {
 		return errors.New("status withdraw tidak valid")
 	}
 

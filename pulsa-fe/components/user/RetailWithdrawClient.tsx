@@ -48,6 +48,8 @@ function statusInfo(status: string) {
       return { label: "Berhasil", className: "bg-emerald-100 text-emerald-700" };
     case "rejected":
       return { label: "Ditolak · Dikembalikan", className: "bg-rose-100 text-rose-700" };
+    case "processing_provider":
+      return { label: "Diproses Pulsa24Jam", className: "bg-sky-100 text-sky-700" };
     default:
       return { label: "Menunggu Operator", className: "bg-amber-100 text-amber-700" };
   }

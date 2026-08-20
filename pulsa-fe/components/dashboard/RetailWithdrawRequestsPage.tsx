@@ -37,7 +37,15 @@ function sourceLabel(source?: string) {
 function statusBadge(status: string) {
   if (status === "approved") return "bg-emerald-100 text-emerald-700";
   if (status === "rejected") return "bg-rose-100 text-rose-700";
+  if (status === "processing_provider") return "bg-sky-100 text-sky-700";
   return "bg-amber-100 text-amber-700";
+}
+
+function statusLabel(status: string) {
+  if (status === "approved") return "Berhasil";
+  if (status === "rejected") return "Ditolak";
+  if (status === "processing_provider") return "Diproses Pulsa24Jam";
+  return "Menunggu";
 }
 
 export default function RetailWithdrawRequestsPage() {
@@ -109,10 +117,10 @@ export default function RetailWithdrawRequestsPage() {
   }
 
   const stats = useMemo(() => ({
-    pending: items.filter((item) => item.status === "pending").length,
+    pending: items.filter((item) => item.status === "pending" || item.status === "processing_provider").length,
     approved: items.filter((item) => item.status === "approved").length,
     rejected: items.filter((item) => item.status === "rejected").length,
-    amount: items.filter((item) => item.status === "pending").reduce((total, item) => total + Number(item.amount || 0), 0),
+    amount: items.filter((item) => item.status === "pending" || item.status === "processing_provider").reduce((total, item) => total + Number(item.amount || 0), 0),
   }), [items]);
 
   return (
@@ -150,6 +158,7 @@ export default function RetailWithdrawRequestsPage() {
           </div>
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold outline-none">
             <option value="pending">Menunggu</option>
+            <option value="processing_provider">Diproses Pulsa24Jam</option>
             <option value="approved">Disetujui</option>
             <option value="rejected">Ditolak</option>
             <option value="all">Semua</option>
@@ -170,7 +179,7 @@ export default function RetailWithdrawRequestsPage() {
                     <td className="px-4 py-4"><span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-black text-sky-700">{sourceLabel(item.source_type)}</span></td>
                     <td className="px-4 py-4"><p className="font-bold">{item.bank_name} · {item.account_number}</p><p className="mt-1 text-[10px] font-semibold text-slate-500">{item.account_name}</p></td>
                     <td className="px-4 py-4 font-black text-emerald-700">{fmtIDR(item.amount)}</td>
-                    <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusBadge(item.status)}`}>{item.status === "approved" ? "Berhasil" : item.status === "rejected" ? "Ditolak" : "Menunggu"}</span></td>
+                    <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusBadge(item.status)}`}>{statusLabel(item.status)}</span></td>
                     <td className="px-4 py-4"><div className="flex justify-end gap-2">{item.status === "pending" ? <><button onClick={() => setApproveTarget(item)} className="h-9 rounded-lg bg-emerald-700 px-3 text-[10px] font-black text-white">Setujui</button><button onClick={() => void reject(item)} className="h-9 rounded-lg border border-rose-200 px-3 text-[10px] font-black text-rose-600">Tolak</button></> : <span className="text-[10px] font-semibold text-slate-400">Selesai</span>}</div></td>
                   </tr>
                 ))}
@@ -183,7 +192,7 @@ export default function RetailWithdrawRequestsPage() {
               <article key={item.id} className="p-4">
                 <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-black">{item.member_nama || "Agent PulsaKilat"}</p><p className="mt-1 text-[10px] font-bold text-sky-700">{sourceLabel(item.source_type)}</p></div><p className="text-sm font-black text-emerald-700">{fmtIDR(item.amount)}</p></div>
                 <p className="mt-3 text-xs font-semibold text-slate-600">{item.bank_name} · {item.account_number} · {item.account_name}</p>
-                <div className="mt-3 flex items-center justify-between gap-2"><span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${statusBadge(item.status)}`}>{item.status}</span>{item.status === "pending" ? <div className="flex gap-2"><button onClick={() => setApproveTarget(item)} className="h-9 rounded-lg bg-emerald-700 px-3 text-[10px] font-black text-white">Setujui</button><button onClick={() => void reject(item)} className="h-9 rounded-lg border border-rose-200 px-3 text-[10px] font-black text-rose-600">Tolak</button></div> : null}</div>
+                <div className="mt-3 flex items-center justify-between gap-2"><span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${statusBadge(item.status)}`}>{statusLabel(item.status)}</span>{item.status === "pending" ? <div className="flex gap-2"><button onClick={() => setApproveTarget(item)} className="h-9 rounded-lg bg-emerald-700 px-3 text-[10px] font-black text-white">Setujui</button><button onClick={() => void reject(item)} className="h-9 rounded-lg border border-rose-200 px-3 text-[10px] font-black text-rose-600">Tolak</button></div> : null}</div>
               </article>
             ))}
           </div>

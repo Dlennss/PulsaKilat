@@ -51,6 +51,15 @@ func (s *ProviderCallbackService) ProcessPulsa24JamCallback(ctx context.Context,
 		if billingErr != nil && billingErr != sql.ErrNoRows {
 			return 502, map[string]any{"ok": false, "error": billingErr.Error()}
 		}
+		if s.retailRepo != nil {
+			withdrawRow, withdrawErr := s.retailRepo.GetWithdrawRequestByRefID(ctx, data.refid)
+			if withdrawErr == nil && withdrawRow != nil && strings.EqualFold(strings.TrimSpace(withdrawRow.SourceType), "credit") {
+				return s.processPulsa24JamRetailWithdrawCallback(ctx, data, withdrawRow)
+			}
+			if withdrawErr != nil && withdrawErr != sql.ErrNoRows {
+				return 502, map[string]any{"ok": false, "error": withdrawErr.Error()}
+			}
+		}
 		helper.AppendProviderServiceLog("provider_anomali.log", "pulsa24jam callback unmatched refid=%s raw=%s", data.refid, raw)
 		return 200, map[string]any{"ok": true, "ignored": true, "refid": data.refid}
 	}
@@ -168,6 +177,38 @@ func (s *ProviderCallbackService) processPulsa24JamBillingCheckCallback(ctx cont
 		return 502, map[string]any{"ok": false, "error": err.Error()}
 	}
 	return 200, map[string]any{"ok": true, "refid": data.refid, "status": status}
+}
+
+func (s *ProviderCallbackService) processPulsa24JamRetailWithdrawCallback(ctx context.Context, data pulsa24JamCallbackData, row *repository.RetailWithdrawRequestRow) (int, map[string]any) {
+	if row == nil {
+		return 200, map[string]any{"ok": true, "refid": data.refid, "ignored": true}
+	}
+	finalStatus := pulsa24JamFinalStatus(data)
+	switch finalStatus {
+	case "success":
+		note := strings.TrimSpace(firstText(data.sn, data.providerRef, data.msg))
+		if note != "" {
+			note = "Pulsa24Jam berhasil: " + note
+		} else {
+			note = "Pulsa24Jam berhasil"
+		}
+		if err := s.retailRepo.UpdateWithdrawRequestProviderStatus(ctx, data.refid, "approved", note); err != nil {
+			return 502, map[string]any{"ok": false, "error": err.Error(), "refid": data.refid}
+		}
+		return 200, map[string]any{"ok": true, "refid": data.refid, "status": "approved"}
+	case "failed":
+		reason := strings.TrimSpace(firstText(data.msg, data.status, "penarikan Pulsa24Jam gagal"))
+		if err := s.retailRepo.RejectWithdrawRequest(ctx, row.ID, row.MemberID, reason); err != nil {
+			return 502, map[string]any{"ok": false, "error": err.Error(), "refid": data.refid}
+		}
+		return 200, map[string]any{"ok": true, "refid": data.refid, "status": "rejected"}
+	default:
+		note := strings.TrimSpace(firstText(data.msg, data.status, "menunggu callback final Pulsa24Jam"))
+		if err := s.retailRepo.UpdateWithdrawRequestProviderStatus(ctx, data.refid, "processing_provider", note); err != nil {
+			return 502, map[string]any{"ok": false, "error": err.Error(), "refid": data.refid}
+		}
+		return 200, map[string]any{"ok": true, "refid": data.refid, "status": "processing_provider"}
+	}
 }
 
 func (s *ProviderCallbackService) processPulsa24JamAppCallback(ctx context.Context, data pulsa24JamCallbackData, row *repository.AppOrderProviderTrxRow) (int, map[string]any) {
