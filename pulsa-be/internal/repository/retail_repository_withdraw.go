@@ -45,7 +45,7 @@ FOR UPDATE
 INSERT INTO public.agent_credit_mutation
   (loan_id, application_id, member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah)
 VALUES
-  ($1,$2,$3,$4,'DEBIT',$5,'AGENT_CREDIT_WITHDRAW_HOLD',NULLIF($6,''),$7,$8)
+  ($1,$2,$3,$4,'DEBIT',$5,'AGENT_CREDIT_WITHDRAW_HOLD',COALESCE(NULLIF($6,''),''),$7,$8)
 `, loanID, applicationID, memberID, refID, amount, note, before, after); err != nil {
 			return nil, err
 		}
