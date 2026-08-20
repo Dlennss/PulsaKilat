@@ -16,10 +16,10 @@ import (
 )
 
 type RetailService struct {
-	repo           *repository.RetailRepository
-	bankRepo       *repository.BankRepository
-	p24Client      provider.Client
-	p24Catalog     *provider.Pulsa24JamAdapter
+	repo       *repository.RetailRepository
+	bankRepo   *repository.BankRepository
+	p24Client  provider.Client
+	p24Catalog *provider.Pulsa24JamAdapter
 }
 
 type RetailRegisterDownlineInput struct {
@@ -387,7 +387,77 @@ func (s *RetailService) ListOwnWithdrawRequests(ctx context.Context, actorID int
 	if !helper.IsRetailRole(actor.Role) {
 		return nil, errors.New("retail only")
 	}
-	return s.repo.ListWithdrawRequestsByMember(ctx, actorID, limit, offset)
+	items, err := s.repo.ListWithdrawRequestsByMember(ctx, actorID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	return s.refreshCreditWithdrawStatuses(ctx, items), nil
+}
+
+// refreshCreditWithdrawStatuses keeps credit withdrawals on the same automatic
+// H2H path as product purchases. Webhooks remain the primary finalizer, while
+// STATUS-PAY resolves a transaction when its callback arrives late.
+func (s *RetailService) refreshCreditWithdrawStatuses(ctx context.Context, items []repository.RetailWithdrawRequestRow) []repository.RetailWithdrawRequestRow {
+	if s == nil || s.p24Client == nil {
+		return items
+	}
+	for index := range items {
+		item := &items[index]
+		if item.SourceType != "credit" || item.Status != "processing_provider" {
+			continue
+		}
+		if item.UpdatedAt != nil && time.Since(*item.UpdatedAt) < 10*time.Second {
+			continue
+		}
+		product := retailWithdrawProductFromNote(item.Note)
+		if product == "" || item.RefID == "" || item.AccountNumber == "" || item.Amount <= 0 {
+			continue
+		}
+
+		response, err := s.p24Client.Pay(ctx, provider.PayRequest{
+			Command: "STATUS-PAY",
+			Product: product,
+			Dest:    item.AccountNumber,
+			Qty:     item.Amount,
+			RefID:   item.RefID,
+		})
+		if err != nil || response == nil || response.HTTPStatus < 200 || response.HTTPStatus >= 300 {
+			continue
+		}
+		message := strings.TrimSpace(response.Message)
+		if retailPulsa24JamLooksSuccess(response.Body, message) {
+			note := "Pulsa24Jam berhasil melalui STATUS-PAY"
+			if message != "" {
+				note += ": " + message
+			}
+			if s.repo.UpdateWithdrawRequestProviderStatus(ctx, item.RefID, "approved", note) == nil {
+				item.Status = "approved"
+				item.Note = note
+			}
+			continue
+		}
+		if retailPulsa24JamLooksRejected(response.Body, message) {
+			reason := message
+			if reason == "" {
+				reason = "penarikan Pulsa24Jam gagal"
+			}
+			if s.repo.RejectWithdrawRequest(ctx, item.ID, item.MemberID, reason) == nil {
+				item.Status = "rejected"
+				item.RejectReason = reason
+			}
+		}
+	}
+	return items
+}
+
+func retailWithdrawProductFromNote(note string) string {
+	for _, field := range strings.Fields(note) {
+		before, value, ok := strings.Cut(field, "product=")
+		if before == "" && ok && value != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 func (s *RetailService) AdminListWithdrawRequests(ctx context.Context, status, q string, limit, offset int) ([]repository.RetailWithdrawRequestRow, error) {
