@@ -94,7 +94,7 @@ function escapeHTML(value: unknown) {
 }
 
 function getDisplayStatus(item: AgentCreditApplication) {
-  if ((item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required") {
+  if ((item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required" && !isRevisionResolved(item)) {
     return "Perlu Revisi";
   }
   if (item.status !== "approved") return getStatusLabel(item.status);
@@ -126,7 +126,7 @@ function getStatusClass(status: string) {
 }
 
 function getDisplayStatusClass(item: AgentCreditApplication) {
-  if ((item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required") {
+  if ((item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required" && !isRevisionResolved(item)) {
     return "bg-amber-100 text-amber-800";
   }
   const loanStatus = String(item.loan_status || "").toLowerCase();
@@ -154,6 +154,11 @@ function getStoredImageSrc(item: AgentCreditApplication, key: string) {
   if (!value || typeof value !== "object") return "";
   const image = value as { data_url?: unknown };
   return typeof image.data_url === "string" && image.data_url.startsWith("data:image/") ? image.data_url : "";
+}
+
+function isRevisionResolved(item: AgentCreditApplication) {
+  const value = item.applicant_data?.operator_revision_resolved_at;
+  return typeof value === "string" && value.trim() !== "";
 }
 
 type StoredSurveyImage = {
@@ -244,7 +249,7 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
     { key: "selfie_ktp", name: "Selfie Pegang KTP", desc: "Wajah agent dan KTP terlihat jelas", icon: UserRound },
     { key: "selfie_marketing", name: "Foto Bersama Marketing", desc: "Agent dan marketing terlihat dalam satu foto", icon: UsersRound },
   ];
-  const needsRevision = item.analyst_recommendation === "revision_required";
+  const needsRevision = item.analyst_recommendation === "revision_required" && !isRevisionResolved(item);
   const savedCount = fields.filter((field) => Boolean(getStoredImageSrc(item, field.key))).length;
   const missingFields = fields.filter((field) => !getStoredImageSrc(item, field.key));
   const editableFields = needsRevision ? fields : missingFields;
@@ -329,16 +334,13 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
         {editableFields.map((field) => {
           const Icon = field.icon;
           const picked = files[field.key];
-          const lockedByRevisionChoice = needsRevision && selectedCount > 0 && !picked;
           return (
             <label
               key={field.key}
               className={
                 picked
                   ? "group flex min-h-20 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border border-emerald-300 bg-white p-2 transition hover:border-[#047857] hover:bg-emerald-50/40"
-                  : lockedByRevisionChoice
-                    ? "flex min-h-20 cursor-not-allowed items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 opacity-60"
-                    : "flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-2 transition hover:border-[#047857] hover:bg-emerald-50"
+                  : "flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-2 transition hover:border-[#047857] hover:bg-emerald-50"
               }
             >
               {picked ? (
@@ -362,7 +364,7 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs font-black text-slate-950">{field.name}</span>
-                    <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">{lockedByRevisionChoice ? "Satu foto per simpan revisi" : field.desc}</span>
+                    <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">{field.desc}</span>
                   </span>
                 </>
               )}
@@ -371,11 +373,10 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
                 accept="image/*"
                 capture="environment"
                 className="hidden"
-                disabled={lockedByRevisionChoice}
                 onChange={(event) => {
                   const nextFile = event.target.files?.[0] || null;
                   event.target.value = "";
-                  setFiles((current) => (needsRevision ? { [field.key]: nextFile } : { ...current, [field.key]: nextFile }));
+                  setFiles((current) => ({ ...current, [field.key]: nextFile }));
                 }}
               />
             </label>
@@ -853,7 +854,9 @@ export function MasterAgentCreditApplicationList({
             const termsAccepted = isTruthy(item.applicant_data?.terms_accepted);
             const docsCompleteFromServer = docs.every((doc) => Boolean(doc.src));
             const docsComplete = docsCompleteFromServer || Boolean(locallyCompletedDocs[item.id]);
-            const needsOperatorRevision = item.analyst_recommendation === "revision_required";
+            const hasOperatorRevision = item.analyst_recommendation === "revision_required";
+            const revisionResolved = hasOperatorRevision && (isRevisionResolved(item) || Boolean(locallyCompletedDocs[item.id]));
+            const needsOperatorRevision = hasOperatorRevision && !revisionResolved;
             const storedDocumentCount = docs.filter((doc) => Boolean(doc.src)).length;
             const masterSignature =
               typeof item.applicant_data?.master_signature_data === "string" && item.applicant_data.master_signature_data.startsWith("data:image/")
