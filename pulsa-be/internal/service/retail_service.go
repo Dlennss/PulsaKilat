@@ -234,7 +234,9 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 		if retailWithdrawProviderUnavailable(reason) {
 			return nil, errors.New("Pulsa24Jam belum dapat dihubungi. Saldo kredit telah dikembalikan")
 		}
-		return nil, fmt.Errorf("penarikan Pulsa24Jam gagal: %s", reason)
+		// Detail provider tetap dicatat pada request yang ditolak dan log controller.
+		// Agent cukup menerima pesan yang aman serta mudah dipahami.
+		return nil, errors.New("Tidak bisa ditarik karena ada kesalahan")
 	}
 	status := "processing_provider"
 	if retailPulsa24JamLooksSuccess(body, msg) {
