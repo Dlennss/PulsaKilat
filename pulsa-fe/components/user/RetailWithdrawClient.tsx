@@ -49,7 +49,7 @@ function statusInfo(status: string) {
     case "rejected":
       return { label: "Ditolak · Dikembalikan", className: "bg-rose-100 text-rose-700" };
     case "processing_provider":
-      return { label: "Dikirim Otomatis", className: "bg-sky-100 text-sky-700" };
+      return { label: "Terkirim ke Provider", className: "bg-sky-100 text-sky-700" };
     default:
       return { label: "Menunggu Operator", className: "bg-amber-100 text-amber-700" };
   }
@@ -246,7 +246,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
             <p className="mt-0.5 text-[11px] font-semibold text-slate-500">Status pencairan terbaru.</p>
             <span className={pendingCount > 0 ? "mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700" : "mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500"}>
               <Clock3 className="h-3.5 w-3.5" />
-              {pendingCount > 0 ? `${pendingCount} menunggu konfirmasi · ${fmtIDR(pendingAmount)}` : "Tidak ada penarikan aktif"}
+              {pendingCount > 0 ? `${pendingCount} transaksi terkirim · ${fmtIDR(pendingAmount)}` : "Tidak ada transaksi aktif"}
             </span>
           </div>
           <button type="button" onClick={openCreate} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-3 text-xs font-black text-white">
