@@ -245,7 +245,9 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 	if err := s.repo.UpdateWithdrawRequestProviderStatus(ctx, refID, status, note); err != nil {
 		return nil, err
 	}
-	return s.repo.GetWithdrawRequestByRefID(ctx, refID)
+	item.Status = status
+	item.Note = note
+	return item, nil
 }
 
 var retailWithdrawNominalPattern = regexp.MustCompile(`(?i)(?:rp\s*)?(\d{1,3}(?:[.\s]\d{3})+|\d{4,})`)

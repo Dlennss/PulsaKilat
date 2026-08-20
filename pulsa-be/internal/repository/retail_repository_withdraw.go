@@ -82,18 +82,30 @@ VALUES
 			return nil, err
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `
+	item := &RetailWithdrawRequestRow{}
+	if err := tx.QueryRowContext(ctx, `
 INSERT INTO public.retail_withdraw_request
   (member_id, amount, source_type, credit_loan_id, credit_application_id, bank_name, account_name, account_number, status, note, reject_reason, ref_id, created_at, updated_at)
 VALUES
   ($1,$2,$3,$4,$5,$6,$7,$8,'pending',NULLIF($9,''),'',$10,now(),now())
-`, memberID, amount, sourceType, creditLoanID, creditApplicationID, bankName, accountName, accountNumber, note, refID); err != nil {
+
+RETURNING id
+`, memberID, amount, sourceType, creditLoanID, creditApplicationID, bankName, accountName, accountNumber, note, refID).Scan(&item.ID); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return r.GetWithdrawRequestByRefID(ctx, refID)
+	item.MemberID = memberID
+	item.Amount = amount
+	item.SourceType = sourceType
+	item.BankName = bankName
+	item.AccountName = accountName
+	item.AccountNumber = accountNumber
+	item.Status = "pending"
+	item.Note = note
+	item.RefID = refID
+	return item, nil
 }
 
 func (r *RetailRepository) GetWithdrawRequestByRefID(ctx context.Context, refID string) (*RetailWithdrawRequestRow, error) {
