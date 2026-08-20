@@ -189,12 +189,14 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 	// Validasi SKU dilakukan sebelum saldo kredit ditahan agar saldo agent tidak
 	// berkurang bila nominal tujuan tidak tersedia di katalog provider.
 	providerProduct := ""
+	providerQty := in.Amount
 	if in.SourceType == "credit" {
-		var resolveErr error
-		providerProduct, resolveErr = s.resolveCreditWithdrawProduct(ctx, in.BankName, in.Amount)
-		if resolveErr != nil {
-			return nil, resolveErr
+		selection, err := s.resolveCreditWithdrawProduct(ctx, in.BankName, in.Amount)
+		if err != nil {
+			return nil, err
 		}
+		providerProduct = selection.SKU
+		providerQty = selection.Qty
 	}
 	refID := fmt.Sprintf("RWD-%s-%s", time.Now().Format("20060102150405"), strings.ToUpper(helper.RandHex(4)))
 	item, err := s.repo.CreateWithdrawRequest(ctx, actorID, in.Amount, in.SourceType, in.BankName, in.AccountName, in.AccountNumber, refID, in.Note)
@@ -208,7 +210,7 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 		Command: "PAY",
 		Product: providerProduct,
 		Dest:    in.AccountNumber,
-		Qty:     in.Amount,
+		Qty:     providerQty,
 		RefID:   refID,
 	})
 	body := ""
@@ -217,7 +219,7 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 		body = strings.TrimSpace(resp.Body)
 		msg = strings.TrimSpace(resp.Message)
 	}
-	if payErr != nil || (resp != nil && resp.HTTPStatus != 200) || retailPulsa24JamLooksRejected(body, msg) {
+	if payErr != nil || (resp != nil && resp.HTTPStatus != 200) || retailPulsa24JamLooksRejected(body, msg) || (!retailPulsa24JamLooksSuccess(body, msg) && !retailPulsa24JamLooksPending(body, msg)) {
 		reason := strings.TrimSpace(msg)
 		if reason == "" {
 			reason = strings.TrimSpace(body)
@@ -238,7 +240,7 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 	if retailPulsa24JamLooksSuccess(body, msg) {
 		status = "approved"
 	}
-	note := fmt.Sprintf("dikirim ke Pulsa24Jam product=%s dest=%s", providerProduct, in.AccountNumber)
+	note := fmt.Sprintf("dikirim ke Pulsa24Jam product=%s qty=%d dest=%s", providerProduct, providerQty, in.AccountNumber)
 	if msg != "" {
 		note += " | " + msg
 	}
@@ -252,13 +254,18 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 
 var retailWithdrawNominalPattern = regexp.MustCompile(`(?i)(?:rp\s*)?(\d{1,3}(?:[.\s]\d{3})+|\d{4,})`)
 
-func (s *RetailService) resolveCreditWithdrawProduct(ctx context.Context, destination string, amount int64) (string, error) {
+type retailWithdrawProviderProduct struct {
+	SKU string
+	Qty int64
+}
+
+func (s *RetailService) resolveCreditWithdrawProduct(ctx context.Context, destination string, amount int64) (retailWithdrawProviderProduct, error) {
 	if s == nil || s.p24Catalog == nil {
-		return "", errors.New("katalog Pulsa24Jam untuk penarikan kredit belum aktif")
+		return retailWithdrawProviderProduct{}, errors.New("katalog Pulsa24Jam untuk penarikan kredit belum aktif")
 	}
 	items, err := s.p24Catalog.Products(ctx, "")
 	if err != nil {
-		return "", errors.New("katalog Pulsa24Jam belum dapat diakses. Silakan coba kembali")
+		return retailWithdrawProviderProduct{}, errors.New("katalog Pulsa24Jam belum dapat diakses. Silakan coba kembali")
 	}
 	destinationKey := retailWithdrawDestinationKey(destination)
 	var fixedFallback string
@@ -272,9 +279,12 @@ func (s *RetailService) resolveCreditWithdrawProduct(ctx context.Context, destin
 		// generik. Contoh: DANA 50.000 = UDDND50 dan GoPay 50.000 = UDGY50.
 		if retailWithdrawProductNominal(item.Name) == amount {
 			sku := strings.TrimSpace(item.SKU)
+			if sku == "" {
+				continue
+			}
 			group := strings.ToUpper(strings.TrimSpace(item.GroupName))
 			if strings.Contains(group, "DIRECT") {
-				return sku, nil
+				return retailWithdrawProviderProduct{SKU: sku, Qty: 1}, nil
 			}
 			if fixedFallback == "" {
 				fixedFallback = sku
@@ -288,12 +298,12 @@ func (s *RetailService) resolveCreditWithdrawProduct(ctx context.Context, destin
 		}
 	}
 	if fixedFallback != "" {
-		return fixedFallback, nil
+		return retailWithdrawProviderProduct{SKU: fixedFallback, Qty: 1}, nil
 	}
 	if openAmountFallback != "" {
-		return openAmountFallback, nil
+		return retailWithdrawProviderProduct{SKU: openAmountFallback, Qty: amount}, nil
 	}
-	return "", fmt.Errorf("produk %s nominal %d belum tersedia di Pulsa24Jam", strings.TrimSpace(destination), amount)
+	return retailWithdrawProviderProduct{}, fmt.Errorf("produk %s nominal %d belum tersedia di Pulsa24Jam", strings.TrimSpace(destination), amount)
 }
 
 func retailWithdrawDestinationKey(raw string) string {
@@ -369,6 +379,13 @@ func retailPulsa24JamLooksSuccess(values ...string) bool {
 		strings.Contains(upper, `"RC":"00"`)
 }
 
+func retailPulsa24JamLooksPending(values ...string) bool {
+	upper := strings.ToUpper(strings.Join(values, " "))
+	return strings.Contains(upper, "PENDING") ||
+		strings.Contains(upper, "DIPROSES") ||
+		strings.Contains(upper, "PROCESSING")
+}
+
 func retailPulsa24JamLooksRejected(values ...string) bool {
 	upper := strings.ToUpper(strings.Join(values, " "))
 	return strings.Contains(upper, "GAGAL") ||
@@ -410,6 +427,7 @@ func (s *RetailService) refreshCreditWithdrawStatuses(ctx context.Context, items
 			continue
 		}
 		product := retailWithdrawProductFromNote(item.Note)
+		qty := retailWithdrawQtyFromNote(item.Note, item.Amount)
 		if product == "" || item.RefID == "" || item.AccountNumber == "" || item.Amount <= 0 {
 			continue
 		}
@@ -418,7 +436,7 @@ func (s *RetailService) refreshCreditWithdrawStatuses(ctx context.Context, items
 			Command: "STATUS-PAY",
 			Product: product,
 			Dest:    item.AccountNumber,
-			Qty:     item.Amount,
+			Qty:     qty,
 			RefID:   item.RefID,
 		})
 		if err != nil || response == nil || response.HTTPStatus < 200 || response.HTTPStatus >= 300 {
@@ -458,6 +476,20 @@ func retailWithdrawProductFromNote(note string) string {
 		}
 	}
 	return ""
+}
+
+func retailWithdrawQtyFromNote(note string, fallback int64) int64 {
+	for _, field := range strings.Fields(note) {
+		before, value, ok := strings.Cut(field, "qty=")
+		if before != "" || !ok || value == "" {
+			continue
+		}
+		var qty int64
+		if _, err := fmt.Sscan(value, &qty); err == nil && qty > 0 {
+			return qty
+		}
+	}
+	return fallback
 }
 
 func (s *RetailService) AdminListWithdrawRequests(ctx context.Context, status, q string, limit, offset int) ([]repository.RetailWithdrawRequestRow, error) {
