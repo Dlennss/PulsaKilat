@@ -86,6 +86,7 @@ fi
 ln -sfn "$SHARED_LOG_DIR" "$BUILD_DIR/log"
 
 cd "$BUILD_DIR"
+go run ./scripts/apply_sql_migration sql/20260808_retail_withdraw_funding_source.sql
 go test ./internal/service ./internal/provider ./internal/helper ./chytron ./loketbayar ./smb ./rajabiller
 go build -buildvcs=false -o "$BUILD_DIR/pulsa-be" .
 
