@@ -140,6 +140,13 @@ func (s *RetailService) CommissionSummary(ctx context.Context, actorID int64) (*
 }
 
 func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64, in RetailWithdrawCreateInput) (*repository.RetailWithdrawRequestRow, error) {
+	// Server lama bisa belum memiliki kolom sumber dana kredit. Pastikan skema
+	// tersedia tepat sebelum penarikan dibuat agar error PostgreSQL tidak sampai
+	// menjadi pesan "internal error" di aplikasi agent.
+	if err := s.repo.EnsureWithdrawSchema(ctx); err != nil {
+		return nil, errors.New("sistem penarikan sedang disiapkan. Silakan coba kembali")
+	}
+
 	actor, err := s.repo.GetMemberContext(ctx, actorID)
 	if err != nil {
 		return nil, err
