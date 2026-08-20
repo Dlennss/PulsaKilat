@@ -77,7 +77,6 @@ export function RetailWithdrawClient({ authToken }: Props) {
       const profileJSON = await profileRes.json().catch(() => ({}));
       if (!listRes.ok || !listJSON?.ok) throw new Error(listJSON?.error || "Gagal memuat riwayat penarikan.");
 
-      const applications = Array.isArray(creditJSON?.items) ? creditJSON.items : [];
       setItems(Array.isArray(listJSON.items) ? listJSON.items : []);
       setMainBalance(profileRes.ok && profileJSON?.ok ? Number(profileJSON?.profile?.saldo || 0) : 0);
     } catch (loadError) {
