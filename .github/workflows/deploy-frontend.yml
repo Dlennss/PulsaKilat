@@ -160,7 +160,7 @@ jobs:
             '"
           sshpass -e ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
             "for attempt in \$(seq 1 60); do
-               if curl --fail --silent http://127.0.0.1:8083/health >/dev/null && curl --fail --silent http://127.0.0.1:3003/login >/dev/null; then
+               if curl --fail --silent http://127.0.0.1:8083/health >/dev/null && curl --fail --silent http://127.0.0.1:3003/api/health >/dev/null; then
                  echo 'PulsaKilat backend dan frontend siap.'
                  exit 0
                fi

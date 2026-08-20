@@ -27,8 +27,15 @@ export async function getAppServerSession(): Promise<AppServerSession | null> {
     };
   }
 
-  const session = (await getServerSession(authOptions)) as AppServerSession | null;
-  return session?.backendToken ? session : null;
+  // Login tetap harus dapat dibuka walau konfigurasi NextAuth di server belum lengkap
+  // atau cookie sesi lama sudah tidak lagi dapat dibaca.
+  try {
+    const session = (await getServerSession(authOptions)) as AppServerSession | null;
+    return session?.backendToken ? session : null;
+  } catch (error) {
+    console.error("[auth] gagal membaca sesi NextAuth", error);
+    return null;
+  }
 }
 
 export async function getBackendAuthorization(req?: Request): Promise<string> {
