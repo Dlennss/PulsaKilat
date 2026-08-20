@@ -176,7 +176,14 @@ export function RetailWithdrawClient({ authToken }: Props) {
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body?.ok) throw new Error(body?.error || "Pengajuan penarikan gagal.");
 
-      setSuccess(`Penarikan ${fmtIDR(amountValue)} berhasil diajukan.`);
+      const providerStatus = String(body?.item?.status || "").toLowerCase();
+      if (providerStatus === "approved") {
+        setSuccess(`${fmtIDR(amountValue)} berhasil dikirim ke ${bankName.trim()}.`);
+      } else if (providerStatus === "processing_provider") {
+        setSuccess(`${fmtIDR(amountValue)} sudah dikirim otomatis ke ${bankName.trim()}.`);
+      } else {
+        setSuccess(`Penarikan ${fmtIDR(amountValue)} berhasil diajukan.`);
+      }
       setAmount("");
       setBankName("");
       setAccountName("");
