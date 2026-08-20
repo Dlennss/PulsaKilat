@@ -203,7 +203,6 @@ export const masterNavSections: NavSection[] = [
     title: "Operasional Lapangan",
     items: [
       { href: "/dashboard/master/tambah-agent", label: "Tambah Agent" },
-      { href: "/dashboard/master/input-pinjaman-manual", label: "Pengajuan & Dokumen" },
       { href: "/dashboard/master/pinjaman", label: "Antrean Survei" },
       { href: "/dashboard/master/tugas-revisi", label: "Tugas & Revisi" },
     ],

@@ -265,7 +265,6 @@ export function UserCheckoutModal({
   const [payment, setPayment] = React.useState<UserAppOrderPayment | null>(null);
   const [checkoutQris, setCheckoutQris] = React.useState<CheckoutQrisItem | null>(null);
   const [retailSaldo, setRetailSaldo] = React.useState<number | null>(null);
-  const [creditAvailable, setCreditAvailable] = React.useState(0);
   const [guestTurnstileToken, setGuestTurnstileToken] = React.useState("");
   const [waitingTurnstile, setWaitingTurnstile] = React.useState(false);
   const [turnstileError, setTurnstileError] = React.useState<string | null>(null);
@@ -289,7 +288,6 @@ export function UserCheckoutModal({
     setPayment(null);
     setCheckoutQris(null);
     setRetailSaldo(null);
-    setCreditAvailable(0);
     setGuestTurnstileToken("");
     setWaitingTurnstile(false);
     setTurnstileError(null);
@@ -305,33 +303,17 @@ export function UserCheckoutModal({
     let cancelled = false;
     const loadSaldo = async () => {
       try {
-        const [profileRes, creditRes] = await Promise.all([
-          fetch("/api/me/profile", {
-            method: "GET",
-            headers: { Authorization: `Bearer ${effectiveAuthToken}` },
-          }),
-          fetch("/api/agent-credit/my-applications", {
-            headers: { Authorization: `Bearer ${effectiveAuthToken}` },
-            cache: "no-store",
-          }),
-        ]);
+        const profileRes = await fetch("/api/me/profile", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${effectiveAuthToken}` },
+        });
         const profileJson = (await profileRes.json().catch(() => ({}))) as { ok?: boolean; profile?: { saldo?: number } };
-        const creditJson = (await creditRes.json().catch(() => ({}))) as {
-          items?: Array<{ credit_available_amount?: number; loan_status?: string }>;
-        };
         if (!cancelled) {
           setRetailSaldo(profileRes.ok && profileJson.ok ? Number(profileJson.profile?.saldo || 0) : 0);
-          const applications = creditRes.ok && Array.isArray(creditJson.items) ? creditJson.items : [];
-          setCreditAvailable(applications.reduce((total, item) => {
-            return String(item.loan_status || "").toLowerCase() === "paid"
-              ? total
-              : total + Math.max(0, Number(item.credit_available_amount || 0));
-          }, 0));
         }
       } catch {
         if (!cancelled) {
           setRetailSaldo(0);
-          setCreditAvailable(0);
         }
       }
     };
@@ -408,8 +390,7 @@ export function UserCheckoutModal({
   const walletSaldo = Math.max(0, retailSaldo || 0);
   const estimatedWalletDebit = effectiveAuthToken ? Math.min(hargaSebelumFeeAdmin, walletSaldo) : 0;
   const estimatedQrisAmount = effectiveAuthToken ? Math.max(hargaSebelumFeeAdmin - estimatedWalletDebit, 0) : 0;
-  const needsCreditTransfer = effectiveRole === "agent" && estimatedQrisAmount > 0 && creditAvailable > 0;
-  const needsTopup = Boolean(effectiveAuthToken) && estimatedQrisAmount > 0 && !needsCreditTransfer;
+  const needsTopup = Boolean(effectiveAuthToken) && estimatedQrisAmount > 0;
   const feeAdminQris = 0;
   const totalBayar = hargaSebelumFeeAdmin;
   const ewalletProduct = isEwalletProduct(product);
@@ -586,9 +567,6 @@ export function UserCheckoutModal({
       if (!payRes.ok || !payJson.ok || !payJson.item) {
         const paymentError = payJson.error || "Gagal membuat pembayaran.";
         if (/saldo utama(?: dan saldo kredit)? tidak cukup/i.test(paymentError)) {
-          if (effectiveRole === "agent" && creditAvailable > 0) {
-            throw new Error("Saldo utama tidak cukup. Mutasikan saldo kredit ke saldo utama terlebih dahulu.");
-          }
           const requiredTopup = Math.max(100_000, Math.ceil(estimatedQrisAmount || Number(orderJson.item.harga_final || 0)));
           onClose();
           router.push(`/user/account/topup?amount=${requiredTopup}`);
@@ -763,21 +741,16 @@ export function UserCheckoutModal({
   const showQRCode = isAwaitingPayment && !isOrderExpired && !isCheckoutQrisRejected && Boolean(payment?.qr_url);
   const breakdown = parsePaymentBreakdown(payment?.raw_request);
   const walletUsed = breakdown.walletDebit;
-  const creditUsed = breakdown.creditDebit;
   const qrisAmount = breakdown.qrisAmount || payment?.gross_amount || 0;
   const qrisAdminFeeActual = order ? Math.max(Number(order.fee || 0) - feeActive, 0) : feeAdminQris;
-  const totalAmount = walletUsed + creditUsed + qrisAmount;
+  const totalAmount = walletUsed + qrisAmount;
   const isWalletOnly = ["wallet", "balance"].includes((payment?.payment_type || "").toLowerCase());
   const usesQris = qrisAmount > 0;
   const paymentMethodLabel = usesQris
-    ? walletUsed > 0 || creditUsed > 0
+    ? walletUsed > 0
       ? "Saldo + QRIS"
       : "QRIS"
-    : creditUsed > 0
-      ? walletUsed > 0
-        ? "Saldo Utama + Kredit"
-        : "Saldo Kredit"
-      : "Saldo Utama";
+    : "Saldo Utama";
   const isGuestFailed = isOrderFailed && order?.buyer_type === "guest";
 
   let statusText = payment?.transaction_status || "pending";
@@ -1061,12 +1034,6 @@ export function UserCheckoutModal({
                   <span className="font-semibold text-slate-900">{formatRupiah(walletUsed)}</span>
                 </div>
               ) : null}
-              {creditUsed > 0 ? (
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <span>Pakai saldo kredit</span>
-                  <span className="font-semibold text-slate-900">{formatRupiah(creditUsed)}</span>
-                </div>
-              ) : null}
               {usesQris ? (
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span>Bayar QRIS</span>
@@ -1213,12 +1180,6 @@ export function UserCheckoutModal({
                   <span className="font-semibold text-amber-700">{formatRupiah(estimatedQrisAmount)}</span>
                 </div>
               ) : null}
-              {needsCreditTransfer ? (
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <span>Kekurangan saldo utama</span>
-                  <span className="font-semibold text-amber-700">{formatRupiah(estimatedQrisAmount)}</span>
-                </div>
-              ) : null}
               {!isBillingPayment && feeAdminQris > 0 ? (
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span>Fee admin</span>
@@ -1308,11 +1269,6 @@ export function UserCheckoutModal({
               </div>
             ) : null}
 
-            {needsCreditTransfer ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Saldo kredit tersedia {formatRupiah(creditAvailable)}. Pindahkan nominal yang dibutuhkan ke saldo utama sebelum membeli produk.
-              </div>
-            ) : null}
             {needsTopup ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 Saldo utama tidak mencukupi. Isi saldo sebesar {formatRupiah(estimatedQrisAmount)} untuk melanjutkan {ewalletProduct ? `top up ${product.brand_nama || "e-wallet"}` : "transaksi"}.
@@ -1322,18 +1278,7 @@ export function UserCheckoutModal({
             {turnstileHint ? <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700">{turnstileHint}</div> : null}
             {turnstileError ? <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">{turnstileError}</div> : null}
 
-            {needsCreditTransfer ? (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  router.push("/user/saldo/kredit-agent");
-                }}
-                className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-amber-500 px-5 text-xs font-black text-white shadow-[0_10px_20px_rgba(245,158,11,0.22)] transition hover:bg-amber-600"
-              >
-                Mutasi Saldo Kredit
-              </button>
-            ) : needsTopup ? (
+            {needsTopup ? (
               <button
                 type="button"
                 onClick={() => {

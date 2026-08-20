@@ -1175,21 +1175,37 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	item.HasAgentSignature = item.AgentSignatureData != ""
 
 	if in.Status == "approved" {
-		_, err = tx.ExecContext(ctx, `
+		var loanID int64
+		err = tx.QueryRowContext(ctx, `
 INSERT INTO public.agent_credit_loan
   (application_id, member_id, principal_amount, outstanding_amount, available_amount, status, approved_at, due_date)
 VALUES
-  ($1, $2, $3, $3, $3, 'active', now(), (now() + interval '1 month')::date)
-ON CONFLICT (application_id) DO UPDATE SET
-  principal_amount = EXCLUDED.principal_amount,
-  outstanding_amount = EXCLUDED.principal_amount,
-  available_amount = EXCLUDED.available_amount,
-  status = 'active',
-  due_date = EXCLUDED.due_date,
-  updated_at = now()
-`, item.ID, item.MemberID, in.ApprovedAmount)
+	  ($1, $2, $3, $3, 0, 'active', now(), (now() + interval '1 month')::date)
+ON CONFLICT (application_id) DO NOTHING
+RETURNING id
+`, item.ID, item.MemberID, in.ApprovedAmount).Scan(&loanID)
 		if err != nil {
-			return nil, err
+			if err != sql.ErrNoRows {
+				return nil, err
+			}
+		} else {
+			if _, err = tx.ExecContext(ctx, `INSERT INTO public.dompet_member (member_id, saldo) VALUES ($1, 0) ON CONFLICT (member_id) DO NOTHING`, item.MemberID); err != nil {
+				return nil, err
+			}
+			var balanceBefore int64
+			if err = tx.QueryRowContext(ctx, `SELECT saldo FROM public.dompet_member WHERE member_id=$1 FOR UPDATE`, item.MemberID).Scan(&balanceBefore); err != nil {
+				return nil, err
+			}
+			balanceAfter := balanceBefore + in.ApprovedAmount
+			if _, err = tx.ExecContext(ctx, `UPDATE public.dompet_member SET saldo=$2, diperbarui_pada=now() WHERE member_id=$1`, item.MemberID, balanceAfter); err != nil {
+				return nil, err
+			}
+			if _, err = tx.ExecContext(ctx, `INSERT INTO public.mutasi_dompet (member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, dibuat_pada) VALUES ($1,$2,'CREDIT',$3,'AGENT_CREDIT_APPROVED','Kredit disetujui operator dan masuk ke saldo utama',$4,$5,now())`, item.MemberID, fmt.Sprintf("KREDIT-%d", item.ID), in.ApprovedAmount, balanceBefore, balanceAfter); err != nil {
+				return nil, err
+			}
+			if _, err = tx.ExecContext(ctx, `INSERT INTO public.agent_credit_mutation (loan_id, application_id, member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah) VALUES ($1,$2,$3,$4,'DEBIT',$5,'CREDIT_DISBURSED_TO_MAIN_BALANCE','Kredit dicairkan langsung ke saldo utama',0,0)`, loanID, item.ID, item.MemberID, fmt.Sprintf("KREDIT-%d", item.ID), in.ApprovedAmount); err != nil {
+				return nil, err
+			}
 		}
 	} else if in.Status != "ready_to_disburse" {
 		_, err = tx.ExecContext(ctx, `
@@ -1422,21 +1438,37 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	}
 	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
 	if in.Status == "approved" {
-		_, err = tx.ExecContext(ctx, `
+		var loanID int64
+		err = tx.QueryRowContext(ctx, `
 INSERT INTO public.agent_credit_loan
   (application_id, member_id, principal_amount, outstanding_amount, available_amount, status, approved_at, due_date)
 VALUES
-  ($1, $2, $3, $3, $3, 'active', now(), (now() + interval '1 month')::date)
-ON CONFLICT (application_id) DO UPDATE SET
-  principal_amount = EXCLUDED.principal_amount,
-  outstanding_amount = EXCLUDED.principal_amount,
-  available_amount = EXCLUDED.available_amount,
-  status = 'active',
-  due_date = EXCLUDED.due_date,
-  updated_at = now()
-`, item.ID, item.MemberID, in.ApprovedAmount)
+	  ($1, $2, $3, $3, 0, 'active', now(), (now() + interval '1 month')::date)
+ON CONFLICT (application_id) DO NOTHING
+RETURNING id
+`, item.ID, item.MemberID, in.ApprovedAmount).Scan(&loanID)
 		if err != nil {
-			return nil, err
+			if err != sql.ErrNoRows {
+				return nil, err
+			}
+		} else {
+			if _, err = tx.ExecContext(ctx, `INSERT INTO public.dompet_member (member_id, saldo) VALUES ($1, 0) ON CONFLICT (member_id) DO NOTHING`, item.MemberID); err != nil {
+				return nil, err
+			}
+			var balanceBefore int64
+			if err = tx.QueryRowContext(ctx, `SELECT saldo FROM public.dompet_member WHERE member_id=$1 FOR UPDATE`, item.MemberID).Scan(&balanceBefore); err != nil {
+				return nil, err
+			}
+			balanceAfter := balanceBefore + in.ApprovedAmount
+			if _, err = tx.ExecContext(ctx, `UPDATE public.dompet_member SET saldo=$2, diperbarui_pada=now() WHERE member_id=$1`, item.MemberID, balanceAfter); err != nil {
+				return nil, err
+			}
+			if _, err = tx.ExecContext(ctx, `INSERT INTO public.mutasi_dompet (member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, dibuat_pada) VALUES ($1,$2,'CREDIT',$3,'AGENT_CREDIT_APPROVED','Kredit disetujui operator dan masuk ke saldo utama',$4,$5,now())`, item.MemberID, fmt.Sprintf("KREDIT-%d", item.ID), in.ApprovedAmount, balanceBefore, balanceAfter); err != nil {
+				return nil, err
+			}
+			if _, err = tx.ExecContext(ctx, `INSERT INTO public.agent_credit_mutation (loan_id, application_id, member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah) VALUES ($1,$2,$3,$4,'DEBIT',$5,'CREDIT_DISBURSED_TO_MAIN_BALANCE','Kredit dicairkan langsung ke saldo utama',0,0)`, loanID, item.ID, item.MemberID, fmt.Sprintf("KREDIT-%d", item.ID), in.ApprovedAmount); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		_, err = tx.ExecContext(ctx, `

@@ -106,13 +106,13 @@ func validateAgentCreditDocuments(documents map[string]any) error {
 		{"ktp", "foto KTP"},
 		{"store", "foto toko"},
 		{"selfie_ktp", "selfie pegang KTP"},
-		{"selfie_marketing", "foto bersama marketing"},
+		{"selfie_marketing", "selfie verifikasi agent"},
 	}
 	seen := make(map[string]string, len(required))
 	for _, field := range required {
 		raw, ok := documents[field.key].(map[string]any)
 		if !ok {
-			return fmt.Errorf("%s wajib diambil oleh marketing", field.label)
+			return fmt.Errorf("%s wajib diunggah oleh agent", field.label)
 		}
 		dataURL := cleanCreditText(raw["data_url"])
 		if err := validateCreditImageData(dataURL, field.label, 2048); err != nil {

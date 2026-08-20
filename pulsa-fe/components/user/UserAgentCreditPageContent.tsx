@@ -241,7 +241,7 @@ function getApplicationNotice(application?: AgentCreditApplication) {
   ) {
     return {
       title: "Perlu tanda tangan",
-      desc: "Pengajuan sudah dibuat. Lengkapi dokumen, centang ketentuan, lalu tanda tangan agar bisa dicek master.",
+      desc: "Lengkapi dokumen, centang ketentuan, lalu tanda tangan agar bisa diperiksa operator.",
       className: "border-amber-200 bg-amber-50 text-amber-700",
       icon: PenLine,
     };
@@ -250,7 +250,7 @@ function getApplicationNotice(application?: AgentCreditApplication) {
     case "approved":
       return {
         title: "Pengajuan disetujui",
-        desc: `Limit kredit ${formatIDR(application.approved_amount || application.requested_amount)} sudah disetujui oleh master.`,
+        desc: `Kredit ${formatIDR(application.approved_amount || application.requested_amount)} sudah disetujui operator dan masuk ke saldo utama.`,
         className: "border-emerald-200 bg-emerald-50 text-emerald-700",
         icon: BadgeCheck,
       };
@@ -276,7 +276,7 @@ function getApplicationNotice(application?: AgentCreditApplication) {
     case "marketing_review":
       return {
         title: "Sedang dicek",
-        desc: "Marketing sedang mengecek data dan tanda tangan agent.",
+        desc: "Dokumen agent sudah terkirim dan dapat dipantau oleh marketing.",
         className: "border-amber-200 bg-amber-50 text-amber-700",
         icon: SearchCheck,
       };
@@ -290,21 +290,21 @@ function getApplicationNotice(application?: AgentCreditApplication) {
     case "analysis_review":
       return {
         title: "Sedang dicek operator",
-        desc: "Marketing sudah verifikasi. Operator sedang mengecek risiko dan nominal aman.",
+        desc: "Operator sedang mengecek kelengkapan data, risiko, dan nominal.",
         className: "border-sky-200 bg-sky-50 text-sky-700",
         icon: SearchCheck,
       };
     case "master_review":
       return {
         title: "Sedang diproses",
-        desc: "Marketing sedang menyiapkan data sebelum dikirim ke operator.",
+        desc: "Dokumen agent sedang diperiksa sebelum keputusan operator.",
         className: "border-sky-200 bg-sky-50 text-sky-700",
         icon: SearchCheck,
       };
     case "submitted":
       return {
         title: "Pengajuan dikirim",
-        desc: "Menunggu marketing mengecek pengajuan agent.",
+        desc: "Menunggu keputusan dari operator kredit.",
         className: "border-amber-200 bg-amber-50 text-amber-700",
         icon: SearchCheck,
       };
@@ -348,14 +348,11 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"transfer" | "qris" | "offline">("transfer");
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [paymentProofName, setPaymentProofName] = useState("");
+  const [surveyFiles, setSurveyFiles] = useState<Record<string, File | null>>({});
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [displayMainBalance, setDisplayMainBalance] = useState(mainBalance);
-  const [transferAmount, setTransferAmount] = useState("");
-  const [transferSubmitting, setTransferSubmitting] = useState(false);
-  const [transferError, setTransferError] = useState("");
-  const [transferSuccess, setTransferSuccess] = useState("");
   const router = useRouter();
   const notice = getApplicationNotice(latestApplication);
   const NoticeIcon = notice?.icon;
@@ -373,14 +370,11 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
   const creditLimitAmount = Number(latestApplication?.credit_limit_amount || defaultCreditAmount);
   const requestedAmount = defaultCreditAmount;
+  const surveyDocumentsComplete = ["ktp", "store", "selfie_ktp", "selfie_marketing"].every((key) => Boolean(surveyFiles[key]));
   const totalPaidAmount = applications.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
   const totalActiveCredit = applications.reduce((sum, item) => sum + Math.max(0, Number(item.outstanding_amount || 0)), 0);
-  const totalAvailableCredit = applications.reduce((sum, item) => String(item.loan_status || "").toLowerCase() === "suspended" ? sum : sum + Math.max(0, Number(item.credit_available_amount || 0)), 0);
   const currentOutstanding = Math.max(0, Number(latestApplication?.outstanding_amount || 0));
   const statusIsApproved = latestApplication?.status === "approved";
-  const currentAvailableCredit = isApproved && !isCreditSuspended
-    ? Math.max(0, Number(latestApplication?.credit_available_amount ?? creditLimitAmount))
-    : 0;
   const applicantDefaults = latestApplication?.applicant_data || {};
   const applicantText = (key: string, fallback = "") => {
     const value = applicantDefaults[key];
@@ -414,7 +408,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const statusIsWaiting = Boolean(latestApplication && !statusIsApproved && !statusIsRejected);
   const systemValidationPassed = latestApplication?.applicant_data?.system_validation_status === "passed";
   const statusPaymentDue = statusIsPaid ? 0 : statusOutstanding;
-  const statusHasActiveUnusedCredit = statusIsApproved && !statusIsPaid && statusPaymentDue <= 0;
   const statusApplicationCode = latestApplication?.id ? `KSA-${String(latestApplication.id).padStart(8, "0")}` : "KSA-PENDING";
   const statusHeadline = statusIsRejected
     ? "Pengajuan perlu diperbaiki"
@@ -433,19 +426,12 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
       : statusIsPaid
         ? "Tidak ada tagihan berjalan"
         : isCreditSuspended
-          ? "Mutasi dan penarikan kredit dihentikan sementara"
-          : "Diterima tim verifikasi";
-  const marketingFinished = Boolean(latestApplication && (
-    latestApplication.status === "analysis_review" ||
-    latestApplication.status === "master_review" ||
-    latestApplication.status === "ready_to_disburse" ||
-    statusIsApproved ||
-    statusIsRejected
-  ));
+          ? "Penggunaan saldo utama dibatasi sementara"
+          : "Nominal kredit telah masuk ke saldo utama";
   const operatorFinished = statusIsApproved || statusIsRejected;
   const statusSteps = [
     { label: "Formulir agent diterima", done: true },
-    { label: "Pemeriksaan dokumen oleh marketing", done: marketingFinished },
+    { label: "Dokumen agent siap diperiksa operator", done: Boolean(latestApplication?.has_agent_signature) },
     { label: statusIsRejected ? "Keputusan operator: perlu perbaikan" : "Keputusan akhir operator", done: operatorFinished },
   ];
   const paymentMethods = [
@@ -470,58 +456,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   ];
   const selectedPayment = paymentMethods.find((method) => method.id === selectedPaymentMethod) || paymentMethods[0];
 
-  async function handleTransferToMainBalance() {
-    if (!latestApplication?.id || transferSubmitting) return;
-    const amount = Number.parseInt(transferAmount.replace(/\D/g, ""), 10) || 0;
-    if (amount <= 0) {
-      setTransferError("Masukkan nominal mutasi yang valid.");
-      return;
-    }
-    if (amount > currentAvailableCredit) {
-      setTransferError(`Nominal maksimal ${formatIDR(currentAvailableCredit)}.`);
-      return;
-    }
-
-    setTransferSubmitting(true);
-    setTransferError("");
-    setTransferSuccess("");
-    try {
-      const response = await fetch("/api/agent-credit/transfers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ application_id: latestApplication.id, amount }),
-      });
-      const body = (await response.json().catch(() => ({}))) as {
-        ok?: boolean;
-        error?: string;
-        item?: {
-          credit_available_amount?: number;
-          outstanding_amount?: number;
-          main_balance?: number;
-        };
-      };
-      if (!response.ok || !body.ok || !body.item) {
-        throw new Error(body.error || "Mutasi saldo kredit gagal.");
-      }
-
-      const nextApplication = {
-        ...latestApplication,
-        credit_available_amount: Number(body.item.credit_available_amount || 0),
-        outstanding_amount: Number(body.item.outstanding_amount || latestApplication.outstanding_amount || 0),
-      };
-      setLatestApplication(nextApplication);
-      setApplications((items) => items.map((item) => item.id === nextApplication.id ? nextApplication : item));
-      setDisplayMainBalance(Number(body.item.main_balance || 0));
-      setTransferAmount("");
-      setTransferSuccess(`${formatIDR(amount)} berhasil masuk ke saldo utama.`);
-      router.refresh();
-    } catch (transferErr) {
-      setTransferError(transferErr instanceof Error ? transferErr.message : "Mutasi saldo kredit gagal.");
-    } finally {
-      setTransferSubmitting(false);
-    }
-  }
-
   async function handleCreditPaymentConfirmation() {
     if (!latestApplication || !latestApplication.id || statusPaymentDue <= 0 || paymentSubmitting) return;
     if (!paymentProofFile) {
@@ -541,7 +475,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
           application_id: latestApplication.id,
           amount: statusPaymentDue,
           payment_method: selectedPaymentMethod,
-          note: `Pelunasan saldo kredit agent via ${selectedPayment.title}`,
+          note: `Pelunasan tagihan kredit agent via ${selectedPayment.title}`,
           payment_proof: paymentProof,
         }),
       });
@@ -564,10 +498,18 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
     event.preventDefault();
     if (!agreed || !signatureReady || !signatureData || submitting) return;
 
+    const surveyKeys = ["ktp", "store", "selfie_ktp", "selfie_marketing"];
+    if (surveyKeys.some((key) => !surveyFiles[key])) {
+      setError("Empat foto dokumen wajib dilengkapi sebelum pengajuan dikirim.");
+      return;
+    }
+
     const form = new FormData(event.currentTarget);
     setSubmitting(true);
     setError("");
     try {
+      const documentEntries = await Promise.all(surveyKeys.map(async (key) => [key, await readStoredImage(surveyFiles[key])] as const));
+      const documentData = Object.fromEntries(documentEntries.filter(([, image]) => image));
       const response = await fetch("/api/agent-credit/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -589,12 +531,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
             terms_accepted: agreed,
             terms_version: "pulsakilat-agent-credit-2026-07",
           },
-          document_data: {
-            ktp: { pending_by: "marketing" },
-            store: { pending_by: "marketing" },
-            selfie_ktp: { pending_by: "marketing" },
-            selfie_marketing: { pending_by: "marketing" },
-          },
+          document_data: documentData,
           agent_signature: signatureData,
           terms_accepted: agreed,
         }),
@@ -611,6 +548,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
           return exists ? current.map((item) => (item.id === nextItem.id ? nextItem : item)) : [nextItem, ...current];
         });
         setActiveCreditTab("list");
+        setSurveyFiles({});
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pengajuan gagal dikirim");
@@ -665,25 +603,18 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
           </div>
 
           <div className="space-y-3 p-4">
-            <div className="grid grid-cols-2 overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#052e26_0%,#047857_58%,#84cc16_145%)] text-white shadow-[0_18px_34px_rgba(4,120,87,0.22)]">
-              <div className="min-w-0 border-r border-white/12 p-4">
+            <div className="overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#052e26_0%,#047857_58%,#84cc16_145%)] text-white shadow-[0_18px_34px_rgba(4,120,87,0.22)]">
+              <div className="min-w-0 p-4">
                 <p className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-lime-100/85">Saldo Utama</p>
                 <p className="mt-2 truncate text-2xl font-black">{formatIDR(displayMainBalance)}</p>
-                <p className="mt-2 text-[10px] font-semibold leading-4 text-emerald-50/80">Saldo untuk pembelian produk dan transaksi harian.</p>
-              </div>
-              <div className="min-w-0 bg-emerald-950/18 p-4">
-                <p className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-lime-100/85">Saldo Kredit Tersedia</p>
-                <p className="mt-2 truncate text-2xl font-black">{formatIDR(currentAvailableCredit)}</p>
-                <p className="mt-2 text-[10px] font-semibold leading-4 text-emerald-50/80">
-                  {isApproved ? "Dapat dipindahkan ke saldo utama sesuai kebutuhan." : "Belum ada kredit yang berjalan."}
-                </p>
+                <p className="mt-2 text-[10px] font-semibold leading-4 text-emerald-50/80">Saldo untuk pembelian produk dan transaksi harian. Kredit yang disetujui operator langsung masuk ke saldo ini.</p>
               </div>
             </div>
             <div className="rounded-[22px] border border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4_0%,#ffffff_70%,#ecfccb_130%)] p-4 text-slate-950 shadow-[0_12px_26px_rgba(6,78,59,0.07)]">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">{isApproved ? "Limit kredit aktif" : "Limit pengajuan"}</p>
               <p className="mt-2 text-2xl font-black">{formatIDR(isApproved ? creditLimitAmount : requestedAmount)}</p>
               <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">
-                {isApproved ? "Pinjaman terpisah dari saldo utama dan wajib dilunasi penuh sesuai tagihan." : "Pengajuan boleh di bawah limit aktif."}
+                {isApproved ? "Kredit telah dicairkan ke saldo utama dan wajib dilunasi penuh sesuai tagihan." : "Pengajuan boleh di bawah limit aktif."}
               </p>
             </div>
           </div>
@@ -835,7 +766,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                     ? systemValidationPassed
                       ? "Data lolos pemeriksaan awal sistem dan sudah masuk ke antrean Marketing untuk verifikasi lapangan."
                       : "Pengajuan sedang diperiksa sistem sebelum diteruskan ke Marketing."
-                    : "Nominal yang diterima masuk ke saldo kredit agent. Saldo ini terpisah dari saldo transaksi biasa dan pelunasannya dilakukan sekaligus."}
+                    : "Nominal yang disetujui operator sudah masuk langsung ke saldo utama dan dapat digunakan bertransaksi. Tagihan kredit tetap berjalan sampai dilunasi."}
               </p>
 
               <div className="relative mt-5 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
@@ -871,81 +802,14 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
             {!statusIsRejected && !statusIsWaiting ? (
               <div className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
-                {!statusIsPaid ? (
-                  <div className="mb-5 border-b border-emerald-100 pb-5">
-                    <div className="flex items-start gap-3">
-                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
-                        <ArrowRight className="h-6 w-6" strokeWidth={2.4} />
-                      </span>
-                      <div className="min-w-0">
-                        <h3 className="text-base font-black text-slate-950">Mutasi ke Saldo Utama</h3>
-                        <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-500">
-                          Saldo kredit tidak dipakai otomatis untuk membeli produk. Pindahkan nominal yang dibutuhkan ke saldo utama terlebih dahulu.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <div className="rounded-2xl bg-emerald-50 px-3 py-3">
-                        <p className="text-[9px] font-black uppercase text-emerald-700">Tersedia</p>
-                        <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(currentAvailableCredit)}</p>
-                      </div>
-                      <div className="rounded-2xl bg-sky-50 px-3 py-3">
-                        <p className="text-[9px] font-black uppercase text-sky-700">Saldo Utama</p>
-                        <p className="mt-1 text-sm font-black text-slate-950">{formatIDR(displayMainBalance)}</p>
-                      </div>
-                    </div>
-                    <label className="mt-3 block">
-                      <span className="text-[10px] font-black text-slate-700">Nominal mutasi</span>
-                      <div className="mt-2 flex gap-2">
-                        <input
-                          value={transferAmount}
-                          onChange={(event) => {
-                            setTransferAmount(event.target.value.replace(/\D/g, ""));
-                            setTransferError("");
-                            setTransferSuccess("");
-                          }}
-                          inputMode="numeric"
-                          placeholder="Contoh: 400000"
-                          className="h-11 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-black text-slate-950 outline-none focus:border-[#047857] focus:ring-4 focus:ring-emerald-100"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setTransferAmount(String(currentAvailableCredit))}
-                          disabled={currentAvailableCredit <= 0 || transferSubmitting}
-                          className="h-11 shrink-0 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 text-[10px] font-black text-[#047857] disabled:opacity-50"
-                        >
-                          Semua
-                        </button>
-                      </div>
-                    </label>
-                    {transferError ? <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-[10px] font-bold text-rose-600">{transferError}</p> : null}
-                    {transferSuccess ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-bold text-emerald-700">{transferSuccess}</p> : null}
-                    <button
-                      type="button"
-                      onClick={handleTransferToMainBalance}
-                      disabled={transferSubmitting || currentAvailableCredit <= 0}
-                      className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#047857,#16a34a)] text-xs font-black text-white shadow-[0_12px_24px_rgba(4,120,87,0.18)] disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500"
-                    >
-                      {transferSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                      {transferSubmitting ? "Memproses..." : currentAvailableCredit > 0 ? "Pindahkan Saldo" : "Saldo Kredit Habis"}
-                    </button>
-                    <p className="mt-2 text-center text-[9px] font-semibold leading-4 text-slate-400">
-                      Setelah masuk ke saldo utama, dana dapat dipakai bertransaksi atau ditarik melalui menu Tarik.
-                    </p>
-                  </div>
-                ) : null}
                 <div className="flex items-start gap-3">
                   <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
                     <FileText className="h-6 w-6" strokeWidth={2.4} />
                   </span>
                   <div className="min-w-0">
-                    <h3 className="text-base font-black text-slate-950">
-                      {statusHasActiveUnusedCredit ? "Pelunasan Saldo Kredit" : "Pelunasan Saldo Kredit"}
-                    </h3>
+                    <h3 className="text-base font-black text-slate-950">Pelunasan Tagihan Kredit</h3>
                     <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-500">
-                      {statusHasActiveUnusedCredit
-                        ? "Bayar saldo kredit yang sudah disetujui secara online melalui Bank/QRIS, atau minta marketing membantu penagihan langsung ke lokasi."
-                        : "Bayar saldo kredit yang sudah disetujui secara online melalui Bank/QRIS, atau minta marketing membantu penagihan langsung ke lokasi."}
+                      Bayar tagihan kredit secara penuh melalui metode pembayaran yang tersedia.
                     </p>
                   </div>
                 </div>
@@ -957,12 +821,10 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                 </div>
                 <div className="mt-3 rounded-[22px] border border-slate-200 bg-[#fbfffd] p-4">
                   <p className="text-xs font-black text-slate-950">
-                    Pelunasan Saldo Kredit
+                    Pelunasan Tagihan Kredit
                   </p>
                   <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-500">
-                    {statusHasActiveUnusedCredit
-                      ? "Bayar penuh sesuai saldo kredit aktif."
-                      : "Setelah lunas, pinjaman selesai dan agent dapat mengajukan kredit berikutnya."}
+                    Setelah lunas, pinjaman selesai dan agent dapat mengajukan kredit berikutnya.
                   </p>
                   <p className="mt-3 text-lg font-black text-[#047857]">{formatIDR(statusPaymentDue)}</p>
                   <button
@@ -1041,34 +903,36 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               </span>
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Survey Lapangan</p>
-                <h2 className="mt-1 text-xl font-black leading-6 text-slate-950">Dokumen Difoto Marketing</h2>
+                <h2 className="mt-1 text-xl font-black leading-6 text-slate-950">Dokumen Pengajuan Agent</h2>
                 <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">
-                  Agent cukup isi data dan tanda tangan. Foto validasi akan diambil langsung oleh marketing di lokasi.
+                  Lengkapi empat foto yang jelas sebelum mengirim pengajuan. Marketing hanya dapat memantau hasilnya.
                 </p>
               </div>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
               {[
-                { title: "Foto KTP", desc: "KTP asli agent", icon: Upload },
-                { title: "Foto Toko", desc: "Tampak depan usaha", icon: Store },
-                { title: "Selfie KTP", desc: "Agent pegang KTP", icon: UserRound },
-                { title: "Bersama Marketing", desc: "Bukti kunjungan", icon: UsersRound },
+                { key: "ktp", title: "Foto KTP", desc: "KTP asli agent", icon: Upload },
+                { key: "store", title: "Foto Toko", desc: "Tampak depan usaha", icon: Store },
+                { key: "selfie_ktp", title: "Selfie Pegang KTP", desc: "Wajah dan KTP jelas", icon: UserRound },
+                { key: "selfie_marketing", title: "Selfie Verifikasi", desc: "Wajah agent terlihat jelas", icon: UsersRound },
               ].map((item) => {
                 const Icon = item.icon;
+                const selected = surveyFiles[item.key];
                 return (
-                  <div key={item.title} className="min-w-0 rounded-[22px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)] p-3 shadow-[0_10px_22px_rgba(6,78,59,0.055)]">
+                  <label key={item.title} className={selected ? "min-w-0 cursor-pointer rounded-[22px] border border-emerald-300 bg-emerald-50 p-3 shadow-[0_10px_22px_rgba(6,78,59,0.055)]" : "min-w-0 cursor-pointer rounded-[22px] border border-dashed border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)] p-3 shadow-[0_10px_22px_rgba(6,78,59,0.055)]"}>
                     <div className="flex items-start justify-between gap-2">
                       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-[#047857] ring-1 ring-emerald-100">
                         <Icon className="h-5 w-5" strokeWidth={2.4} />
                       </span>
-                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-100 text-[#047857]">
-                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                      <span className={selected ? "grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-white" : "grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-400"}>
+                        {selected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Upload className="h-3.5 w-3.5" strokeWidth={3} />}
                       </span>
                     </div>
                     <p className="mt-3 truncate text-[11px] font-black text-slate-950">{item.title}</p>
-                    <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-500">{item.desc}</p>
-                  </div>
+                    <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-500">{selected ? selected.name : item.desc}</p>
+                    <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => setSurveyFiles((current) => ({ ...current, [item.key]: event.target.files?.[0] || null }))} />
+                  </label>
                 );
               })}
             </div>
@@ -1079,7 +943,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                   <Check className="h-4 w-4" strokeWidth={3} />
                 </span>
                 <p className="text-[10px] font-semibold leading-5 text-emerald-50">
-                  Dokumen foto dikunci sebagai tugas marketing supaya data lapangan lebih valid dan tidak bisa dibuat sendiri oleh agent.
+                  Ambil foto yang jelas dan asli. Marketing dapat memantau dokumen ini, sedangkan keputusan akhir tetap ada pada operator kredit.
                 </p>
               </div>
             </div>
@@ -1102,8 +966,8 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               <p className="mt-1 text-base font-black text-slate-950">{formatIDR(requestedAmount)}</p>
             </div>
             <div className="rounded-2xl bg-sky-50 px-3 py-3 ring-1 ring-sky-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-sky-700">Kredit Tersedia</p>
-              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(totalAvailableCredit || currentAvailableCredit)}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-sky-700">Saldo Utama</p>
+              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(displayMainBalance)}</p>
             </div>
             <div className="rounded-2xl bg-lime-50 px-3 py-3 ring-1 ring-lime-100">
               <p className="text-[9px] font-black uppercase tracking-[0.12em] text-lime-700">Sudah Lunas</p>
@@ -1128,7 +992,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
           </div>
           <ol className="space-y-2 text-[11px] font-semibold leading-5 text-slate-600">
             <li>1. Pinjaman saldo hanya digunakan untuk kebutuhan transaksi operasional di PulsaKilat.</li>
-            <li>2. Data agent dan tanda tangan wajib benar. Foto dokumen serta selfie lapangan akan diambil dan dipertanggungjawabkan oleh marketing.</li>
+            <li>2. Data agent, foto dokumen, selfie, dan tanda tangan wajib benar serta dapat dipertanggungjawabkan oleh agent.</li>
             <li>3. Pembayaran atau pelunasan wajib disertai bukti transfer yang valid.</li>
             <li>4. Agent wajib melunasi tagihan kredit terpakai secara penuh sesuai jadwal jatuh tempo.</li>
             <li>5. Jika pembayaran terlambat lebih dari 2 minggu, akun perlu evaluasi/perbaikan sebelum bisa naik limit atau mengajukan refill.</li>
@@ -1150,7 +1014,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
             </span>
             <div>
               <h2 className="text-lg font-black text-slate-950">Tanda Tangan & Persetujuan</h2>
-              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Agent tanda tangan, master verifikasi, lalu operator memberi keputusan final.</p>
+              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Agent tanda tangan lalu operator kredit memberi keputusan final.</p>
             </div>
           </div>
 
@@ -1214,10 +1078,10 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
         <button
           type="submit"
-          disabled={!agreed || !signatureReady || !signatureData || hasOpenApplication || isApproved || submitting}
+          disabled={!agreed || !signatureReady || !signatureData || !surveyDocumentsComplete || hasOpenApplication || isApproved || submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
-          {isApproved ? "Kredit Masih Aktif" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : unsignedPendingApplication ? "Kirim Tanda Tangan" : canRefill ? "Ajukan Refill" : canReapply ? "Ajukan Ulang" : "Ajukan Kredit Saldo"}
+          {isApproved ? "Kredit Masih Aktif" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : !surveyDocumentsComplete ? "Lengkapi 4 Foto" : unsignedPendingApplication ? "Kirim Tanda Tangan" : canRefill ? "Ajukan Refill" : canReapply ? "Ajukan Ulang" : "Ajukan Kredit Saldo"}
           <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
         </button>
 

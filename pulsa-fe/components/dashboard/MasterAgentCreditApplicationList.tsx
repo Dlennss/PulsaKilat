@@ -540,7 +540,6 @@ export function MasterAgentCreditApplicationList({
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<number | null>(null);
   const [previewProof, setPreviewProof] = useState<{ agentName: string; src: string; title: string } | null>(null);
-  const [locallyCompletedDocs, setLocallyCompletedDocs] = useState<Record<number, boolean>>({});
   const trimmedQuery = query.trim().toLowerCase();
   const filteredApplications = useMemo(() => {
     const byFilter = applications.filter((item) => matchesFilter(item, filter));
@@ -853,20 +852,11 @@ export function MasterAgentCreditApplicationList({
             const isPending = item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review" || item.status === "ready_to_disburse";
             const termsAccepted = isTruthy(item.applicant_data?.terms_accepted);
             const docsCompleteFromServer = docs.every((doc) => Boolean(doc.src));
-            const docsComplete = docsCompleteFromServer || Boolean(locallyCompletedDocs[item.id]);
-            const hasOperatorRevision = item.analyst_recommendation === "revision_required";
-            const revisionResolved = hasOperatorRevision && (isRevisionResolved(item) || Boolean(locallyCompletedDocs[item.id]));
-            const needsOperatorRevision = hasOperatorRevision && !revisionResolved;
+            const docsComplete = docsCompleteFromServer;
             const storedDocumentCount = docs.filter((doc) => Boolean(doc.src)).length;
-            const masterSignature =
-              typeof item.applicant_data?.master_signature_data === "string" && item.applicant_data.master_signature_data.startsWith("data:image/")
-                ? item.applicant_data.master_signature_data
-                : typeof item.applicant_data?.marketing_signature_data === "string"
-                  ? item.applicant_data.marketing_signature_data
-                  : "";
             const canApprove =
               mode === "analyst"
-                ? Boolean(masterSignature && item.status === "analysis_review")
+                ? Boolean(docsComplete && (item.has_agent_signature || signatureSrc) && termsAccepted && item.status === "submitted")
                 : mode === "admin"
                   ? Boolean(docsComplete && (item.has_agent_signature || signatureSrc) && termsAccepted)
                 : mode === "master"
@@ -876,7 +866,9 @@ export function MasterAgentCreditApplicationList({
                     : Boolean(item.has_agent_signature || signatureSrc) && termsAccepted;
             const approveBlockReason =
               mode === "analyst"
-                ? "Marketing belum verifikasi dan tanda tangan."
+                ? !docsComplete
+                  ? "Empat dokumen agent wajib lengkap sebelum operator menyetujui."
+                  : "Agent belum tanda tangan persetujuan."
                 : mode === "admin" && !docsComplete
                   ? "Dokumen lapangan wajib lengkap sebelum admin approve manual."
                 : (mode === "marketing" || mode === "master") && !docsComplete
@@ -934,18 +926,8 @@ export function MasterAgentCreditApplicationList({
                     <ChevronDown className={`h-4 w-4 transition ${openId === item.id ? "rotate-180" : ""}`} />
                   </button>
                 </div>
-                {showActions && !useCompactTable ? (
+                {showActions && mode !== "marketing" && !useCompactTable ? (
                   <div className="mt-3 space-y-3">
-                    {mode === "master" && (item.status === "submitted" || item.status === "marketing_review") ? (
-                      docsComplete && !needsOperatorRevision ? (
-                        <SurveyDocumentsCompleteNotice />
-                      ) : (
-                        <MarketingSurveyDocumentUploader
-                          item={item}
-                          onComplete={() => setLocallyCompletedDocs((current) => ({ ...current, [item.id]: true }))}
-                        />
-                      )
-                    ) : null}
                     <MasterAgentCreditDecisionControls
                       applicationId={item.id}
                       requestedAmount={item.requested_amount}
@@ -965,18 +947,8 @@ export function MasterAgentCreditApplicationList({
 
                 {openId === item.id ? (
                   <div className="mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-2 sm:p-3">
-                    {showActions && useCompactTable ? (
+                    {showActions && mode !== "marketing" && useCompactTable ? (
                       <div className="mb-3 space-y-3">
-                        {(mode === "marketing") && (item.status === "submitted" || item.status === "marketing_review") ? (
-                          docsComplete && !needsOperatorRevision ? (
-                            <SurveyDocumentsCompleteNotice />
-                          ) : (
-                            <MarketingSurveyDocumentUploader
-                              item={item}
-                              onComplete={() => setLocallyCompletedDocs((current) => ({ ...current, [item.id]: true }))}
-                            />
-                          )
-                        ) : null}
                         <MasterAgentCreditDecisionControls
                           applicationId={item.id}
                           requestedAmount={item.requested_amount}
@@ -1020,12 +992,6 @@ export function MasterAgentCreditApplicationList({
                           {!signatureSrc ? <span className="text-[10px] font-black text-slate-400">Belum ada tanda tangan</span> : null}
                         </div>
                       </div>
-                      {masterSignature ? (
-                        <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
-                          <p className="font-black text-slate-950">Tanda Tangan Marketing</p>
-                          <div className="mt-2 grid h-20 place-items-center rounded-xl bg-slate-50 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${masterSignature})` }} />
-                        </div>
-                      ) : null}
                     </div>
                     <div className="mt-3 grid min-w-0 gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                       <MasterAgentCreditDocumentButton agentName={agentName} documents={docs} />

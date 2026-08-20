@@ -33,10 +33,10 @@ const viewConfig = {
   decision: {
     eyebrow: "Operator Kredit",
     title: "Keputusan Akhir Kredit Agent",
-    desc: "Periksa data lapangan, dokumen, tanda tangan marketing, lalu beri keputusan akhir.",
+    desc: "Periksa data agent, dokumen, tanda tangan agent, lalu beri keputusan akhir.",
     listTitle: "Data Siap Diputuskan",
     emptyTitle: "Belum ada data untuk diputuskan",
-    emptyDescription: "Data akan muncul setelah marketing tanda tangan dan mengirim pengajuan ke operator.",
+    emptyDescription: "Pengajuan agent yang sudah lengkap akan muncul di sini.",
     icon: ShieldCheck,
     showActions: true,
   },
@@ -46,7 +46,7 @@ const viewConfig = {
     desc: "Urutan pengajuan yang menunggu pengecekan dokumen, risiko, dan keputusan operator.",
     listTitle: "Antrean Siap Dicek",
     emptyTitle: "Antrean masih kosong",
-    emptyDescription: "Belum ada pengajuan baru dari marketing.",
+    emptyDescription: "Belum ada pengajuan baru dari agent.",
     icon: ClipboardList,
     showActions: true,
   },
@@ -123,7 +123,7 @@ function hasPaymentProof(item: AgentCreditApplication) {
 }
 
 function getItemsForView(view: AnalystCreditWorkspaceView, applications: AgentCreditApplication[]) {
-  const analysisItems = applications.filter((item) => item.status === "analysis_review");
+  const analysisItems = applications.filter((item) => item.status === "submitted" || item.status === "analysis_review");
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
   const usedCredits = activeCredits.filter((item) => Number(item.outstanding_amount || 0) > 0);
@@ -159,7 +159,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const backendApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
   const rawApplications = backendApplications.length ? backendApplications : await getAgentCreditApplicationsDatabaseFallback();
   const applications = await attachAgentCreditPaymentsFallback(rawApplications);
-  const analysisItems = applications.filter((item) => item.status === "analysis_review");
+  const analysisItems = applications.filter((item) => item.status === "submitted" || item.status === "analysis_review");
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
   const usedCredits = activeCredits.filter((item) => Number(item.outstanding_amount || 0) > 0);
@@ -179,7 +179,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const totalOutstandingAmount = activeCredits.reduce((total, item) => total + Number(item.outstanding_amount || 0), 0);
 
   const stats = [
-    { label: view === "decision" ? "Berkas Masuk" : "Perlu Keputusan", value: String(analysisItems.length), hint: "Dikirim marketing", icon: ShieldCheck, tone: "from-emerald-500 to-lime-400" },
+    { label: view === "decision" ? "Berkas Masuk" : "Perlu Keputusan", value: String(analysisItems.length), hint: "Dikirim agent", icon: ShieldCheck, tone: "from-emerald-500 to-lime-400" },
     { label: "Kredit Diterima", value: String(approvedItems.length), hint: formatIDR(nominalApproved), icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
     { label: "Tagihan Aktif", value: String(usedCredits.length), hint: "Pinjaman wajib dilunasi", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
     { label: "Ditolak", value: String(rejectedItems.length), hint: "Perlu catatan", icon: ShieldAlert, tone: "from-rose-500 to-orange-500" },
@@ -192,7 +192,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
     { label: "Catatan Risiko", value: rejectedItems.length, hint: "Data yang perlu evaluasi ulang", icon: MessageSquareText },
   ];
   const queueCards = [
-    { label: "Masuk Antrean", value: analysisItems.length, hint: "Dikirim dari marketing", icon: ClipboardList },
+    { label: "Masuk Antrean", value: analysisItems.length, hint: "Dikirim dari agent", icon: ClipboardList },
     { label: "Siap Dicek", value: decisionReadyItems.length, hint: "Nominal dan berkas tersedia", icon: FileSearch },
     { label: "Sudah Diterima", value: approvedItems.length, hint: "Keputusan operator selesai", icon: BadgeCheck },
     { label: "Perlu Catatan", value: rejectedItems.length, hint: "Ditolak atau perlu revisi", icon: MessageSquareText },
@@ -504,7 +504,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                   <div>
                     <p className="text-sm font-black text-slate-950">Operator menjadi keputusan akhir kredit.</p>
                     <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                      Data yang masuk ke panel ini sudah dibantu marketing. Operator cukup cek kelayakan, lalu setujui atau tolak.
+                      Data yang masuk ke panel ini diisi langsung oleh agent. Operator cek kelayakan, lalu setujui atau tolak.
                     </p>
                   </div>
                 </div>

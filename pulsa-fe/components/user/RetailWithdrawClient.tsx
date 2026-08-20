@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine,
-  BadgeDollarSign,
   CheckCircle2,
   Clock3,
   Landmark,
@@ -18,7 +17,7 @@ type WithdrawRow = {
   id: number;
   ref_id: string;
   amount: number;
-  source_type?: "main_balance" | "credit";
+  source_type?: "main_balance";
   bank_name: string;
   account_name: string;
   account_number: string;
@@ -32,14 +31,8 @@ type Props = {
   authToken: string;
 };
 
-type SourceType = "main_balance" | "credit";
-
 function fmtIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
-}
-
-function sourceLabel(source?: string) {
-  return source === "credit" ? "Saldo Kredit" : "Saldo Utama";
 }
 
 function statusInfo(status: string) {
@@ -57,45 +50,36 @@ function statusInfo(status: string) {
 
 export function RetailWithdrawClient({ authToken }: Props) {
   const [mainBalance, setMainBalance] = useState(0);
-  const [creditBalance, setCreditBalance] = useState(0);
   const [items, setItems] = useState<WithdrawRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [sourceType, setSourceType] = useState<SourceType>("main_balance");
   const [amount, setAmount] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [note, setNote] = useState("");
 
-  const sourceBalance = sourceType === "credit" ? creditBalance : mainBalance;
+  const sourceBalance = mainBalance;
   const amountValue = Number.parseInt(amount.replace(/\D/g, ""), 10) || 0;
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const [listRes, profileRes, creditRes] = await Promise.all([
+      const [listRes, profileRes] = await Promise.all([
         fetch("/api/me/retail/withdraw-requests?limit=50&offset=0", { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" }),
         fetch("/api/me/profile", { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" }),
-        fetch("/api/agent-credit/my-applications", { cache: "no-store" }),
       ]);
       const listJSON = await listRes.json().catch(() => ({}));
       const profileJSON = await profileRes.json().catch(() => ({}));
-      const creditJSON = await creditRes.json().catch(() => ({}));
       if (!listRes.ok || !listJSON?.ok) throw new Error(listJSON?.error || "Gagal memuat riwayat penarikan.");
 
       const applications = Array.isArray(creditJSON?.items) ? creditJSON.items : [];
       setItems(Array.isArray(listJSON.items) ? listJSON.items : []);
       setMainBalance(profileRes.ok && profileJSON?.ok ? Number(profileJSON?.profile?.saldo || 0) : 0);
-      setCreditBalance(applications.reduce((total: number, item: { credit_available_amount?: number; loan_status?: string }) => {
-        return String(item.loan_status || "").toLowerCase() === "active"
-          ? total + Math.max(0, Number(item.credit_available_amount || 0))
-          : total;
-      }, 0));
     } catch (loadError) {
       const message = loadError instanceof Error ? loadError.message : "";
       setError(
@@ -134,7 +118,6 @@ export function RetailWithdrawClient({ authToken }: Props) {
   function openCreate() {
     setError("");
     setSuccess("");
-    setSourceType("main_balance");
     setAmount("");
     setShowCreateModal(true);
   }
@@ -148,7 +131,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
       return;
     }
     if (amountValue > sourceBalance) {
-      setError(`Saldo ${sourceLabel(sourceType).toLowerCase()} tidak mencukupi.`);
+      setError("Saldo utama tidak mencukupi.");
       return;
     }
     if (!bankName.trim() || !accountName.trim() || !accountNumber.trim()) {
@@ -166,7 +149,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
         },
         body: JSON.stringify({
           amount: amountValue,
-          source_type: sourceType,
+          source_type: "main_balance",
           bank_name: bankName.trim(),
           account_name: accountName.trim(),
           account_number: accountNumber.trim(),
@@ -218,21 +201,16 @@ export function RetailWithdrawClient({ authToken }: Props) {
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Penarikan Agent</p>
             <h1 className="mt-1 text-2xl font-black">Tarik Saldo</h1>
-            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Tarik saldo utama atau saldo kredit ke rekening tujuan.</p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Tarik saldo utama ke rekening atau e-wallet tujuan.</p>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-2">
+      <section>
         <div className="rounded-lg border border-emerald-200 bg-white p-3">
           <WalletCards className="h-5 w-5 text-emerald-700" />
           <p className="mt-3 text-[10px] font-black uppercase text-slate-400">Saldo Utama</p>
           <p className="mt-1 text-lg font-black text-emerald-700">{fmtIDR(mainBalance)}</p>
-        </div>
-        <div className="rounded-lg border border-sky-200 bg-white p-3">
-          <BadgeDollarSign className="h-5 w-5 text-sky-700" />
-          <p className="mt-3 text-[10px] font-black uppercase text-slate-400">Saldo Kredit</p>
-          <p className="mt-1 text-lg font-black text-sky-700">{fmtIDR(creditBalance)}</p>
         </div>
       </section>
 
@@ -265,7 +243,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-black">{fmtIDR(item.amount)}</p>
-                      <p className="mt-0.5 text-[10px] font-bold text-slate-500">{sourceLabel(item.source_type)} · {item.bank_name}</p>
+                      <p className="mt-0.5 text-[10px] font-bold text-slate-500">Saldo Utama · {item.bank_name}</p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${status.className}`}>{status.label}</span>
                   </div>
@@ -291,25 +269,9 @@ export function RetailWithdrawClient({ authToken }: Props) {
 
               <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
-                <fieldset>
-                  <legend className="text-[10px] font-black uppercase text-slate-500">Sumber dana</legend>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {([
-                      { id: "main_balance" as const, label: "Saldo Utama", balance: mainBalance, icon: WalletCards },
-                      { id: "credit" as const, label: "Saldo Kredit", balance: creditBalance, icon: BadgeDollarSign },
-                    ]).map((source) => {
-                      const Icon = source.icon;
-                      const active = sourceType === source.id;
-                      return (
-                        <button key={source.id} type="button" onClick={() => { setSourceType(source.id); setAmount(""); setError(""); }} className={active ? "min-w-0 rounded-lg border-2 border-emerald-600 bg-emerald-50 p-3 text-left" : "min-w-0 rounded-lg border border-slate-200 bg-white p-3 text-left"}>
-                          <Icon className={active ? "h-5 w-5 text-emerald-700" : "h-5 w-5 text-slate-400"} />
-                          <span className="mt-2 block text-xs font-black">{source.label}</span>
-                          <span className="mt-1 block truncate text-[10px] font-bold text-slate-500">{fmtIDR(source.balance)}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </fieldset>
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+                  Dana penarikan menggunakan Saldo Utama.
+                </div>
 
                 <label className="block">
                   <span className="text-[10px] font-black uppercase text-slate-500">Nominal penarikan</span>
@@ -327,9 +289,8 @@ export function RetailWithdrawClient({ authToken }: Props) {
                 </div>
 
                 <div className="rounded-lg bg-slate-50 p-3 text-xs">
-                  <div className="flex justify-between gap-3 text-slate-500"><span>Sumber dana</span><span className="font-black text-slate-900">{sourceLabel(sourceType)}</span></div>
+                  <div className="flex justify-between gap-3 text-slate-500"><span>Sumber dana</span><span className="font-black text-slate-900">Saldo Utama</span></div>
                   <div className="mt-2 flex justify-between gap-3 text-slate-500"><span>Dana diterima</span><span className="font-black text-emerald-700">{fmtIDR(amountValue)}</span></div>
-                  {sourceType === "credit" ? <p className="mt-3 border-t border-slate-200 pt-2 text-[10px] font-semibold leading-4 text-slate-500">Tagihan pinjaman tidak berubah. Nominal hanya ditahan dari saldo kredit tersedia.</p> : null}
                 </div>
                 </div>
 

@@ -169,14 +169,8 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 	if in.SourceType != "main_balance" && in.SourceType != "credit" {
 		return nil, errors.New("sumber penarikan tidak valid")
 	}
-	if in.SourceType == "credit" && helper.NormalizeRole(actor.Role) != helper.RoleRetailAgent {
-		return nil, errors.New("saldo kredit hanya tersedia untuk agent")
-	}
-	if in.SourceType == "credit" && s.p24Client == nil {
-		return nil, errors.New("koneksi Pulsa24Jam untuk penarikan kredit belum aktif")
-	}
-	if in.SourceType == "credit" && s.p24Catalog == nil {
-		return nil, errors.New("katalog Pulsa24Jam untuk penarikan kredit belum aktif")
+	if in.SourceType == "credit" {
+		return nil, errors.New("saldo kredit sudah tidak digunakan; gunakan saldo utama")
 	}
 	if in.Amount <= 0 {
 		return nil, errors.New("amount harus > 0")

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"pulsa2/internal/helper"
 	"pulsa2/internal/repository"
@@ -83,9 +82,12 @@ func isCreditReviewer(role string) bool {
 	normalized := helper.NormalizeRole(role)
 	return normalized == helper.RoleAdmin ||
 		normalized == helper.RoleStaff ||
-		normalized == helper.RoleRetailMaster ||
-		normalized == helper.RoleRetailMarketing ||
 		normalized == helper.RoleRetailAnalyst
+}
+
+func canViewCreditApplications(role string) bool {
+	normalized := helper.NormalizeRole(role)
+	return isCreditReviewer(normalized) || normalized == helper.RoleRetailMarketing || normalized == helper.RoleRetailMaster
 }
 
 func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditSubmitInput) (*repository.AgentCreditApplication, error) {
@@ -148,8 +150,7 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	}
 	validateFullSubmission := role == helper.RoleRetailAgent || (isCreditReviewer(role) && in.ID <= 0)
 	if validateFullSubmission {
-		validateDocuments := role == helper.RoleRetailMarketing || role == helper.RoleRetailMaster
-		if err := validateAgentCreditSubmission(&in, validateDocuments); err != nil {
+		if err := validateAgentCreditSubmission(&in, true); err != nil {
 			return nil, fmt.Errorf(" %w", err)
 		}
 	}
@@ -215,24 +216,16 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 }
 
 func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditApplication, error) {
-	if !isCreditReviewer(auth.Role) {
-		return nil, errors.New("reviewer only")
+	if !canViewCreditApplications(auth.Role) {
+		return nil, errors.New("akses pemantauan kredit tidak tersedia")
 	}
 	items, err := s.repo.ListApplications(ctx, 200)
 	if err != nil {
 		return nil, err
 	}
-	if helper.NormalizeRole(auth.Role) != helper.RoleRetailMarketing {
-		return items, nil
-	}
-	owned := make([]repository.AgentCreditApplication, 0, len(items))
-	for _, item := range items {
-		status := strings.ToLower(strings.TrimSpace(item.Status))
-		if item.MarketingID == auth.MemberID || (item.MarketingID == 0 && (status == "submitted" || status == "marketing_review")) {
-			owned = append(owned, item)
-		}
-	}
-	return owned, nil
+	// Marketing bersifat pemantau. Penetapan agent binaan dapat ditambahkan
+	// kemudian tanpa memberi marketing hak untuk mengubah pengajuan.
+	return items, nil
 }
 
 func (s *AgentCreditService) ListMyApplications(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditApplication, error) {
@@ -282,7 +275,7 @@ func (s *AgentCreditService) SetLoanOperationalStatus(ctx context.Context, auth 
 
 func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditDecisionInput) (*repository.AgentCreditApplication, error) {
 	if !isCreditReviewer(auth.Role) {
-		return nil, errors.New("reviewer only")
+		return nil, errors.New("keputusan kredit hanya dapat dilakukan operator")
 	}
 	if in.ID <= 0 {
 		return nil, errors.New("pengajuan tidak valid")
@@ -303,18 +296,11 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 
 	switch role {
 	case helper.RoleAdmin, helper.RoleStaff:
-		if role == helper.RoleAdmin && (in.ReviewerMode == "marketing" || in.ReviewerMode == "master") {
-			return s.decideAsMarketing(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), "super_admin")
-		}
 		return s.decideAsAdmin(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount)
-	case helper.RoleRetailMarketing:
-		return s.decideAsMarketing(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), "marketing")
 	case helper.RoleRetailAnalyst:
 		return s.decideAsAnalyst(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount)
-	case helper.RoleRetailMaster:
-		return s.decideAsMaster(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData))
 	default:
-		return nil, errors.New("role reviewer tidak valid")
+		return nil, errors.New("keputusan kredit hanya dapat dilakukan operator")
 	}
 }
 
@@ -420,11 +406,8 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 }
 
 func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData, riskLevel string, riskScore int64, approvedAmount, limitAmount int64) (*repository.AgentCreditApplication, error) {
-	if reviewState.Status != "analysis_review" {
+	if reviewState.Status != "submitted" && reviewState.Status != "analysis_review" && reviewState.Status != "marketing_review" {
 		return nil, errors.New("pengajuan belum masuk tahap operator")
-	}
-	if !reviewState.MasterVerified {
-		return nil, errors.New("marketing wajib verifikasi dan tanda tangan sebelum operator ACC")
 	}
 	riskLevel = normalizeRiskLevel(riskLevel)
 	switch decision {
@@ -459,18 +442,18 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 		}, signatureData, riskLevel, riskScore)
 	case "revision", "return_to_marketing", "kembalikan_marketing":
 		if note == "" {
-			return nil, errors.New("catatan perbaikan untuk marketing wajib diisi")
+			return nil, errors.New("catatan perbaikan untuk agent wajib diisi")
 		}
 		return s.repo.ReturnApplicationToMarketing(ctx, repository.AgentCreditDecisionInput{
 			ID:             applicationID,
 			AnalystID:      analystID,
-			Status:         "marketing_review",
+			Status:         "submitted",
 			AnalystNote:    note,
 			Recommendation: "revision_required",
 			ActorRole:      "operator_credit",
 		})
 	default:
-		return nil, errors.New("operator wajib memilih setuju, kembalikan ke marketing, atau tolak")
+		return nil, errors.New("operator wajib memilih setuju, perlu revisi, atau tolak")
 	}
 }
 
@@ -556,15 +539,5 @@ func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.Aut
 }
 
 func (s *AgentCreditService) TransferToMainBalance(ctx context.Context, auth helper.AuthInfo, in AgentCreditTransferInput) (*repository.AgentCreditTransferResult, error) {
-	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAgent {
-		return nil, errors.New("hanya agent yang dapat memindahkan saldo kredit")
-	}
-	if in.ApplicationID <= 0 {
-		return nil, errors.New("pinjaman kredit tidak valid")
-	}
-	if in.Amount <= 0 {
-		return nil, errors.New("nominal mutasi wajib lebih dari Rp0")
-	}
-	refID := fmt.Sprintf("KRM-%s-%s", time.Now().Format("20060102150405"), strings.ToUpper(helper.RandHex(4)))
-	return s.repo.TransferCreditToMainBalance(ctx, in.ApplicationID, auth.MemberID, in.Amount, refID)
+	return nil, errors.New("saldo kredit sudah tidak digunakan; kredit yang disetujui langsung masuk ke saldo utama")
 }

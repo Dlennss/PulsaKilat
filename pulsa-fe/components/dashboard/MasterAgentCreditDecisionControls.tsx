@@ -166,9 +166,9 @@ export function MasterAgentCreditDecisionControls({
   const [statusReason, setStatusReason] = useState("");
   const [statusBusy, setStatusBusy] = useState(false);
   const isFinal = status === "approved" || status === "rejected" || status === "analysis_rejected" || status === "master_rejected";
-  const isMarketingReview = (mode === "marketing" || mode === "master") && (status === "submitted" || status === "marketing_review");
+  const isMarketingReview = mode === "master" && (status === "submitted" || status === "marketing_review");
   const isAdminReview = mode === "admin" && ["submitted", "marketing_review", "analysis_review", "master_review", "ready_to_disburse"].includes(status);
-  const canAct = isMarketingReview || isAdminReview || (mode === "analyst" && status === "analysis_review") || isFinal;
+  const canAct = isMarketingReview || isAdminReview || (mode === "analyst" && status === "submitted") || isFinal;
   const needsReviewerSignature = isMarketingReview;
   const approveLabel = isMarketingReview ? "Kirim ke Operator" : mode === "analyst" || mode === "admin" ? "Setujui Pengajuan" : "Kirim ke Operator";
   const rejectLabel = "Tolak";
@@ -216,11 +216,11 @@ export function MasterAgentCreditDecisionControls({
       return;
     }
     if (needsReviewerSignature && !signatureData.startsWith("data:image/")) {
-      setError("Tanda tangan marketing wajib diisi");
+      setError("Tanda tangan pemeriksa wajib diisi");
       return;
     }
     if (decision === "revision" && !note.trim()) {
-      setError("Tuliskan bagian yang harus diperbaiki marketing");
+      setError("Tuliskan bagian yang harus diperbaiki agent");
       return;
     }
     const parsedAmount = Number(amount.replace(/[^\d]/g, ""));
@@ -228,9 +228,9 @@ export function MasterAgentCreditDecisionControls({
         ? mode === "analyst" || mode === "admin"
           ? "Pemeriksaan risiko disetujui. Pinjaman saldo agent aktif."
           : mode === "marketing"
-            ? "Marketing sudah cek data lapangan dan dokumen, lalu dikirim ke operator."
+            ? "Data agent sudah diperiksa dan dikirim ke operator."
             : isMarketingReview
-              ? "Marketing sudah cek data lapangan dan dokumen, lalu dikirim ke operator."
+              ? "Data agent sudah diperiksa dan dikirim ke operator."
             : "Data agent sesuai dan dikirim ke operator."
         : "Data agent belum sesuai.";
     const apiDecision = isMarketingReview && decision === "forward_to_analysis" ? "kirim_analis" : decision;
@@ -278,7 +278,7 @@ export function MasterAgentCreditDecisionControls({
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-black">{creditSuspended ? "Kredit Dibekukan Super Admin" : status === "approved" ? "Disetujui Operator" : "Ditolak Operator"}</span>
               <span className="mt-0.5 block truncate text-[10px] font-bold opacity-70">
-                {creditSuspended ? "Saldo kredit tersimpan tetapi tidak dapat dimutasi oleh agent." : status === "approved" ? "Limit agent sudah aktif dan bisa dipantau." : "Agent akan melihat pemberitahuan dan bisa memperbaiki data."}
+                {creditSuspended ? "Kredit agent sedang dibekukan dan pengajuan baru tidak dapat dibuat." : status === "approved" ? "Dana kredit sudah masuk ke saldo utama agent dan tagihan dapat dipantau." : "Agent akan melihat pemberitahuan dan bisa memperbaiki data."}
               </span>
             </span>
           </div>
