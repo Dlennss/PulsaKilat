@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	commondto "pulsa2/internal/dto/common"
@@ -142,6 +143,7 @@ func (h *RetailController) WithdrawRequests(w http.ResponseWriter, r *http.Reque
 			Note:          req.Note,
 		})
 		if err != nil {
+			log.Printf("[retail_withdraw_create] member_id=%d source=%s amount=%d err=%v", a.MemberID, req.SourceType, req.Amount, err)
 			helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
 			return
 		}
