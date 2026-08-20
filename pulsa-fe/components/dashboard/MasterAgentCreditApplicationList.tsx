@@ -329,8 +329,18 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
         {editableFields.map((field) => {
           const Icon = field.icon;
           const picked = files[field.key];
+          const lockedByRevisionChoice = needsRevision && selectedCount > 0 && !picked;
           return (
-            <label key={field.key} className={picked ? "group flex min-h-20 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border border-emerald-300 bg-white p-2 transition hover:border-[#047857] hover:bg-emerald-50/40" : "flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-2 transition hover:border-[#047857] hover:bg-emerald-50"}>
+            <label
+              key={field.key}
+              className={
+                picked
+                  ? "group flex min-h-20 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border border-emerald-300 bg-white p-2 transition hover:border-[#047857] hover:bg-emerald-50/40"
+                  : lockedByRevisionChoice
+                    ? "flex min-h-20 cursor-not-allowed items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 opacity-60"
+                    : "flex min-h-20 cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-2 transition hover:border-[#047857] hover:bg-emerald-50"
+              }
+            >
               {picked ? (
                 <>
                   <span className="block shrink-0 overflow-hidden rounded-xl border border-emerald-100">
@@ -352,7 +362,7 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs font-black text-slate-950">{field.name}</span>
-                    <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">{field.desc}</span>
+                    <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">{lockedByRevisionChoice ? "Satu foto per simpan revisi" : field.desc}</span>
                   </span>
                 </>
               )}
@@ -361,7 +371,12 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
                 accept="image/*"
                 capture="environment"
                 className="hidden"
-                onChange={(event) => setFiles((current) => ({ ...current, [field.key]: event.target.files?.[0] || null }))}
+                disabled={lockedByRevisionChoice}
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] || null;
+                  event.target.value = "";
+                  setFiles((current) => (needsRevision ? { [field.key]: nextFile } : { ...current, [field.key]: nextFile }));
+                }}
               />
             </label>
           );
