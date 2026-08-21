@@ -992,7 +992,7 @@ export function MasterAgentCreditApplicationList({
                         ))}
                       </div>
                     </div>
-                    <div className="mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-white p-2 sm:p-3">
+                    <div className="hidden mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-white p-2 sm:p-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-black text-slate-950">Riwayat Pembayaran</p>
