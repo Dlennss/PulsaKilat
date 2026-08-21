@@ -406,7 +406,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const rejectedApplications = applications.filter((item) => isRejectedStatus(item.status)).length;
   const listApplications = applications.length ? applications : [];
   const statusLabel = (item: AgentCreditApplication) => {
-    if (item.status === "approved") return String(item.loan_status || "").toLowerCase() === "suspended" ? "Dibekukan" : isPaidStatus(item) ? "Lunas" : "Diterima";
+    if (item.status === "approved") return String(item.loan_status || "").toLowerCase() === "suspended" ? "Dibekukan" : isPaidStatus(item) ? "Siklus Selesai" : "Modal Aktif";
     if (isRejectedStatus(item.status)) return "Ditolak";
     return "Menunggu";
   };
@@ -432,7 +432,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
         : isCreditSuspended
           ? "Kredit agent sedang dibekukan"
           : "Limit kredit agent sudah aktif";
-  const statusBandLabel = statusIsRejected ? "DITOLAK" : statusIsWaiting ? "MENUNGGU" : statusIsPaid ? "LUNAS" : isCreditSuspended ? "DIBEKUKAN" : "DITERIMA";
+  const statusBandLabel = statusIsRejected ? "DITOLAK" : statusIsWaiting ? "MENUNGGU" : statusIsPaid ? "SELESAI" : isCreditSuspended ? "DIBEKUKAN" : "AKTIF";
   const statusBandSubcopy = statusIsRejected
     ? "Lihat catatan dan ajukan ulang"
     : statusIsWaiting
@@ -756,7 +756,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               </div>
 
               <p className={statusIsRejected ? "relative mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-rose-600" : "relative mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-[#047857]"}>
-                {statusIsRejected ? "Pengajuan Ditolak" : statusIsPaid ? "Kredit Lunas" : statusIsWaiting ? "Menunggu Proses" : "Pengajuan Disetujui"}
+                {statusIsRejected ? "Pengajuan Ditolak" : statusIsPaid ? "Siklus Modal Selesai" : statusIsWaiting ? "Menunggu Proses" : "Modal Disetujui"}
               </p>
               <h2 className="relative mt-1 text-2xl font-black leading-7 text-slate-950">{statusHeadline}</h2>
               <p className="relative mt-2 text-[11px] font-semibold leading-5 text-slate-500">
