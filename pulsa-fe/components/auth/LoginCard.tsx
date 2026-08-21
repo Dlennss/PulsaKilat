@@ -72,6 +72,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   });
 }
 
+async function persistLoginToken(token: string) {
+  const response = await fetch("/api/auth/persist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+    cache: "no-store",
+  }).catch(() => null);
+
+  return Boolean(response?.ok);
+}
+
 export function LoginCard() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -93,7 +104,14 @@ export function LoginCard() {
       const localToken = localStorage.getItem("auth_token") || "";
       if (isJwtValid(localToken)) {
         const claims = decodeJwt(localToken);
-        router.replace(toDashboardByRole(typeof claims?.role === "string" ? claims.role : "member"));
+        // Layout area user/dashboard membaca token dari cookie HttpOnly. Tanpa
+        // langkah ini token lama di localStorage dapat memicu loop login -> user -> login.
+        if (await persistLoginToken(localToken)) {
+          router.replace(toDashboardByRole(typeof claims?.role === "string" ? claims.role : "member"));
+          return;
+        }
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_source");
         return;
       }
       localStorage.removeItem("auth_token");
@@ -106,6 +124,7 @@ export function LoginCard() {
         void withTimeout(signOut({ redirect: false }), 1500, undefined);
         return;
       }
+      if (!(await persistLoginToken(backendToken))) return;
       localStorage.setItem("auth_token", backendToken);
       localStorage.setItem("auth_source", "session");
       router.replace(toDashboardByRole(sess?.user?.role || "member"));
