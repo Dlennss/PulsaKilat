@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { getProductsByBrand } from "@/lib/api.products";
 import type { UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
@@ -21,7 +20,7 @@ type PageProps = {
 };
 
 export default async function UserBrandProductsPage({ params }: PageProps) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const user = session?.user ?? null;
   const backendToken = session?.backendToken;
   const isLoggedIn = Boolean(backendToken);

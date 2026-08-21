@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { getBrandsByKategori, getProductsByBrand } from "@/lib/api.products";
 import type { UserBrandItem, UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
@@ -16,7 +15,7 @@ function pickPLNBrand(brands: UserBrandItem[]) {
 }
 
 export default async function UserListrikTagihanPage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const backendToken = session?.backendToken;
   const user = session?.user ?? null;
   const buyerRole = String(user?.role || "").trim().toLowerCase();

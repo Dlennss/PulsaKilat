@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import type { UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 import { UserAuthClientSync } from "@/components/user/UserAuthClientSync";
@@ -16,7 +15,7 @@ type PageProps = {
 };
 
 export default async function UserAllCategoryPage({ searchParams }: PageProps) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const backendToken = session?.backendToken;
   const role = String(session?.user?.role || "").trim().toLowerCase();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { ArrowLeft, ReceiptText } from "lucide-react";
-import { authOptions } from "@/lib/nextauth";
 import { getOrderByInvoice } from "@/lib/api.transactions";
 import type { UserAppOrder, UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
@@ -48,7 +47,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 export default async function UserTransactionDetailPage({ params, searchParams }: PageProps) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const user = session?.user ?? null;
   const backendToken = session?.backendToken;
 

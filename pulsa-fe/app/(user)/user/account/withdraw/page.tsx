@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/nextauth";
 import type { UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 import { RetailWithdrawClient } from "@/components/user/RetailWithdrawClient";
@@ -11,7 +10,7 @@ type SessionShape = {
 };
 
 export default async function UserAccountWithdrawPage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   if (!session?.backendToken) redirect("/login");
   const role = String(session?.user?.role || "").trim().toLowerCase();
   if (role !== "agent" && role !== "master") redirect("/user/account");

@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/nextauth";
 import { getUserProfile } from "@/lib/api.auth";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 import { UserSaldoPageContent } from "@/components/user/UserSaldoPageContent";
@@ -12,7 +11,7 @@ type SessionShape = {
 };
 
 export default async function UserSaldoPage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   if (!session?.backendToken) redirect("/login");
 
   const profile = await getUserProfile(session.backendToken);

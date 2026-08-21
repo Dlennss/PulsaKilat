@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowDownLeft, ArrowUpRight } from "lucide-react";
-import { authOptions } from "@/lib/nextauth";
 import type { UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 
@@ -64,7 +63,7 @@ async function getMutasiDetail(token: string, id: string): Promise<MutasiRow | n
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function UserAccountMutasiDetailPage({ params }: PageProps) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   if (!session?.backendToken) redirect("/login");
 
   const { id } = await params;

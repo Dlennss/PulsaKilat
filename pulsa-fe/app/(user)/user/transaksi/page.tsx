@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/nextauth";
 import { getUserOrders } from "@/lib/api.transactions";
 import type { UserAppOrder, UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
@@ -29,7 +28,7 @@ const VALID_STATUS = new Set([
 ]);
 
 export default async function UserTransaksiPage({ searchParams }: PageProps) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   if (!session?.backendToken) {
     redirect("/login");
   }

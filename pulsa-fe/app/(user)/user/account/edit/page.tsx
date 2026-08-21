@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
 import { UserAccountEditForm } from "@/components/user/UserAccountEditForm";
-import { authOptions } from "@/lib/nextauth";
 import { getUserProfile } from "@/lib/api.auth";
 import type { UserSession } from "@/components/user/types";
 
@@ -11,7 +10,7 @@ type SessionShape = {
 };
 
 export default async function UserAccountEditPage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   if (!session?.backendToken) {
     redirect("/login");
   }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
 import {
   ArrowLeft,
@@ -14,7 +14,6 @@ import {
   WalletCards,
   Zap,
 } from "lucide-react";
-import { authOptions } from "@/lib/nextauth";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 import type { UserSession } from "@/components/user/types";
 
@@ -59,7 +58,7 @@ const sendOptions = [
 ];
 
 export default async function UserSaldoKirimPage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   if (!session?.backendToken) redirect("/login");
 
   return (

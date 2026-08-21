@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/nextauth";
 import type { UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 import { RetailTopupClient } from "@/components/user/RetailTopupClient";
@@ -15,7 +14,7 @@ type PageProps = {
 };
 
 export default async function UserAccountTopupPage({ searchParams }: PageProps) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   if (!session?.backendToken) redirect("/login");
   const requestedAmount = Number.parseInt(String((await searchParams)?.amount || ""), 10);
   const initialAmount = Number.isFinite(requestedAmount) && requestedAmount > 0 ? requestedAmount : 0;

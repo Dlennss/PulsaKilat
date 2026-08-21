@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/nextauth";
 import type { UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
 import { UserSaldoMutationHistoryList } from "@/components/user/UserSaldoMutationHistoryList";
@@ -51,7 +50,7 @@ async function getMutasiFiltered(token: string, arah: string, from: string, to: 
 }
 
 export default async function UserAccountMutasiPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
 
   if (!session?.backendToken) {
     redirect("/login");

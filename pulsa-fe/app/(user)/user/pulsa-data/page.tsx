@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { getCategories, getBrandsByKategori } from "@/lib/api.products";
 import type { UserBrandItem, UserCategoryItem, UserSession } from "@/components/user/types";
 import { UserBottomNav } from "@/components/user/UserBottomNav";
@@ -25,7 +24,7 @@ function pickCategory(categories: UserCategoryItem[], keyword: string) {
 }
 
 export default async function UserPulsaDataPage({ searchParams }: PageProps) {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
   const backendToken = session?.backendToken;
   const isLoggedIn = Boolean(backendToken);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
