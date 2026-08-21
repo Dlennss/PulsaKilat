@@ -936,14 +936,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                 );
               })}
             </div>
-
-            <div className="mt-4 rounded-[22px] border border-emerald-200 bg-[linear-gradient(135deg,#052e26,#047857)] p-3 text-white shadow-[0_12px_26px_rgba(4,120,87,0.18)]">
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/14 text-lime-100 ring-1 ring-white/15">
-                  <Check className="h-4 w-4" strokeWidth={3} />
-                </span>
-              </div>
-            </div>
           </div>
         </section>
 
