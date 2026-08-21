@@ -131,7 +131,11 @@ jobs:
                chown -R \"$SERVER_USER:$SERVER_USER\" \"\$BUILD_DIR\" || true
               ln -sfn \"\$BUILD_DIR\" \"\$TMP_LINK\"
               mv -Tf \"\$TMP_LINK\" \"$FRONTEND_RELEASE_DIR\"
-              find \"\$RELEASE_ROOT\" -maxdepth 1 -mindepth 1 -type d -name \"build-*\" | sort | head -n -3 | xargs -r rm -rf
+               CURRENT_BUILD=\"\$(readlink -f \"$FRONTEND_RELEASE_DIR\")\"
+               find \"\$RELEASE_ROOT\" -maxdepth 1 -mindepth 1 -type d -name \"build-*\" -printf \"%T@ %p\\n\" | sort -nr | tail -n +4 | while IFS= read -r entry; do
+                 build=\"\${entry#* }\"
+                 [ \"\$build\" = \"\$CURRENT_BUILD\" ] || rm -rf -- \"\$build\"
+               done
             '"
 
       - name: Restart PulsaKilat services and Nginx
