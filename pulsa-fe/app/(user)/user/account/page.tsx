@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import {
   Bell,
@@ -14,7 +13,7 @@ import {
   UserRound,
   UsersRound,
 } from "lucide-react";
-import { authOptions } from "@/lib/nextauth";
+import { getAppServerSession } from "@/lib/server-auth";
 import { getUserProfile } from "@/lib/api.auth";
 import { getInitials } from "@/components/user/helpers";
 import type { UserSession } from "@/components/user/types";
@@ -56,7 +55,7 @@ function panelDescriptionByRole(role: string) {
 }
 
 export default async function UserAccountPage() {
-  const session = (await getServerSession(authOptions)) as SessionShape | null;
+  const session = (await getAppServerSession()) as SessionShape | null;
 
   if (!session?.backendToken) {
     redirect("/login");
