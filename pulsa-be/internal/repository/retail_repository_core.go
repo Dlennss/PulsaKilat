@@ -136,9 +136,9 @@ INSERT INTO public.member (
   email, nama, password_hash, role, aktif,
   retail_agent_commission_rp, retail_master_commission_rp,
   h2h_agent_commission_rp, h2h_master_commission_rp,
-  retail_agent_id, retail_master_id, h2h_agent_member_id, h2h_master_member_id
+  retail_agent_id, retail_master_id, h2h_agent_member_id, h2h_master_member_id, marketing_id
 )
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 RETURNING id
 `,
 		in.Email, retailNullString(in.Nama), in.PasswordHash, in.Role, in.Aktif,
@@ -146,6 +146,7 @@ RETURNING id
 		in.H2HAgentCommissionRp, in.H2HMasterCommissionRp,
 		retailNullableInt64(in.RetailAgentID), retailNullableInt64(in.RetailMasterID),
 		retailNullableInt64(in.H2HAgentID), retailNullableInt64(in.H2HMasterID),
+		retailNullableInt64(in.MarketingID),
 	).Scan(&memberID)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "member_email_key") {
@@ -179,6 +180,8 @@ func (r *RetailRepository) ListDownlines(ctx context.Context, actor *RetailMembe
 		where = "(m.retail_master_id = $1 OR m.retail_agent_id = $1)"
 	case "agent":
 		where = "m.retail_agent_id = $1"
+	case "marketing":
+		where = "m.marketing_id = $1"
 	}
 
 	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`

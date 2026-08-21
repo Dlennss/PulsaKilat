@@ -43,6 +43,7 @@ export type AgentCreditApplication = {
   credit_limit_amount?: number;
   loan_approved_at?: string;
   loan_due_date?: string;
+  last_transaction_at?: string;
   created_at: string;
   updated_at: string;
 };

@@ -376,7 +376,9 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const isPaidOff = latestApplication?.status === "approved" && String(latestApplication.loan_status || "").toLowerCase() === "paid";
   const isCreditSuspended = latestApplication?.status === "approved" && String(latestApplication.loan_status || "").toLowerCase() === "suspended";
   const isApproved = latestApplication?.status === "approved" && !isPaidOff;
-  const canReapply = latestApplication?.status === "rejected" || latestApplication?.status === "analysis_rejected" || latestApplication?.status === "master_rejected";
+  const creditBalanceAvailable = isApproved && displayMainBalance > 0;
+  const creditCycleExhausted = isApproved && displayMainBalance <= 0;
+  const canReapply = latestApplication?.status === "rejected" || latestApplication?.status === "analysis_rejected" || latestApplication?.status === "master_rejected" || creditCycleExhausted;
   const canRefill = Boolean(isPaidOff);
   const creditLevelCode = String(latestApplication?.credit_level_code || "start").trim().toLowerCase();
   const creditLevelName = latestApplication?.credit_level_name || "Kilat Start";
@@ -426,7 +428,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
     : statusIsWaiting
       ? "Pengajuan sedang diproses"
       : statusIsPaid
-        ? "Tagihan kredit sudah lunas"
+        ? "Siklus modal selesai"
         : isCreditSuspended
           ? "Kredit agent sedang dibekukan"
           : "Limit kredit agent sudah aktif";
@@ -436,7 +438,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
     : statusIsWaiting
       ? "Menunggu keputusan tim PulsaKilat"
       : statusIsPaid
-        ? "Tidak ada tagihan berjalan"
+        ? "Agent dapat mengajukan modal berikutnya"
         : isCreditSuspended
           ? "Penggunaan saldo utama dibatasi sementara"
           : "Nominal kredit telah masuk ke saldo utama";
@@ -764,7 +766,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                     ? systemValidationPassed
                       ? "Data lolos pemeriksaan awal sistem dan sudah masuk ke antrean Marketing untuk verifikasi lapangan."
                       : "Pengajuan sedang diperiksa sistem sebelum diteruskan ke Marketing."
-                    : "Nominal yang disetujui operator sudah masuk langsung ke saldo utama dan dapat digunakan bertransaksi. Tagihan kredit tetap berjalan sampai dilunasi."}
+                    : "Nominal yang disetujui operator sudah masuk langsung ke saldo utama dan dapat digunakan selama agent masih aktif menjadi mitra."}
               </p>
 
               <div className="relative mt-5 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_12px_24px_rgba(15,23,42,0.04)]">
@@ -798,7 +800,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               </div>
             </div>
 
-            {!statusIsRejected && !statusIsWaiting ? (
+            {false && !statusIsRejected && !statusIsWaiting ? (
               <div className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
                 <div className="flex items-start gap-3">
                   <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
@@ -959,9 +961,9 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
           <ol className="space-y-2 text-[11px] font-semibold leading-5 text-slate-600">
             <li>1. Pinjaman saldo hanya digunakan untuk kebutuhan transaksi operasional di PulsaKilat.</li>
             <li>2. Data agent, foto dokumen, selfie, dan tanda tangan wajib benar serta dapat dipertanggungjawabkan oleh agent.</li>
-            <li>3. Pembayaran atau pelunasan wajib disertai bukti transfer yang valid.</li>
-            <li>4. Agent wajib melunasi tagihan kredit terpakai secara penuh sesuai jadwal jatuh tempo.</li>
-            <li>5. Jika pembayaran terlambat lebih dari 2 minggu, akun perlu evaluasi/perbaikan sebelum bisa naik limit atau mengajukan refill.</li>
+            <li>3. Modal yang disetujui masuk ke saldo utama dan dapat dipakai untuk transaksi selama agent masih aktif menjadi mitra.</li>
+            <li>4. Pengajuan modal berikutnya hanya dapat dilakukan setelah saldo utama dari pengajuan sebelumnya habis digunakan.</li>
+            <li>5. Jika agent ingin berhenti menjadi mitra, penyelesaian modal ditentukan dan diproses oleh operator.</li>
             <li>6. PulsaKilat berhak menolak, menunda, atau mengevaluasi ulang pengajuan jika data/bukti tidak sesuai.</li>
           </ol>
           <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3">
@@ -1044,10 +1046,10 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
         <button
           type="submit"
-          disabled={!agreed || !signatureReady || !signatureData || !surveyDocumentsComplete || hasOpenApplication || isApproved || submitting}
+          disabled={!agreed || !signatureReady || !signatureData || !surveyDocumentsComplete || hasOpenApplication || creditBalanceAvailable || submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
-          {isApproved ? "Kredit Masih Aktif" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : !surveyDocumentsComplete ? "Lengkapi 4 Foto" : unsignedPendingApplication ? "Kirim Tanda Tangan" : canRefill ? "Ajukan Refill" : canReapply ? "Ajukan Ulang" : "Ajukan Kredit Saldo"}
+          {creditBalanceAvailable ? "Saldo Modal Masih Tersedia" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : !surveyDocumentsComplete ? "Lengkapi 4 Foto" : unsignedPendingApplication ? "Kirim Tanda Tangan" : canRefill ? "Ajukan Modal Lagi" : canReapply ? "Ajukan Modal Berikutnya" : "Ajukan Modal"}
           <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
         </button>
 
@@ -1056,7 +1058,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
         )}
       </div>
 
-      {paymentModalOpen ? (
+      {false && paymentModalOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/64 px-4 py-6 backdrop-blur-sm">
           <div className="w-full max-w-[520px] rounded-[26px] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.34)] sm:p-5">
             <div className="flex items-start justify-between gap-4">

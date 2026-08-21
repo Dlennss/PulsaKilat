@@ -71,6 +71,7 @@ type UserCreateInput struct {
 	RetailMasterID           *int64
 	H2HAgentID               *int64
 	H2HMasterID              *int64
+	MarketingID              *int64
 }
 
 type UserUpdateInput struct {

@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { getAppServerSession } from "@/lib/server-auth";
-import { getMyAgentCreditApplications } from "@/lib/api.auth";
 import { getCategories } from "@/lib/api.products";
 import type { UserCategoryItem, UserSession } from "@/components/user/types";
 import { UserCategoryGrid } from "@/components/user/UserCategoryGrid";
@@ -20,7 +19,6 @@ export default async function UserAppHomePage() {
   const categories = (await getCategories()) as UserCategoryItem[];
   const role = String(session?.user?.role || "").trim().toLowerCase();
   const isAgent = role === "agent";
-  const agentBills = isAgent && session?.backendToken ? await getMyAgentCreditApplications(session.backendToken) : [];
 
   return (
     <main className="bg-sky-50">
@@ -35,7 +33,7 @@ export default async function UserAppHomePage() {
         <UserMonthlyBills
           href="/user/listrik/tagihan"
           variant={isAgent ? "agent" : "user"}
-          agentBills={agentBills}
+          agentBills={[]}
         />
       </div>
 

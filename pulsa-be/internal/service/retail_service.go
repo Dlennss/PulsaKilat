@@ -58,7 +58,7 @@ func (s *RetailService) ListDownlines(ctx context.Context, actorID int64) ([]rep
 	if !helper.IsRetailRole(actor.Role) {
 		return nil, errors.New("retail only")
 	}
-	if actor.Role != helper.RoleRetailMaster && actor.Role != helper.RoleRetailAgent {
+	if actor.Role != helper.RoleRetailMaster && actor.Role != helper.RoleRetailAgent && actor.Role != helper.RoleRetailMarketing {
 		return []repository.RetailDownlineRow{}, nil
 	}
 	return s.repo.ListDownlines(ctx, actor)
@@ -116,6 +116,11 @@ func (s *RetailService) RegisterDownline(ctx context.Context, actorID int64, in 
 		if actor.RetailMasterID != nil && *actor.RetailMasterID > 0 {
 			createIn.RetailMasterID = actor.RetailMasterID
 		}
+	case helper.RoleRetailMarketing:
+		if in.Role != helper.RoleRetailAgent {
+			return 0, errors.New("marketing hanya boleh mendaftarkan agent")
+		}
+		createIn.MarketingID = &actor.MemberID
 	}
 	return s.repo.CreateRetailChild(ctx, createIn)
 }

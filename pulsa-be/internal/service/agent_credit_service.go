@@ -182,6 +182,9 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 				AgentSignature:  strings.TrimSpace(in.AgentSignature),
 			})
 		}
+		if err := s.repo.EnsureAgentCanSubmitNextApplication(ctx, targetMemberID); err != nil {
+			return nil, err
+		}
 	} else if isCreditReviewer(role) && in.ID > 0 {
 		if selfie, hasLegacySelfie := in.DocumentData["selfie"]; hasLegacySelfie {
 			if _, ok := in.DocumentData["selfie_ktp"]; !ok {
@@ -223,8 +226,37 @@ func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.A
 	if err != nil {
 		return nil, err
 	}
-	// Marketing bersifat pemantau. Penetapan agent binaan dapat ditambahkan
-	// kemudian tanpa memberi marketing hak untuk mengubah pengajuan.
+	if helper.NormalizeRole(auth.Role) == helper.RoleRetailMarketing {
+		// Marketing only receives a non-financial operational view of its own
+		// agents. Never leak balance, loan, limit, payment, or document data.
+		visible := make([]repository.AgentCreditApplication, 0, len(items))
+		for _, item := range items {
+			if item.MarketingID != auth.MemberID {
+				continue
+			}
+			item.RequestedAmount = 0
+			item.ApprovedAmount = 0
+			item.ApplicantData = map[string]any{
+				"agent_name":    item.ApplicantData["agent_name"],
+				"store_name":    item.ApplicantData["store_name"],
+				"whatsapp":      item.ApplicantData["whatsapp"],
+				"store_address": item.ApplicantData["store_address"],
+			}
+			item.DocumentData = nil
+			item.AgentSignatureData = ""
+			item.HasAgentSignature = false
+			item.OutstandingAmount = 0
+			item.CreditAvailableAmount = 0
+			item.PaidAmount = 0
+			item.PaymentCount = 0
+			item.CreditLimitAmount = 0
+			item.LoanApprovedAt = nil
+			item.LoanDueDate = nil
+			visible = append(visible, item)
+		}
+		return visible, nil
+	}
+	// Operator and admin receive the complete operational and financial view.
 	return items, nil
 }
 
@@ -511,31 +543,37 @@ func normalizeRiskLevel(value string) string {
 }
 
 func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.AuthInfo, in AgentCreditPaymentInput) error {
-	role := helper.NormalizeRole(auth.Role)
-	if role != helper.RoleRetailAgent && role != helper.RoleUser {
-		return errors.New("user only")
-	}
-	if in.ApplicationID <= 0 {
-		return errors.New("pengajuan tidak valid")
-	}
-	if in.Amount <= 0 {
-		return errors.New("nominal pembayaran wajib diisi")
-	}
-	if strings.TrimSpace(in.PaymentMethod) == "" {
-		in.PaymentMethod = "transfer"
-	}
-	proofURL, _ := in.PaymentProof["data_url"].(string)
-	if !strings.HasPrefix(strings.TrimSpace(proofURL), "data:image/") {
-		return errors.New("bukti transfer wajib diupload")
-	}
-	return s.repo.PayInstallment(ctx, repository.AgentCreditPaymentInput{
-		ApplicationID: in.ApplicationID,
-		MemberID:      auth.MemberID,
-		Amount:        in.Amount,
-		Note:          strings.TrimSpace(in.Note),
-		PaymentMethod: strings.TrimSpace(in.PaymentMethod),
-		PaymentProof:  in.PaymentProof,
-	})
+	// Active partnerships do not use recurring installments. Settlement is an
+	// operator-controlled action when the agent ends the partnership.
+	return errors.New("pembayaran kredit belum diperlukan selama agent masih aktif menjadi mitra")
+
+	/*
+		role := helper.NormalizeRole(auth.Role)
+		if role != helper.RoleRetailAgent && role != helper.RoleUser {
+			return errors.New("user only")
+		}
+		if in.ApplicationID <= 0 {
+			return errors.New("pengajuan tidak valid")
+		}
+		if in.Amount <= 0 {
+			return errors.New("nominal pembayaran wajib diisi")
+		}
+		if strings.TrimSpace(in.PaymentMethod) == "" {
+			in.PaymentMethod = "transfer"
+		}
+		proofURL, _ := in.PaymentProof["data_url"].(string)
+		if !strings.HasPrefix(strings.TrimSpace(proofURL), "data:image/") {
+			return errors.New("bukti transfer wajib diupload")
+		}
+		return s.repo.PayInstallment(ctx, repository.AgentCreditPaymentInput{
+			ApplicationID: in.ApplicationID,
+			MemberID:      auth.MemberID,
+			Amount:        in.Amount,
+			Note:          strings.TrimSpace(in.Note),
+			PaymentMethod: strings.TrimSpace(in.PaymentMethod),
+			PaymentProof:  in.PaymentProof,
+		})
+	*/
 }
 
 func (s *AgentCreditService) TransferToMainBalance(ctx context.Context, auth helper.AuthInfo, in AgentCreditTransferInput) (*repository.AgentCreditTransferResult, error) {

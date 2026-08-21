@@ -159,6 +159,7 @@ type AgentCreditApplication struct {
 	CreditLimitAmount        int64                `json:"credit_limit_amount"`
 	LoanApprovedAt           *time.Time           `json:"loan_approved_at,omitempty"`
 	LoanDueDate              *time.Time           `json:"loan_due_date,omitempty"`
+	LastTransactionAt        *time.Time           `json:"last_transaction_at,omitempty"`
 	CreatedAt                time.Time            `json:"created_at"`
 	UpdatedAt                time.Time            `json:"updated_at"`
 }
@@ -413,6 +414,30 @@ LIMIT 1
 	return id, nil
 }
 
+// EnsureAgentCanSubmitNextApplication enforces the single-wallet credit cycle.
+// An agent may submit another request only after the previously approved
+// capital has been fully used from the main wallet.
+func (r *AgentCreditRepository) EnsureAgentCanSubmitNextApplication(ctx context.Context, memberID int64) error {
+	var mainBalance int64
+	var activeLoan bool
+	if err := r.db.QueryRowContext(ctx, `
+SELECT
+  COALESCE((SELECT saldo FROM public.dompet_member WHERE member_id = $1), 0),
+  EXISTS (
+    SELECT 1
+    FROM public.agent_credit_loan
+    WHERE member_id = $1
+      AND status IN ('active', 'overdue')
+  )
+`, memberID).Scan(&mainBalance, &activeLoan); err != nil {
+		return err
+	}
+	if activeLoan && mainBalance > 0 {
+		return fmt.Errorf("saldo utama masih tersedia Rp%d; gunakan saldo tersebut terlebih dahulu sebelum mengajukan kredit lagi", mainBalance)
+	}
+	return nil
+}
+
 func (r *AgentCreditRepository) GetApplicationReviewState(ctx context.Context, applicationID int64) (*AgentCreditReviewState, error) {
 	var state AgentCreditReviewState
 	err := r.db.QueryRowContext(ctx, `
@@ -632,6 +657,11 @@ SELECT
   END AS credit_limit_amount,
   l.approved_at AS loan_approved_at,
   l.due_date AS loan_due_date,
+  (
+    SELECT MAX(t.diperbarui_pada)
+    FROM public.transaksi_member t
+    WHERE t.member_id = a.member_id AND lower(COALESCE(t.status, '')) = 'success'
+  ) AS last_transaction_at,
   a.created_at,
   a.updated_at
 FROM public.agent_credit_application a
@@ -683,7 +713,7 @@ LIMIT $1
 	for rows.Next() {
 		var item AgentCreditApplication
 		var applicantRaw, documentRaw []byte
-		var loanApprovedAt, loanDueDate sql.NullTime
+		var loanApprovedAt, loanDueDate, lastTransactionAt sql.NullTime
 		if err := rows.Scan(
 			&item.ID,
 			&item.MemberID,
@@ -715,6 +745,7 @@ LIMIT $1
 			&item.CreditLimitAmount,
 			&loanApprovedAt,
 			&loanDueDate,
+			&lastTransactionAt,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 		); err != nil {
@@ -728,6 +759,9 @@ LIMIT $1
 		}
 		if loanDueDate.Valid {
 			item.LoanDueDate = &loanDueDate.Time
+		}
+		if lastTransactionAt.Valid {
+			item.LastTransactionAt = &lastTransactionAt.Time
 		}
 		items = append(items, item)
 	}
@@ -790,6 +824,11 @@ SELECT
   END AS credit_limit_amount,
   l.approved_at AS loan_approved_at,
   l.due_date AS loan_due_date,
+  (
+    SELECT MAX(t.diperbarui_pada)
+    FROM public.transaksi_member t
+    WHERE t.member_id = a.member_id AND lower(COALESCE(t.status, '')) = 'success'
+  ) AS last_transaction_at,
   a.created_at,
   a.updated_at
 FROM public.agent_credit_application a
@@ -842,7 +881,7 @@ LIMIT $2
 	for rows.Next() {
 		var item AgentCreditApplication
 		var applicantRaw, documentRaw []byte
-		var loanApprovedAt, loanDueDate sql.NullTime
+		var loanApprovedAt, loanDueDate, lastTransactionAt sql.NullTime
 		if err := rows.Scan(
 			&item.ID,
 			&item.MemberID,
@@ -872,6 +911,7 @@ LIMIT $2
 			&item.CreditLimitAmount,
 			&loanApprovedAt,
 			&loanDueDate,
+			&lastTransactionAt,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 		); err != nil {
@@ -885,6 +925,9 @@ LIMIT $2
 		}
 		if loanDueDate.Valid {
 			item.LoanDueDate = &loanDueDate.Time
+		}
+		if lastTransactionAt.Valid {
+			item.LastTransactionAt = &lastTransactionAt.Time
 		}
 		items = append(items, item)
 	}

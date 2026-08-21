@@ -51,12 +51,12 @@ const viewConfig = {
     showActions: true,
   },
   repayment: {
-    eyebrow: "Monitor Pelunasan",
-    title: "Pantau Pelunasan Agent",
-    desc: "Lihat pinjaman aktif, sisa tagihan, jatuh tempo, dan pembayaran yang masuk.",
-    listTitle: "Pinjaman Aktif",
-    emptyTitle: "Belum ada kredit berjalan",
-    emptyDescription: "Pinjaman aktif yang belum lunas akan tampil di sini.",
+    eyebrow: "Monitor Aktivitas",
+    title: "Pantau Aktivitas Agent",
+    desc: "Pantau transaksi terakhir agent dan temukan agent yang perlu di-follow-up.",
+    listTitle: "Agent Perlu Perhatian",
+    emptyTitle: "Belum ada agent yang perlu diperhatikan",
+    emptyDescription: "Agent yang tidak bertransaksi selama 2 hari atau lebih akan tampil di sini.",
     icon: WalletCards,
     showActions: false,
   },
@@ -122,16 +122,25 @@ function hasPaymentProof(item: AgentCreditApplication) {
   });
 }
 
+function inactiveDays(item: AgentCreditApplication) {
+  const source = item.last_transaction_at || item.loan_approved_at;
+  if (!source) return 999;
+  const timestamp = new Date(source).getTime();
+  if (!Number.isFinite(timestamp)) return 999;
+  return Math.max(0, Math.floor((Date.now() - timestamp) / 86400000));
+}
+
 function getItemsForView(view: AnalystCreditWorkspaceView, applications: AgentCreditApplication[]) {
   const analysisItems = applications.filter((item) => item.status === "submitted" || item.status === "analysis_review");
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
-  const usedCredits = activeCredits.filter((item) => Number(item.outstanding_amount || 0) > 0);
+  const usedCredits = activeCredits;
+  const followUpCredits = activeCredits.filter((item) => inactiveDays(item) >= 2);
   const proofItems = applications.filter((item) => Number(item.payment_count || 0) > 0 || (item.payments || []).length > 0 || hasPaymentProof(item));
   const rejectedItems = applications.filter(isRejected);
   const archiveItems = applications.filter((item) => item.status === "approved" || isRejected(item) || isPaid(item));
 
-  if (view === "repayment") return usedCredits;
+  if (view === "repayment") return activeCredits.filter((item) => inactiveDays(item) >= 2);
   if (view === "proof") return proofItems;
   if (view === "rejected") return rejectedItems;
   if (view === "archive") return archiveItems;
@@ -162,7 +171,8 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const analysisItems = applications.filter((item) => item.status === "submitted" || item.status === "analysis_review");
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
-  const usedCredits = activeCredits.filter((item) => Number(item.outstanding_amount || 0) > 0);
+  const usedCredits = activeCredits;
+  const followUpCredits: AgentCreditApplication[] = activeCredits.filter((item) => inactiveDays(item) >= 2);
   const rejectedItems = applications.filter(isRejected);
   const items = getItemsForView(view, applications);
   const nominalApproved = approvedItems.reduce((total, item) => total + Number(item.approved_amount || 0), 0);
@@ -170,7 +180,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const proofItems = applications.filter((item) => Number(item.payment_count || 0) > 0 || (item.payments || []).length > 0 || hasPaymentProof(item));
   const priorityReviewItems = analysisItems.slice(0, 3);
   const activePriorityItems = activeCredits.slice(0, 3);
-  const usedPriorityItems = usedCredits.slice(0, 3);
+  const usedPriorityItems = followUpCredits.slice(0, 3);
   const paidCredits = approvedItems.filter(isPaid);
   const totalPaidAmount = approvedItems.reduce((total, item) => {
     const paymentsTotal = (item.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
@@ -181,7 +191,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const stats = [
     { label: view === "decision" ? "Berkas Masuk" : "Perlu Keputusan", value: String(analysisItems.length), hint: "Dikirim agent", icon: ShieldCheck, tone: "from-emerald-500 to-lime-400" },
     { label: "Kredit Diterima", value: String(approvedItems.length), hint: formatIDR(nominalApproved), icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
-    { label: "Tagihan Aktif", value: String(usedCredits.length), hint: "Pinjaman wajib dilunasi", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
+    { label: "Perlu Follow-up", value: String(followUpCredits.length), hint: "Tidak transaksi 2 hari atau lebih", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
     { label: "Ditolak", value: String(rejectedItems.length), hint: "Perlu catatan", icon: ShieldAlert, tone: "from-rose-500 to-orange-500" },
   ];
 
@@ -198,10 +208,10 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
     { label: "Perlu Catatan", value: rejectedItems.length, hint: "Ditolak atau perlu revisi", icon: MessageSquareText },
   ];
   const repaymentCards = [
-    { label: "Tagihan Aktif", value: usedCredits.length, hint: "Pinjaman yang belum lunas", icon: WalletCards },
-    { label: "Sudah Lunas", value: paidCredits.length, hint: "Pembayaran selesai", icon: ShieldCheck },
-    { label: "Total Dilunasi", value: formatIDR(totalPaidAmount), hint: "Pembayaran tercatat", icon: ReceiptText },
-    { label: "Saldo Tertagih", value: formatIDR(totalOutstandingAmount), hint: "Perlu dipantau", icon: ShieldAlert },
+    { label: "Agent Aktif", value: Math.max(0, activeCredits.length - followUpCredits.length), hint: "Transaksi hari ini atau kemarin", icon: ShieldCheck },
+    { label: "Perlu Follow-up", value: followUpCredits.length, hint: "Tidak transaksi 2 hari atau lebih", icon: ShieldAlert },
+    { label: "Belum Pernah Transaksi", value: activeCredits.filter((item) => !item.last_transaction_at).length, hint: "Perlu dihubungi", icon: ReceiptText },
+    { label: "Total Agent", value: activeCredits.length, hint: "Modal aktif dipantau operator", icon: WalletCards },
   ];
 
   return (
@@ -331,14 +341,14 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                       <div className="mt-4 space-y-2">
                         {activePriorityItems.length ? (
                           activePriorityItems.map((item) => {
-                            const outstanding = Number(item.outstanding_amount || 0);
+                            const idleDays = inactiveDays(item);
                             return (
                             <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3">
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-black text-slate-950">{getAgentName(item)}</p>
-                                <p className="truncate text-xs font-semibold text-slate-500">{outstanding > 0 ? "Sisa tagihan" : "Limit belum dipakai"}</p>
+                                <p className="truncate text-xs font-semibold text-slate-500">{idleDays >= 999 ? "Belum pernah transaksi" : `Tidak transaksi ${idleDays} hari`}</p>
                               </div>
-                              <p className="shrink-0 text-sm font-black text-emerald-700">{formatIDR(outstanding)}</p>
+                              <p className="shrink-0 text-sm font-black text-amber-700">Follow-up</p>
                             </div>
                           );
                           })
@@ -474,17 +484,19 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
 
                   <div className="mt-5 space-y-2">
                     {usedPriorityItems.length ? (
-                      usedPriorityItems.slice(0, 6).map((item) => (
+                      usedPriorityItems.slice(0, 6).map((item: AgentCreditApplication) => (
                         <div key={item.id} className="flex flex-col gap-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
                             <p className="truncate text-base font-black text-slate-950">{getAgentName(item)}</p>
                             <p className="mt-1 truncate text-xs font-semibold text-slate-500">{getAgentStore(item)}</p>
-                            <p className="mt-2 text-xs font-bold text-amber-700">Menunggu pelunasan penuh</p>
+                            <p className="mt-2 text-xs font-bold text-amber-700">
+                              {inactiveDays(item) >= 999 ? "Belum pernah transaksi" : `Tidak transaksi ${inactiveDays(item)} hari`}
+                            </p>
                           </div>
                           <div className="text-left sm:text-right">
-                            <p className="text-lg font-black text-emerald-700">{formatIDR(Number(item.outstanding_amount || 0))}</p>
+                            <p className="text-lg font-black text-amber-700">Perlu follow-up</p>
                             <p className="mt-1 text-xs font-semibold text-slate-400">
-                              Kredit {formatIDR(Number(item.approved_amount || item.requested_amount || 0))}
+                              Transaksi terakhir: {item.last_transaction_at ? new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(item.last_transaction_at)) : "Belum ada"}
                             </p>
                           </div>
                         </div>

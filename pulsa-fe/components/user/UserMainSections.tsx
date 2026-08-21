@@ -189,17 +189,14 @@ function formatIDR(value: number) {
 }
 
 export function UserMonthlyBills({ href = "/kategori", variant = "user", agentBills = [] }: UserMonthlyBillsProps) {
-  const activeAgentBills = agentBills.filter((item) => Number(item.outstanding_amount || 0) > 0);
-  const primaryAgentBill = activeAgentBills[0];
+  // Agent credit is an operating capital cycle, not a recurring bill.
+  // Settlement is controlled by the operator when the partnership ends.
+  if (variant === "agent") return null;
 
-  if (variant === "agent" && !primaryAgentBill) {
-    return null;
-  }
-
-  const isAgentBill = variant === "agent" && Boolean(primaryAgentBill);
-  const billHref = isAgentBill ? "/user/saldo/tagihan" : href;
-  const outstanding = Number(primaryAgentBill?.outstanding_amount || 0);
-  const approved = Number(primaryAgentBill?.approved_amount || primaryAgentBill?.requested_amount || 0);
+  const isAgentBill = false;
+  const billHref = href;
+  const outstanding = 0;
+  const approved = 0;
 
   return (
     <section className="space-y-3">
