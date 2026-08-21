@@ -104,11 +104,7 @@ jobs:
             "sudo -S -p '' bash -c '
               install -d /etc/systemd/system/$BACKEND_SERVICE_NAME.d /etc/systemd/system/$FRONTEND_SERVICE_NAME.d
               printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$BACKEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=$BACKEND_RELEASE_DIR/pulsa-be\" > /etc/systemd/system/$BACKEND_SERVICE_NAME.d/release.conf
-              if [ -x \"$FRONTEND_RELEASE_DIR/runtime/node/bin/node\" ]; then
-                printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$FRONTEND_RELEASE_DIR\" \"Environment=PORT=3003\" \"Environment=HOSTNAME=127.0.0.1\" \"ExecStart=\" \"ExecStart=$FRONTEND_RELEASE_DIR/runtime/node/bin/node $FRONTEND_RELEASE_DIR/server.js\" > /etc/systemd/system/$FRONTEND_SERVICE_NAME.d/release.conf
-              else
-                printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$FRONTEND_RELEASE_DIR\" \"ExecStart=\" \"ExecStart=/usr/bin/env PORT=3003 HOSTNAME=127.0.0.1 node $FRONTEND_RELEASE_DIR/server.js\" > /etc/systemd/system/$FRONTEND_SERVICE_NAME.d/release.conf
-              fi
+              printf \"%s\\n\" \"[Service]\" \"WorkingDirectory=$FRONTEND_RELEASE_DIR\" \"Environment=PORT=3003\" \"Environment=HOSTNAME=127.0.0.1\" \"ExecStart=\" \"ExecStart=/usr/bin/env node $FRONTEND_RELEASE_DIR/server.js\" > /etc/systemd/system/$FRONTEND_SERVICE_NAME.d/release.conf
               systemctl daemon-reload
               nginx -t
               if ! systemctl restart $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx || ! systemctl is-active --quiet $BACKEND_SERVICE_NAME $FRONTEND_SERVICE_NAME nginx; then
