@@ -4,10 +4,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { getProviders, getSession, signIn, signOut } from "next-auth/react";
+import { getProviders, signIn } from "next-auth/react";
 import { Eye, EyeOff, LockKeyhole, UserRound, Zap } from "lucide-react";
 import TurnstileWidget from "@/components/TurnstileWidget";
-import { decodeJwt, isJwtValid } from "@/lib/jwt";
+import { decodeJwt } from "@/lib/jwt";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 const TURNSTILE_ENABLED = /^(1|true|yes|on)$/i.test(process.env.NEXT_PUBLIC_TURNSTILE_ENABLED || "");
@@ -15,7 +15,6 @@ const TURNSTILE_ENABLED = /^(1|true|yes|on)$/i.test(process.env.NEXT_PUBLIC_TURN
 // Default aktif mencegah build lama mengunci tombol ketika konfigurasi server baru dipasang.
 const GOOGLE_LOGIN_ENABLED = String(process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED ?? "true").toLowerCase() === "true";
 
-type SessionShape = { backendToken?: string; user?: { role?: string } };
 type PasswordLoginResp = { ok?: boolean; token?: string; role?: string; error?: string };
 
 function cn(...v: Array<string | false | null | undefined>) {
@@ -57,32 +56,6 @@ function toDashboardByRole(role?: string | null) {
   return "/dashboard/member";
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(fallback), ms);
-    promise
-      .then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch(() => {
-        clearTimeout(timer);
-        resolve(fallback);
-      });
-  });
-}
-
-async function persistLoginToken(token: string) {
-  const response = await fetch("/api/auth/persist", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
-    cache: "no-store",
-  }).catch(() => null);
-
-  return Boolean(response?.ok);
-}
-
 export function LoginCard() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -97,38 +70,6 @@ export function LoginCard() {
   const loginCallbackUrl = normalizeGoogleNext((searchParams.get("callbackUrl") || "").trim(), "/user");
   const googleCallbackUrl = `/auth/google/complete?${new URLSearchParams({ next: loginCallbackUrl }).toString()}`;
   const canUseGoogleLogin = GOOGLE_LOGIN_ENABLED && googleAvailable && !loading;
-
-  useEffect(() => {
-    void (async () => {
-      const localToken = localStorage.getItem("auth_token") || "";
-      if (isJwtValid(localToken)) {
-        const claims = decodeJwt(localToken);
-        // Layout area user/dashboard membaca token dari cookie HttpOnly. Tanpa
-        // langkah ini token lama di localStorage dapat memicu loop login -> user -> login.
-        if (await persistLoginToken(localToken)) {
-          window.location.replace(toDashboardByRole(typeof claims?.role === "string" ? claims.role : "member"));
-          return;
-        }
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("auth_source");
-        return;
-      }
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("auth_source");
-
-      const sess = (await withTimeout(getSession(), 3000, null)) as SessionShape | null;
-      const backendToken = (sess?.backendToken || "").trim();
-      if (!backendToken) return;
-      if (!isJwtValid(backendToken)) {
-        void withTimeout(signOut({ redirect: false }), 1500, undefined);
-        return;
-      }
-      if (!(await persistLoginToken(backendToken))) return;
-      localStorage.setItem("auth_token", backendToken);
-      localStorage.setItem("auth_source", "session");
-      window.location.replace(toDashboardByRole(sess?.user?.role || "member"));
-    })();
-  }, []);
 
   useEffect(() => {
     setTurnstileToken(TURNSTILE_ENABLED ? "" : "dev-bypass");
