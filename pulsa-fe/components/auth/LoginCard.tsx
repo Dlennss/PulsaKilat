@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { getProviders, getSession, signIn, signOut } from "next-auth/react";
 import { Eye, EyeOff, LockKeyhole, UserRound, Zap } from "lucide-react";
 import TurnstileWidget from "@/components/TurnstileWidget";
@@ -84,7 +84,6 @@ async function persistLoginToken(token: string) {
 }
 
 export function LoginCard() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -107,7 +106,7 @@ export function LoginCard() {
         // Layout area user/dashboard membaca token dari cookie HttpOnly. Tanpa
         // langkah ini token lama di localStorage dapat memicu loop login -> user -> login.
         if (await persistLoginToken(localToken)) {
-          router.replace(toDashboardByRole(typeof claims?.role === "string" ? claims.role : "member"));
+          window.location.replace(toDashboardByRole(typeof claims?.role === "string" ? claims.role : "member"));
           return;
         }
         localStorage.removeItem("auth_token");
@@ -127,9 +126,9 @@ export function LoginCard() {
       if (!(await persistLoginToken(backendToken))) return;
       localStorage.setItem("auth_token", backendToken);
       localStorage.setItem("auth_source", "session");
-      router.replace(toDashboardByRole(sess?.user?.role || "member"));
+      window.location.replace(toDashboardByRole(sess?.user?.role || "member"));
     })();
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     setTurnstileToken(TURNSTILE_ENABLED ? "" : "dev-bypass");
@@ -190,7 +189,7 @@ export function LoginCard() {
       // `/api/auth/login` sudah membuat cookie HttpOnly dan mengembalikan token
       // backend. Jangan jalankan login NextAuth kedua karena dua perubahan sesi
       // bersamaan memicu kedipan/navigasi ganda terutama di Safari mobile.
-      router.replace(toDashboardByRole(loginBody.role || decodeJwt(backendToken)?.role || "member"));
+      window.location.replace(toDashboardByRole(loginBody.role || decodeJwt(backendToken)?.role || "member"));
     } finally {
       setLoading(false);
     }
