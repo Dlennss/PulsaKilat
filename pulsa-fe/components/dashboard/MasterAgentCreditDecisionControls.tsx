@@ -24,7 +24,7 @@ type ApiBody = {
   error?: string;
 };
 
-type DecisionAction = "approved" | "rejected" | "revision" | "forward_to_analysis";
+type DecisionAction = "approved" | "rejected" | "forward_to_analysis";
 
 function ReviewSignaturePad({
   label,
@@ -219,10 +219,6 @@ export function MasterAgentCreditDecisionControls({
       setError("Tanda tangan pemeriksa wajib diisi");
       return;
     }
-    if (decision === "revision" && !note.trim()) {
-      setError("Tuliskan bagian yang harus diperbaiki agent");
-      return;
-    }
     const parsedAmount = Number(amount.replace(/[^\d]/g, ""));
     const defaultNote = isPositiveDecision
         ? mode === "analyst" || mode === "admin"
@@ -399,18 +395,6 @@ export function MasterAgentCreditDecisionControls({
             {busy === "approved" || busy === "forward_to_analysis" ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
             <span className="truncate">{busy === "approved" || busy === "forward_to_analysis" ? "Proses" : approveLabel}</span>
           </button>
-          {mode === "analyst" ? (
-            <button
-              type="button"
-              onClick={() => decide("revision")}
-              disabled={Boolean(busy)}
-              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-[11px] font-black leading-3 text-amber-800 transition hover:-translate-y-0.5 hover:bg-amber-100 disabled:translate-y-0 disabled:opacity-60"
-              title="Kembalikan pengajuan untuk diperbaiki marketing"
-            >
-              {busy === "revision" ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <RotateCcw className="h-4 w-4 shrink-0" />}
-              <span className="truncate">{busy === "revision" ? "Proses" : "Perlu Revisi"}</span>
-            </button>
-          ) : null}
           {mode === "analyst" || mode === "admin" ? (
             <button
               type="button"

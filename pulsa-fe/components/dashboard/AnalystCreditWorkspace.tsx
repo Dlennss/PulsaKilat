@@ -205,7 +205,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
     { label: "Masuk Antrean", value: analysisItems.length, hint: "Dikirim dari agent", icon: ClipboardList },
     { label: "Siap Dicek", value: decisionReadyItems.length, hint: "Nominal dan berkas tersedia", icon: FileSearch },
     { label: "Sudah Diterima", value: approvedItems.length, hint: "Keputusan operator selesai", icon: BadgeCheck },
-    { label: "Perlu Catatan", value: rejectedItems.length, hint: "Ditolak atau perlu revisi", icon: MessageSquareText },
+    { label: "Perlu Catatan", value: rejectedItems.length, hint: "Pengajuan ditolak", icon: MessageSquareText },
   ];
   const repaymentCards = [
     { label: "Agent Aktif", value: Math.max(0, activeCredits.length - followUpCredits.length), hint: "Transaksi hari ini atau kemarin", icon: ShieldCheck },

@@ -94,9 +94,6 @@ function escapeHTML(value: unknown) {
 }
 
 function getDisplayStatus(item: AgentCreditApplication) {
-  if ((item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required" && !isRevisionResolved(item)) {
-    return "Perlu Revisi";
-  }
   if (item.status !== "approved") return getStatusLabel(item.status);
   const loanStatus = String(item.loan_status || "").toLowerCase();
   if (loanStatus === "paid") return "Siklus selesai";
@@ -126,9 +123,6 @@ function getStatusClass(status: string) {
 }
 
 function getDisplayStatusClass(item: AgentCreditApplication) {
-  if ((item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required" && !isRevisionResolved(item)) {
-    return "bg-amber-100 text-amber-800";
-  }
   const loanStatus = String(item.loan_status || "").toLowerCase();
   if (item.status === "approved" && loanStatus === "paid") {
     return "bg-sky-100 text-sky-700";
@@ -154,11 +148,6 @@ function getStoredImageSrc(item: AgentCreditApplication, key: string) {
   if (!value || typeof value !== "object") return "";
   const image = value as { data_url?: unknown };
   return typeof image.data_url === "string" && image.data_url.startsWith("data:image/") ? image.data_url : "";
-}
-
-function isRevisionResolved(item: AgentCreditApplication) {
-  const value = item.applicant_data?.operator_revision_resolved_at;
-  return typeof value === "string" && value.trim() !== "";
 }
 
 type StoredSurveyImage = {
@@ -249,15 +238,14 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
     { key: "selfie_ktp", name: "Selfie Pegang KTP", desc: "Wajah agent dan KTP terlihat jelas", icon: UserRound },
     { key: "selfie_marketing", name: "Foto Bersama Marketing", desc: "Agent dan marketing terlihat dalam satu foto", icon: UsersRound },
   ];
-  const needsRevision = item.analyst_recommendation === "revision_required" && !isRevisionResolved(item);
   const savedCount = fields.filter((field) => Boolean(getStoredImageSrc(item, field.key))).length;
   const missingFields = fields.filter((field) => !getStoredImageSrc(item, field.key));
-  const editableFields = needsRevision ? fields : missingFields;
+  const editableFields = missingFields;
   const selectedCount = editableFields.filter((field) => Boolean(files[field.key])).length;
-  const canSave = needsRevision ? selectedCount > 0 : missingFields.length > 0 && selectedCount === missingFields.length;
+  const canSave = missingFields.length > 0 && selectedCount === missingFields.length;
   const remainingCount = Math.max(0, missingFields.length - selectedCount);
 
-  if (!missingFields.length && !needsRevision) return <SurveyDocumentsCompleteNotice />;
+  if (!missingFields.length) return <SurveyDocumentsCompleteNotice />;
 
   async function saveDocuments() {
     if (!canSave || busy) return;
@@ -279,7 +267,6 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
           applicant_data: {
             survey_documents_by: "marketing",
             survey_documents_at: new Date().toISOString(),
-            operator_revision_resolved_at: needsRevision ? new Date().toISOString() : undefined,
           },
           document_data: documentData,
         }),
@@ -308,26 +295,20 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
             <Camera className="h-5 w-5" strokeWidth={2.4} />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-black text-slate-950">{needsRevision ? "Perbaiki Dokumen Survey" : "Lengkapi Foto Survey"}</p>
-            <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-500">{needsRevision ? "Ganti foto sesuai catatan operator, lalu kirim ulang pengajuan." : "Marketing upload foto lapangan. Setelah lengkap, form ini otomatis diringkas."}</p>
+            <p className="text-sm font-black text-slate-950">Lengkapi Foto Survey</p>
+            <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-500">Marketing upload foto lapangan. Setelah lengkap, form ini otomatis diringkas.</p>
           </div>
         </div>
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-[9px] font-black uppercase text-[#047857]">
           {savedCount}/4 tersimpan
         </span>
       </div>
-      {needsRevision ? (
-        <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3">
-          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-amber-700">Catatan Operator</p>
-          <p className="mt-1 text-xs font-bold leading-5 text-amber-950">{item.analyst_note || "Dokumen perlu diperbaiki sebelum diperiksa ulang."}</p>
-        </div>
-      ) : null}
       <div className="rounded-[20px] border border-emerald-100 bg-white/80 p-2">
         <div className="mb-2 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2">
           <Camera className="h-5 w-5" strokeWidth={2.4} />
           <div className="min-w-0">
-            <p className="text-xs font-black text-slate-950">{needsRevision ? "Pilih foto yang akan diganti" : "Foto yang masih perlu diambil"}</p>
-            <p className="text-[10px] font-semibold text-slate-500">{needsRevision ? "Minimal satu foto sesuai catatan operator" : `${missingFields.length} dokumen belum lengkap`}</p>
+            <p className="text-xs font-black text-slate-950">Foto yang masih perlu diambil</p>
+            <p className="text-[10px] font-semibold text-slate-500">{missingFields.length} dokumen belum lengkap</p>
           </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -391,7 +372,7 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
         className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#047857,#16a34a)] text-xs font-black text-white shadow-[0_12px_22px_rgba(4,120,87,0.16)] transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-        {busy ? "Menyimpan Dokumen" : canSave ? needsRevision ? "Simpan Perbaikan Dokumen" : "Simpan Dokumen Marketing" : needsRevision ? "Pilih foto yang diperbaiki" : `Lengkapi ${remainingCount} foto lagi`}
+        {busy ? "Menyimpan Dokumen" : canSave ? "Simpan Dokumen Marketing" : `Lengkapi ${remainingCount} foto lagi`}
       </button>
       {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
     </div>

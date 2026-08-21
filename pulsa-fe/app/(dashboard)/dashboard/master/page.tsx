@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, BadgeCheck, Camera, CheckCircle2, Clock3, FileSignature, UserRoundPlus, UsersRound, WalletCards } from "lucide-react";
+import { BadgeCheck, Camera, CheckCircle2, Clock3, FileSignature, UserRoundPlus, UsersRound, WalletCards } from "lucide-react";
 import { getAppServerSession } from "@/lib/server-auth";
 import { getAgentCreditApplications } from "@/lib/api.auth";
 import { attachAgentCreditPaymentsFallback } from "@/lib/agent-credit-payment-fallback.server";
@@ -28,7 +28,6 @@ export default async function MasterDashboardPage() {
   const rawApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
   const applications = await attachAgentCreditPaymentsFallback(rawApplications);
   const waiting = applications.filter((item) => item.status === "submitted" || item.status === "marketing_review").length;
-  const revisions = applications.filter((item) => (item.status === "submitted" || item.status === "marketing_review") && item.analyst_recommendation === "revision_required");
   const inAnalysis = applications.filter((item) => item.status === "analysis_review").length;
   const approved = applications.filter((item) => item.status === "approved").length;
   const paidOff = applications.filter((item) => item.loan_status === "paid" || item.status === "paid").length;
@@ -47,7 +46,6 @@ export default async function MasterDashboardPage() {
     { label: "Siklus Selesai", value: String(paidOff), hint: "Status pengajuan selesai", icon: CheckCircle2, tone: "bg-lime-50 text-lime-700" },
   ];
   const workCards = [
-    { label: "Revisi Operator", value: String(revisions.length), hint: "Perbaiki sesuai catatan", icon: AlertTriangle },
     { label: "Perlu Pendampingan", value: String(needsSelfie.length), hint: "Selfie bersama agent belum ada", icon: Camera },
     { label: "Siap Dicek Operator", value: String(inAnalysis), hint: "Data dan pertemuan sudah lengkap", icon: FileSignature },
     { label: "Agent Perlu Follow-up", value: String(offlineBills.length), hint: "Perlu dihubungi marketing", icon: WalletCards },
@@ -108,12 +106,6 @@ export default async function MasterDashboardPage() {
                   Daftarkan agent, bantu pengajuan, pantau dokumen dan aktivitas agent. Keputusan kredit tetap dilakukan operator.
                 </p>
               </div>
-              <Link
-                href="/dashboard/master/tugas-revisi"
-                className="inline-flex items-center justify-center rounded-2xl bg-[#063f32] px-4 py-3 text-sm font-black !text-[#f6fff9] shadow-[0_12px_24px_rgba(6,63,50,0.20)] transition hover:bg-[#07533f]"
-              >
-                Buka Tugas & Revisi
-              </Link>
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
