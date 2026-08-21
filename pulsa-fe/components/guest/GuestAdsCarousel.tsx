@@ -77,6 +77,8 @@ export function GuestAdsCarousel({ items }: GuestAdsCarouselProps) {
 
   useEffect(() => {
     if (ads.length <= 1) return;
+    const desktop = window.matchMedia("(min-width: 768px)");
+    if (!desktop.matches) return;
     const timer = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % ads.length);
     }, 3800);
