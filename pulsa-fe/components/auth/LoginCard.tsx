@@ -11,7 +11,9 @@ import { decodeJwt, isJwtValid } from "@/lib/jwt";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 const TURNSTILE_ENABLED = /^(1|true|yes|on)$/i.test(process.env.NEXT_PUBLIC_TURNSTILE_ENABLED || "");
-const GOOGLE_LOGIN_ENABLED = String(process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED ?? "false").toLowerCase() === "true";
+// Ketersediaan akhir tetap ditentukan provider dari server (`getProviders`).
+// Default aktif mencegah build lama mengunci tombol ketika konfigurasi server baru dipasang.
+const GOOGLE_LOGIN_ENABLED = String(process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED ?? "true").toLowerCase() === "true";
 
 type SessionShape = { backendToken?: string; user?: { role?: string } };
 type PasswordLoginResp = { ok?: boolean; token?: string; role?: string; error?: string };
