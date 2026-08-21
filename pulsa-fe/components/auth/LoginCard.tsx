@@ -187,7 +187,9 @@ export function LoginCard() {
       localStorage.setItem("auth_token", backendToken);
       localStorage.setItem("auth_source", "password");
 
-      void signIn("credentials", { redirect: false, email, password }).catch(() => undefined);
+      // `/api/auth/login` sudah membuat cookie HttpOnly dan mengembalikan token
+      // backend. Jangan jalankan login NextAuth kedua karena dua perubahan sesi
+      // bersamaan memicu kedipan/navigasi ganda terutama di Safari mobile.
       router.replace(toDashboardByRole(loginBody.role || decodeJwt(backendToken)?.role || "member"));
     } finally {
       setLoading(false);
