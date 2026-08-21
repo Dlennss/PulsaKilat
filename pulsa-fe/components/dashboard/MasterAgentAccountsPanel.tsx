@@ -108,7 +108,7 @@ const stageMeta = {
   survey: { label: "Perlu survei", className: "bg-amber-100 text-amber-700" },
   operator: { label: "Di operator", className: "bg-sky-100 text-sky-700" },
   active: { label: "Kredit aktif", className: "bg-emerald-100 text-emerald-700" },
-  paid: { label: "Lunas", className: "bg-lime-100 text-lime-800" },
+  paid: { label: "Siklus selesai", className: "bg-lime-100 text-lime-800" },
   rejected: { label: "Ditolak", className: "bg-rose-100 text-rose-700" },
 } as const;
 
@@ -296,7 +296,7 @@ export function MasterAgentAccountsPanel({ applications }: Props) {
                 ["survey", "Survei"],
                 ["operator", "Operator"],
                 ["active", "Aktif"],
-                ["paid", "Lunas"],
+                ["paid", "Siklus selesai"],
               ] as const).map(([value, label]) => (
                 <button
                   key={value}
@@ -327,7 +327,7 @@ export function MasterAgentAccountsPanel({ applications }: Props) {
           ) : filteredItems.length ? (
             <div className="overflow-hidden rounded-lg border border-slate-200">
               <div className="hidden grid-cols-[minmax(220px,1.5fr)_130px_135px_165px_160px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500 lg:grid">
-                <span>Agent</span><span>Status Kredit</span><span>Saldo Utama</span><span>Pengajuan / Tagihan</span><span className="text-center">Aksi</span>
+                <span>Agent</span><span>Status Kredit</span><span>Saldo Utama</span><span>Pengajuan / Modal</span><span className="text-center">Aksi</span>
               </div>
               {filteredItems.map((item) => {
                 const application = latestApplicationByMember.get(item.id);
@@ -350,7 +350,7 @@ export function MasterAgentAccountsPanel({ applications }: Props) {
                       </div>
                       <div><span className={`inline-flex rounded-md px-2.5 py-1.5 text-[10px] font-black ${status.className}`}>{status.label}</span></div>
                       <p className="text-sm font-black text-slate-950">{formatIDR(Number(item.saldo || 0))}</p>
-                      <div><p className="text-sm font-black text-slate-950">{formatIDR(requested)}</p><p className={outstanding > 0 ? "mt-1 text-[11px] font-bold text-amber-700" : "mt-1 text-[11px] font-bold text-slate-400"}>Tagihan {formatIDR(outstanding)}</p></div>
+                      <div><p className="text-sm font-black text-slate-950">{formatIDR(requested)}</p><p className={outstanding > 0 ? "mt-1 text-[11px] font-bold text-amber-700" : "mt-1 text-[11px] font-bold text-slate-400"}>Modal berjalan {formatIDR(outstanding)}</p></div>
                       <div className="grid grid-cols-2 gap-2">
                         <button type="button" onClick={() => editAgent(item)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-[11px] font-black text-emerald-700"><Edit3 className="h-3.5 w-3.5" />Edit</button>
                         <button type="button" onClick={() => toggleAgent(item)} disabled={saving} className={item.aktif ? "h-9 rounded-lg border border-rose-200 bg-rose-50 text-[11px] font-black text-rose-600" : "h-9 rounded-lg bg-emerald-950 text-[11px] font-black text-white"}>{item.aktif ? "Nonaktifkan" : "Aktifkan"}</button>

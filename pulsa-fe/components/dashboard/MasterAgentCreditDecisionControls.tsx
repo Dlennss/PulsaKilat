@@ -278,7 +278,7 @@ export function MasterAgentCreditDecisionControls({
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-black">{creditSuspended ? "Kredit Dibekukan Super Admin" : status === "approved" ? "Disetujui Operator" : "Ditolak Operator"}</span>
               <span className="mt-0.5 block truncate text-[10px] font-bold opacity-70">
-                {creditSuspended ? "Kredit agent sedang dibekukan dan pengajuan baru tidak dapat dibuat." : status === "approved" ? "Dana kredit sudah masuk ke saldo utama agent dan tagihan dapat dipantau." : "Agent akan melihat pemberitahuan dan bisa memperbaiki data."}
+                {creditSuspended ? "Kredit agent sedang dibekukan dan pengajuan baru tidak dapat dibuat." : status === "approved" ? "Dana modal sudah masuk ke saldo utama agent dan dapat digunakan selama kemitraan aktif." : "Agent akan melihat pemberitahuan dan bisa memperbaiki data."}
               </span>
             </span>
           </div>

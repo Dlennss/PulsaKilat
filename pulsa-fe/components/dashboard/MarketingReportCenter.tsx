@@ -15,7 +15,7 @@ const tabs: Array<{ value: ReportTab; label: string }> = [
   { value: "agents", label: "Agent Binaan" },
   { value: "applications", label: "Pengajuan Kredit" },
   { value: "survey", label: "Survei & Dokumen" },
-  { value: "credit", label: "Kredit & Pelunasan" },
+  { value: "credit", label: "Modal & Aktivitas" },
 ];
 
 function formatIDR(value: number) {
@@ -45,7 +45,7 @@ function storeName(item: AgentCreditApplication) {
 function statusLabel(item: AgentCreditApplication) {
   const status = String(item.status || "").toLowerCase();
   const loanStatus = String(item.loan_status || "").toLowerCase();
-  if (status === "approved" && loanStatus === "paid") return "Lunas";
+  if (status === "approved" && loanStatus === "paid") return "Siklus selesai";
   if (status === "approved" && loanStatus === "overdue") return "Menunggak";
   if (status === "approved") return "Kredit Aktif";
   if (status === "analysis_review" || status === "master_review") return "Di Operator";
@@ -88,7 +88,7 @@ function matchesStatus(item: AgentCreditApplication, filter: string) {
   if (filter === "survey") return label === "Perlu Survei";
   if (filter === "operator") return label === "Di Operator";
   if (filter === "active") return label === "Kredit Aktif" || label === "Menunggak";
-  if (filter === "paid") return label === "Lunas";
+  if (filter === "paid") return label === "Siklus selesai";
   if (filter === "rejected") return label === "Ditolak";
   return true;
 }
@@ -130,7 +130,7 @@ export function MarketingReportCenter({ applications }: Props) {
         Status: statusLabel(item),
         Tier: item.credit_level_name || "Kilat Start",
         Limit: formatIDR(Number(item.credit_limit_amount || item.approved_amount || 0)),
-        Tagihan: formatIDR(Number(item.outstanding_amount || 0)),
+        "Modal Berjalan": formatIDR(Number(item.outstanding_amount || 0)),
       }));
     }
     if (tab === "survey") {
@@ -152,7 +152,7 @@ export function MarketingReportCenter({ applications }: Props) {
         Tier: item.credit_level_name || "Kilat Start",
         Limit: formatIDR(Number(item.credit_limit_amount || item.approved_amount || 0)),
         "Saldo Kredit": formatIDR(Number(item.credit_available_amount || 0)),
-        Tagihan: formatIDR(Number(item.outstanding_amount || 0)),
+        "Modal Berjalan": formatIDR(Number(item.outstanding_amount || 0)),
         Terbayar: formatIDR(Number(item.paid_amount || 0)),
         Status: statusLabel(item),
       }));
@@ -308,7 +308,7 @@ export function MarketingReportCenter({ applications }: Props) {
   return (
     <section className="mx-auto w-full max-w-7xl overflow-hidden rounded-lg border border-emerald-200 bg-white shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
       <header className="flex flex-col gap-4 bg-[linear-gradient(135deg,#052e26,#047857)] px-4 py-5 text-white sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-        <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-lime-200">Administrasi Marketing</p><h1 className="mt-1 text-2xl font-black">Laporan Agent Binaan</h1><p className="mt-1 text-xs font-semibold text-emerald-100/75">Rekap pengajuan, survei, kredit, dan pelunasan agent.</p></div>
+        <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-lime-200">Administrasi Marketing</p><h1 className="mt-1 text-2xl font-black">Laporan Agent Binaan</h1><p className="mt-1 text-xs font-semibold text-emerald-100/75">Rekap onboarding, survei, dan aktivitas agent binaan.</p></div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={printReport} disabled={!rows.length || exporting} className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-xs font-black disabled:opacity-40"><Printer className="h-4 w-4" />Cetak</button>
           <button type="button" onClick={() => void downloadPdf()} disabled={!rows.length || exporting} className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-3 text-xs font-black text-emerald-800 disabled:opacity-40"><FileDown className="h-4 w-4" />PDF</button>
@@ -321,7 +321,7 @@ export function MarketingReportCenter({ applications }: Props) {
           <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-500"><Search className="h-4 w-4 text-emerald-600" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent font-semibold outline-none" placeholder="Cari agent, toko, WA, atau ID" /></label>
           <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} aria-label="Tanggal awal" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-400" />
           <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} aria-label="Tanggal akhir" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-400" />
-          <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3"><SlidersHorizontal className="h-4 w-4 text-emerald-600" /><select value={status} onChange={(event) => setStatus(event.target.value)} className="min-w-0 flex-1 bg-transparent text-xs font-black text-slate-600 outline-none"><option value="all">Semua status</option><option value="survey">Perlu survei</option><option value="operator">Di operator</option><option value="active">Kredit aktif</option><option value="paid">Lunas</option><option value="rejected">Ditolak</option></select></label>
+          <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3"><SlidersHorizontal className="h-4 w-4 text-emerald-600" /><select value={status} onChange={(event) => setStatus(event.target.value)} className="min-w-0 flex-1 bg-transparent text-xs font-black text-slate-600 outline-none"><option value="all">Semua status</option><option value="survey">Perlu survei</option><option value="operator">Di operator</option><option value="active">Modal aktif</option><option value="paid">Siklus selesai</option><option value="rejected">Ditolak</option></select></label>
         </div>
       </div>
 
@@ -329,7 +329,7 @@ export function MarketingReportCenter({ applications }: Props) {
         {tabs.map((item) => <button key={item.value} type="button" onClick={() => setTab(item.value)} className={tab === item.value ? "shrink-0 border-b-2 border-emerald-700 px-3 pb-3 text-xs font-black text-emerald-700" : "shrink-0 border-b-2 border-transparent px-3 pb-3 text-xs font-black text-slate-500 hover:text-emerald-700"}>{item.label}</button>)}
       </div>
 
-      <div className="grid grid-cols-3 border-b border-slate-200 bg-white text-center"><div className="p-3"><p className="text-[9px] font-black uppercase text-slate-400">Data Tampil</p><p className="mt-1 text-lg font-black text-slate-950">{rows.length}</p></div><div className="border-x border-slate-100 p-3"><p className="text-[9px] font-black uppercase text-slate-400">Total Pengajuan</p><p className="mt-1 text-sm font-black text-emerald-700 sm:text-lg">{formatIDR(totalRequested)}</p></div><div className="p-3"><p className="text-[9px] font-black uppercase text-slate-400">Total Tagihan</p><p className="mt-1 text-sm font-black text-amber-700 sm:text-lg">{formatIDR(totalOutstanding)}</p></div></div>
+      <div className="grid grid-cols-3 border-b border-slate-200 bg-white text-center"><div className="p-3"><p className="text-[9px] font-black uppercase text-slate-400">Data Tampil</p><p className="mt-1 text-lg font-black text-slate-950">{rows.length}</p></div><div className="border-x border-slate-100 p-3"><p className="text-[9px] font-black uppercase text-slate-400">Total Pengajuan</p><p className="mt-1 text-sm font-black text-emerald-700 sm:text-lg">{formatIDR(totalRequested)}</p></div><div className="p-3"><p className="text-[9px] font-black uppercase text-slate-400">Modal Berjalan</p><p className="mt-1 text-sm font-black text-amber-700 sm:text-lg">{formatIDR(totalOutstanding)}</p></div></div>
 
       <div className="overflow-x-auto p-4">
         {rows.length ? <table className="w-full min-w-[760px] border-separate border-spacing-0 overflow-hidden text-left text-xs"><thead><tr>{Object.keys(rows[0]).map((header) => <th key={header} className="border-y border-slate-200 bg-slate-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-500 first:border-l first:rounded-l-lg last:border-r last:rounded-r-lg">{header}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={`${tab}-${index}`} className="hover:bg-emerald-50/35">{Object.keys(rows[0]).map((header) => <td key={header} className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-700">{row[header]}</td>)}</tr>)}</tbody></table> : <div className="grid min-h-36 place-items-center rounded-lg border border-dashed border-emerald-300 bg-emerald-50/35 px-4 text-center text-sm font-semibold text-slate-500">Tidak ada data laporan sesuai filter.</div>}

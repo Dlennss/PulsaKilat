@@ -61,12 +61,12 @@ const viewConfig = {
     showActions: false,
   },
   proof: {
-    eyebrow: "Bukti Pelunasan",
-    title: "Bukti Transfer Pembayaran",
-    desc: "Kumpulan pembayaran yang sudah tercatat beserta bukti transfer agent.",
-    listTitle: "Pembayaran dengan Bukti",
-    emptyTitle: "Belum ada bukti pelunasan",
-    emptyDescription: "Bukti transfer dari agent akan tampil setelah pembayaran dikirim.",
+    eyebrow: "Aktivitas Modal",
+    title: "Riwayat Aktivitas Modal",
+    desc: "Pantau aktivitas agent dan keputusan operator dalam satu tempat.",
+    listTitle: "Aktivitas Agent",
+    emptyTitle: "Belum ada aktivitas modal",
+    emptyDescription: "Aktivitas agent akan tampil setelah transaksi tercatat.",
     icon: FileCheck2,
     showActions: false,
   },
@@ -440,10 +440,10 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                 <div className="relative overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f7fff9_66%,#e8fbef_100%)] p-5 shadow-[0_16px_36px_rgba(6,78,59,0.06)]">
                   <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-lime-100/80" />
                   <div className="relative">
-                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Pelunasan Kredit</p>
-                    <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Monitor Pelunasan Penuh</h2>
+                    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-emerald-700">Aktivitas Agent</p>
+                    <h2 className="mt-2 text-2xl font-black tracking-normal text-slate-950">Monitor Aktivitas Modal</h2>
                     <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                      Pantau pembayaran agent, bukti transfer, status lunas, sisa tagihan, dan hak refill setelah pinjaman selesai dibayar.
+                      Pantau status aktivitas agent, transaksi terakhir, dan agent yang perlu di-follow-up.
                     </p>
                   </div>
                 </div>
@@ -455,9 +455,9 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                     </span>
                     <div>
                       <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Monitor Saldo Kredit</p>
-                      <h3 className="text-2xl font-black tracking-normal text-slate-950">Pelunasan Kredit Agent</h3>
+                      <h3 className="text-2xl font-black tracking-normal text-slate-950">Aktivitas Agent</h3>
                       <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                        Setiap kredit dibayar satu kali penuh. Buka detail untuk melihat nominal kredit, sisa tagihan, tanggal jatuh tempo, dan bukti transfer pembayaran.
+                        Modal berjalan selama agent aktif menjadi mitra. Buka detail untuk melihat aktivitas dan status agent.
                       </p>
                     </div>
                   </div>
@@ -502,7 +502,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
                         </div>
                       ))
                     ) : (
-                      <div className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-400">Belum ada tagihan kredit yang menunggu pelunasan.</div>
+                      <div className="rounded-2xl bg-white p-4 text-sm font-semibold text-slate-400">Belum ada aktivitas agent yang perlu dipantau.</div>
                     )}
                   </div>
                 </div>

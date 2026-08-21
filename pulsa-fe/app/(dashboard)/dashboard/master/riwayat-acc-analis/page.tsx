@@ -25,7 +25,7 @@ export default async function AnalystApprovedHistoryPage() {
   const stats = [
     { label: "Total ACC", value: String(approvedItems.length), hint: "Disetujui operator", icon: BadgeCheck, tone: "from-emerald-500 to-lime-400" },
     { label: "Limit Aktif", value: String(activeApproved), hint: unusedApproved ? `${unusedApproved} belum dipakai` : "Masih berjalan", icon: ShieldCheck, tone: "from-sky-500 to-cyan-400" },
-    { label: "Sudah Lunas", value: String(paidApproved), hint: "Selesai bayar", icon: History, tone: "from-violet-500 to-fuchsia-500" },
+    { label: "Siklus Selesai", value: String(paidApproved), hint: "Status pengajuan selesai", icon: History, tone: "from-violet-500 to-fuchsia-500" },
     { label: "Nominal ACC", value: formatIDR(approvedNominal), hint: "Total disetujui", icon: WalletCards, tone: "from-amber-500 to-orange-400" },
   ];
 

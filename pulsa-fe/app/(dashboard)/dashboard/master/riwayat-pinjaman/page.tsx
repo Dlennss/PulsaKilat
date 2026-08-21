@@ -33,7 +33,7 @@ export default async function MasterCreditHistoryPage() {
   const stats = [
     { label: "Total Riwayat", value: String(historyItems.length), hint: "Data selesai/arsip", icon: Archive, tone: "from-emerald-500 to-lime-400" },
     { label: "Ditolak", value: String(rejected), hint: "Keputusan master", icon: FileX2, tone: "from-rose-500 to-orange-400" },
-    { label: "Lunas", value: String(paid), hint: "Pinjaman selesai", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
+    { label: "Siklus Selesai", value: String(paid), hint: "Pengajuan selesai", icon: BadgeCheck, tone: "from-sky-500 to-cyan-400" },
     { label: "Nominal Selesai", value: formatIDR(finishedLimit), hint: "Total ACC di arsip", icon: WalletCards, tone: "from-violet-500 to-fuchsia-500" },
   ];
 

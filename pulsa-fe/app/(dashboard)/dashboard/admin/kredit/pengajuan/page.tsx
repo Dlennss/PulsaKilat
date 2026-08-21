@@ -45,7 +45,7 @@ export default async function AdminCreditApplicationsPage() {
             </p>
             <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Approval Kredit Agent</h1>
             <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-emerald-50/90 sm:text-base">
-              Admin bisa mengambil keputusan manual, memantau limit, tagihan, dokumen survey marketing, dan riwayat pembayaran kredit agent.
+              Admin bisa mengambil keputusan manual, memantau limit, aktivitas modal, dokumen survey marketing, dan riwayat transaksi agent.
             </p>
           </div>
 

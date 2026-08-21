@@ -44,13 +44,13 @@ export default async function MasterDashboardPage() {
     { label: "Total Peminjam", value: String(applications.length), hint: "Seluruh pengajuan", icon: UsersRound, tone: "bg-emerald-50 text-emerald-700" },
     { label: "Butuh Review", value: String(waiting), hint: "Menunggu cek marketing", icon: Clock3, tone: "bg-amber-50 text-amber-700" },
     { label: "Sudah Diterima", value: String(approved), hint: "Aktif dipantau", icon: BadgeCheck, tone: "bg-sky-50 text-sky-700" },
-    { label: "Lunas", value: String(paidOff), hint: "Pembayaran selesai", icon: CheckCircle2, tone: "bg-lime-50 text-lime-700" },
+    { label: "Siklus Selesai", value: String(paidOff), hint: "Status pengajuan selesai", icon: CheckCircle2, tone: "bg-lime-50 text-lime-700" },
   ];
   const workCards = [
     { label: "Revisi Operator", value: String(revisions.length), hint: "Perbaiki sesuai catatan", icon: AlertTriangle },
     { label: "Perlu Pendampingan", value: String(needsSelfie.length), hint: "Selfie bersama agent belum ada", icon: Camera },
     { label: "Siap Dicek Operator", value: String(inAnalysis), hint: "Data dan pertemuan sudah lengkap", icon: FileSignature },
-    { label: "Tagihan Offline", value: String(offlineBills.length), hint: "Perlu dikunjungi marketing", icon: WalletCards },
+    { label: "Agent Perlu Follow-up", value: String(offlineBills.length), hint: "Perlu dihubungi marketing", icon: WalletCards },
   ];
   const closestSelfie = needsSelfie.slice(0, 2);
   const closestAnalysis = readyForAnalysis.slice(0, 2);
@@ -105,7 +105,7 @@ export default async function MasterDashboardPage() {
               <div>
                 <h2 className="text-2xl font-black text-slate-950">Kerjakan yang paling penting</h2>
                 <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                  Daftarkan agent, bantu pengajuan, ambil selfie pertemuan, lalu pantau pelunasan. Keputusan kredit tetap dilakukan operator.
+                  Daftarkan agent, bantu pengajuan, pantau dokumen dan aktivitas agent. Keputusan kredit tetap dilakukan operator.
                 </p>
               </div>
               <Link
@@ -215,7 +215,7 @@ export default async function MasterDashboardPage() {
             <WalletCards className="h-6 w-6 text-[#d9ff75]" />
             <h3 className="mt-4 text-base font-black">Total Limit Berjalan</h3>
             <p className="mt-2 text-2xl font-black">{formatIDR(activeLimit)}</p>
-            <p className="mt-1 text-sm font-semibold leading-6 text-emerald-100">Pantau pinjaman aktif yang belum lunas.</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-emerald-100">Pantau modal aktif dan aktivitas transaksi agent.</p>
           </div>
         </section>
       </section>

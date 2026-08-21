@@ -99,9 +99,9 @@ function getDisplayStatus(item: AgentCreditApplication) {
   }
   if (item.status !== "approved") return getStatusLabel(item.status);
   const loanStatus = String(item.loan_status || "").toLowerCase();
-  if (loanStatus === "paid") return "Lunas";
+  if (loanStatus === "paid") return "Siklus selesai";
   if ((loanStatus === "active" || loanStatus === "due") && Number(item.outstanding_amount || 0) <= 0) return "Aktif belum dipakai";
-  if (loanStatus === "overdue") return "Telat bayar";
+  if (loanStatus === "overdue") return "Perlu perhatian";
   if (loanStatus === "active") return "Pinjaman aktif";
   return "Disetujui";
 }
@@ -440,7 +440,7 @@ function buildReportRows(items: AgentCreditApplication[]) {
       "Status Loan": item.loan_status || "-",
       "Nominal Diajukan": requested,
       "Limit Disetujui": approved,
-      "Tagihan Terpakai": outstanding,
+      "Modal Berjalan": outstanding,
       "Kredit Tersedia": available,
       "Sudah Dibayar": paid,
       "Jatuh Tempo": formatDate(item.loan_due_date),
@@ -501,7 +501,7 @@ const applicationFilters: { key: ApplicationFilter; label: string }[] = [
   { key: "analysis", label: "Dikirim Operator" },
   { key: "approved", label: "Disetujui" },
   { key: "rejected", label: "Ditolak" },
-  { key: "paid", label: "Lunas" },
+  { key: "paid", label: "Siklus selesai" },
 ];
 
 function matchesFilter(item: AgentCreditApplication, filter: ApplicationFilter) {
@@ -566,9 +566,9 @@ export function MasterAgentCreditApplicationList({
       { Metrik: "Total Data", Nilai: reportSummary.total },
       { Metrik: "Disetujui", Nilai: reportSummary.approved },
       { Metrik: "Ditolak", Nilai: reportSummary.rejected },
-      { Metrik: "Lunas", Nilai: reportSummary.paid },
+      { Metrik: "Siklus selesai", Nilai: reportSummary.paid },
       { Metrik: "Total Limit Disetujui", Nilai: reportSummary.limit },
-      { Metrik: "Total Tagihan Terpakai", Nilai: reportSummary.outstanding },
+      { Metrik: "Total Modal Berjalan", Nilai: reportSummary.outstanding },
       { Metrik: "Total Kredit Tersedia", Nilai: reportSummary.available },
       { Metrik: "Dicetak Pada", Nilai: reportGeneratedAt() },
       { Metrik: "Filter", Nilai: reportSubtitle },
@@ -600,9 +600,9 @@ export function MasterAgentCreditApplicationList({
       `Total ${reportSummary.total}`,
       `Disetujui ${reportSummary.approved}`,
       `Ditolak ${reportSummary.rejected}`,
-      `Lunas ${reportSummary.paid}`,
+      `Siklus selesai ${reportSummary.paid}`,
       `Limit ${formatIDR(reportSummary.limit)}`,
-      `Tagihan ${formatIDR(reportSummary.outstanding)}`,
+      `Modal berjalan ${formatIDR(reportSummary.outstanding)}`,
     ].join("   |   ");
     doc.text(summaryText, 40, 110);
 
@@ -617,7 +617,7 @@ export function MasterAgentCreditApplicationList({
         "Status",
         "Diajukan",
         "Limit",
-        "Tagihan",
+        "Modal Berjalan",
         "Tersedia",
         "Jatuh Tempo",
         "Catatan",
@@ -631,7 +631,7 @@ export function MasterAgentCreditApplicationList({
         row.Status,
         formatIDR(Number(row["Nominal Diajukan"] || 0)),
         formatIDR(Number(row["Limit Disetujui"] || 0)),
-        formatIDR(Number(row["Tagihan Terpakai"] || 0)),
+        formatIDR(Number(row["Modal Berjalan"] || 0)),
         formatIDR(Number(row["Kredit Tersedia"] || 0)),
         row["Jatuh Tempo"],
         row["Catatan Operator"],
@@ -651,9 +651,9 @@ export function MasterAgentCreditApplicationList({
       ["Total Data", reportSummary.total],
       ["Disetujui", reportSummary.approved],
       ["Ditolak", reportSummary.rejected],
-      ["Lunas", reportSummary.paid],
+      ["Siklus selesai", reportSummary.paid],
       ["Total Limit", formatIDR(reportSummary.limit)],
-      ["Tagihan Terpakai", formatIDR(reportSummary.outstanding)],
+      ["Modal Berjalan", formatIDR(reportSummary.outstanding)],
       ["Kredit Tersedia", formatIDR(reportSummary.available)],
     ];
     const tableRows = reportRows.map((row) => `
@@ -665,7 +665,7 @@ export function MasterAgentCreditApplicationList({
         <td>${escapeHTML(row["Nomor WA"])}</td>
         <td>${escapeHTML(row.Status)}</td>
         <td>${escapeHTML(formatIDR(Number(row["Limit Disetujui"] || 0)))}</td>
-        <td>${escapeHTML(formatIDR(Number(row["Tagihan Terpakai"] || 0)))}</td>
+        <td>${escapeHTML(formatIDR(Number(row["Modal Berjalan"] || 0)))}</td>
         <td>${escapeHTML(formatIDR(Number(row["Kredit Tersedia"] || 0)))}</td>
         <td>${escapeHTML(row["Jatuh Tempo"])}</td>
         <td>${escapeHTML(row["Catatan Operator"])}</td>
@@ -711,7 +711,7 @@ export function MasterAgentCreditApplicationList({
           <table>
             <thead>
               <tr>
-                <th>ID</th><th>Tanggal</th><th>Agent</th><th>Toko</th><th>WA</th><th>Status</th><th>Limit</th><th>Tagihan</th><th>Tersedia</th><th>Jatuh Tempo</th><th>Catatan</th>
+                <th>ID</th><th>Tanggal</th><th>Agent</th><th>Toko</th><th>WA</th><th>Status</th><th>Limit</th><th>Modal Berjalan</th><th>Tersedia</th><th>Jatuh Tempo</th><th>Catatan</th>
               </tr>
             </thead>
             <tbody>${tableRows}</tbody>
@@ -731,7 +731,7 @@ export function MasterAgentCreditApplicationList({
           <h2 className="mt-1 text-xl font-black text-slate-950">{title || (showActions ? "Pengajuan Kredit Terbaru" : "Riwayat Pinjaman Agent")}</h2>
           <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-slate-500">
             {mode === "admin"
-              ? "Tugas admin: pantau semua pengajuan, cek dokumen survey, limit, tagihan, lalu approve atau reject manual."
+              ? "Tugas admin: pantau semua pengajuan, cek dokumen survey, limit, dan aktivitas modal, lalu approve atau reject manual."
               : mode === "analyst"
                 ? "Tugas operator: cek dokumen, catatan marketing, risiko pembayaran, lalu beri keputusan final."
                 : "Tugas marketing: dampingi agent, lengkapi selfie pertemuan, tanda tangan verifikasi, lalu kirim data ke operator."}
@@ -783,7 +783,7 @@ export function MasterAgentCreditApplicationList({
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Rekap Audit</p>
               <p className="mt-1 text-sm font-black text-slate-950">Laporan mengikuti pencarian dan filter aktif</p>
               <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
-                {filteredApplications.length} data tampil • Tagihan {formatIDR(reportSummary.outstanding)} • Limit {formatIDR(reportSummary.limit)}
+                {filteredApplications.length} data tampil • Modal berjalan {formatIDR(reportSummary.outstanding)} • Limit {formatIDR(reportSummary.limit)}
               </p>
             </div>
             <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
@@ -902,7 +902,8 @@ export function MasterAgentCreditApplicationList({
                   {useCompactTable ? (
                     <div className="hidden lg:block">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getDisplayStatusClass(item)}`}>{getDisplayStatus(item)}</span>
-                      <p className="mt-1 text-[10px] font-bold text-slate-400">{formatDateTime(item.updated_at)}</p>
+                      <p className="mt-2 text-[9px] font-black uppercase tracking-[0.08em] text-slate-400">Transaksi terakhir</p>
+                      <p className="mt-0.5 text-[10px] font-bold text-slate-500">{item.last_transaction_at ? formatDateTime(item.last_transaction_at) : "Belum ada transaksi"}</p>
                     </div>
                   ) : null}
                   {useCompactTable ? (
@@ -969,6 +970,10 @@ export function MasterAgentCreditApplicationList({
                       <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
                         <p className="font-black text-slate-950">Status Pinjaman</p>
                         <p className="mt-1 break-words leading-5">{getDisplayStatus(item)}</p>
+                      </div>
+                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                        <p className="font-black text-slate-950">Transaksi Terakhir</p>
+                        <p className="mt-1 break-words leading-5">{item.last_transaction_at ? formatDateTime(item.last_transaction_at) : "Belum ada transaksi"}</p>
                       </div>
                       <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
                         <p className="font-black text-slate-950">Jatuh Tempo</p>

@@ -56,8 +56,8 @@ function applicantText(item: AgentCreditApplication, key: string, fallback = "")
 
 function statusLabel(status: string, loanStatus?: string) {
   if (status === "approved") {
-    if (loanStatus === "paid") return "Lunas";
-    if (loanStatus === "overdue") return "Telat bayar";
+    if (loanStatus === "paid") return "Siklus selesai";
+    if (loanStatus === "overdue") return "Perlu perhatian";
     return "Kredit aktif";
   }
   if (status === "analysis_review") return "Menunggu operator";
@@ -205,8 +205,8 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
             <h1 className="text-3xl font-black tracking-normal sm:text-4xl">{mode === "operator" ? "Kenaikan Limit Agent" : "Profil Agent Binaan"}</h1>
             <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-emerald-50/90">
               {mode === "operator"
-                ? "Operator Kredit memutuskan kenaikan tier berdasarkan pembayaran, tagihan, saldo kredit, dan catatan marketing."
-                : "Marketing memantau saldo, kredit, pembayaran, transaksi, lalu memberi rekomendasi tanpa bisa menaikkan limit langsung."}
+                ? "Operator Kredit memutuskan kenaikan tier berdasarkan aktivitas modal, saldo utama, transaksi, dan catatan marketing."
+                : "Marketing memantau saldo utama dan transaksi agent, lalu memberi rekomendasi tanpa bisa menaikkan limit langsung."}
             </p>
           </div>
 
@@ -214,8 +214,8 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {[
                 { label: "Total Agent", value: summaries.length, hint: "Punya histori kredit", icon: ShieldCheck },
-                { label: "Kandidat Naik", value: upgradeCandidates, hint: "Lunas tepat waktu", icon: TrendingUp },
-                { label: "Tagihan Aktif", value: formatIDR(activeDebt), hint: "Pinjaman yang wajib dilunasi", icon: WalletCards },
+                { label: "Kandidat Naik", value: upgradeCandidates, hint: "Siklus selesai tepat waktu", icon: TrendingUp },
+                { label: "Modal Berjalan", value: formatIDR(activeDebt), hint: "Modal yang masih digunakan", icon: WalletCards },
                 { label: "Kredit Tersedia", value: formatIDR(availableCredit), hint: "Bisa dimutasi agent", icon: BadgeCheck },
               ].map((item) => {
                 const Icon = item.icon;
@@ -277,10 +277,10 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
                         </div>
                         <div>
                           <p className="text-sm font-black text-slate-950">{formatIDR(agent.available)}</p>
-                          <p className="mt-1 text-xs font-bold text-amber-700">Tagihan {formatIDR(agent.outstanding)}</p>
+                          <p className="mt-1 text-xs font-bold text-amber-700">Modal berjalan {formatIDR(agent.outstanding)}</p>
                         </div>
                         <div>
-                          <p className="text-sm font-black text-slate-950">{agent.paidCount} lunas</p>
+                          <p className="text-sm font-black text-slate-950">{agent.paidCount} selesai</p>
                           <p className={agent.lateCount ? "mt-1 text-xs font-bold text-rose-600" : "mt-1 text-xs font-bold text-emerald-700"}>{agent.lateCount} telat</p>
                         </div>
                         <button
