@@ -233,19 +233,15 @@ func (r *AppOrderPaymentRepository) GetMemberFundingBalance(ctx context.Context,
 	if memberID <= 0 {
 		return 0, 0, errors.New("member_id tidak valid")
 	}
+	// Kredit yang disetujui sudah dicairkan ke dompet utama. Parameter credit
+	// dipertahankan untuk kompatibilitas pemanggil lama, tetapi selalu nol agar
+	// transaksi tidak pernah memakai saldo kredit sebagai sumber pembayaran.
 	err = r.db.QueryRowContext(ctx, `
-SELECT
-  COALESCE(d.saldo, 0),
-  COALESCE((
-    SELECT SUM(l.available_amount)
-    FROM public.agent_credit_loan l
-    WHERE l.member_id = $1
-      AND l.status IN ('active', 'overdue')
-      AND l.available_amount > 0
-  ), 0)
-FROM public.dompet_member d
-WHERE d.member_id = $1
+SELECT COALESCE(saldo, 0)
+FROM public.dompet_member
+WHERE member_id = $1
 LIMIT 1
-`, memberID).Scan(&wallet, &credit)
+`, memberID).Scan(&wallet)
+	credit = 0
 	return wallet, credit, err
 }

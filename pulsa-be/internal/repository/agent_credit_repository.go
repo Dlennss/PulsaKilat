@@ -607,7 +607,7 @@ SELECT
   COALESCE(a.analyst_recommended_amount, 0) AS analyst_recommended_amount,
   COALESCE(l.status, '') AS loan_status,
   COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
-  COALESCE(l.available_amount, 0) AS credit_available_amount,
+  0::bigint AS credit_available_amount,
   COALESCE(pay.paid_amount, 0) AS paid_amount,
   COALESCE(pay.payment_count, 0) AS payment_count,
   CASE
@@ -765,7 +765,7 @@ SELECT
   COALESCE(a.analyst_recommended_amount, 0) AS analyst_recommended_amount,
   COALESCE(l.status, '') AS loan_status,
   COALESCE(l.outstanding_amount, 0) AS outstanding_amount,
-  COALESCE(l.available_amount, 0) AS credit_available_amount,
+  0::bigint AS credit_available_amount,
   COALESCE(pay.paid_amount, 0) AS paid_amount,
   COALESCE(pay.payment_count, 0) AS payment_count,
   CASE

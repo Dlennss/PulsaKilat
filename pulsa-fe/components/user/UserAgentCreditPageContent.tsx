@@ -942,9 +942,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                 <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/14 text-lime-100 ring-1 ring-white/15">
                   <Check className="h-4 w-4" strokeWidth={3} />
                 </span>
-                <p className="text-[10px] font-semibold leading-5 text-emerald-50">
-                  Ambil foto yang jelas dan asli. Marketing dapat memantau dokumen ini, sedangkan keputusan akhir tetap ada pada operator kredit.
-                </p>
               </div>
             </div>
           </div>

@@ -287,7 +287,7 @@ export function UserCreditBillPayLaterContent({ bills }: Props) {
                       </span>
                       <span className="mt-1 block text-sm font-black text-[#047857]">{formatIDR(outstanding)}</span>
                       <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">
-                        Tersedia {formatIDR(Number(item.credit_available_amount || 0))}
+                        Kredit sudah dicairkan ke saldo utama
                       </span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-2">
