@@ -54,9 +54,9 @@ const viewConfig = {
     eyebrow: "Monitor Aktivitas",
     title: "Pantau Aktivitas Agent",
     desc: "Pantau transaksi terakhir agent dan temukan agent yang perlu di-follow-up.",
-    listTitle: "Agent Perlu Perhatian",
-    emptyTitle: "Belum ada agent yang perlu diperhatikan",
-    emptyDescription: "Agent yang tidak bertransaksi selama 2 hari atau lebih akan tampil di sini.",
+    listTitle: "Aktivitas Agent",
+    emptyTitle: "Belum ada agent aktif",
+    emptyDescription: "Agent yang sudah disetujui operator akan tampil di sini beserta transaksi terakhirnya.",
     icon: WalletCards,
     showActions: false,
   },
@@ -140,7 +140,7 @@ function getItemsForView(view: AnalystCreditWorkspaceView, applications: AgentCr
   const rejectedItems = applications.filter(isRejected);
   const archiveItems = applications.filter((item) => item.status === "approved" || isRejected(item) || isPaid(item));
 
-  if (view === "repayment") return activeCredits.filter((item) => inactiveDays(item) >= 2);
+  if (view === "repayment") return activeCredits;
   if (view === "proof") return proofItems;
   if (view === "rejected") return rejectedItems;
   if (view === "archive") return archiveItems;
