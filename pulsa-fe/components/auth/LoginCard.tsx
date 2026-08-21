@@ -21,6 +21,18 @@ function cn(...v: Array<string | false | null | undefined>) {
   return v.filter(Boolean).join(" ");
 }
 
+async function persistLoginToken(token: string) {
+  const response = await fetch("/api/auth/persist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ token }),
+    cache: "no-store",
+  }).catch(() => null);
+
+  return Boolean(response?.ok);
+}
+
 function normalizeGoogleNext(raw: string, fallback = "/user") {
   let current = (raw || "").trim() || fallback;
   for (let i = 0; i < 6; i += 1) {
@@ -114,6 +126,7 @@ export function LoginCard() {
       const loginResponse = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password, turnstileToken }),
         cache: "no-store",
       });
@@ -124,6 +137,11 @@ export function LoginCard() {
         return;
       }
 
+      if (!(await persistLoginToken(backendToken))) {
+        setErr("Sesi login belum tersimpan. Silakan coba lagi.");
+        return;
+      }
+
       localStorage.setItem("auth_token", backendToken);
       localStorage.setItem("auth_source", "password");
 
@@ -131,6 +149,8 @@ export function LoginCard() {
       // backend. Jangan jalankan login NextAuth kedua karena dua perubahan sesi
       // bersamaan memicu kedipan/navigasi ganda terutama di Safari mobile.
       window.location.replace(toDashboardByRole(loginBody.role || decodeJwt(backendToken)?.role || "member"));
+    } catch {
+      setErr("Koneksi login gagal. Periksa jaringan lalu coba lagi.");
     } finally {
       setLoading(false);
     }
