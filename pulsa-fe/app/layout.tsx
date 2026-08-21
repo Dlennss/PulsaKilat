@@ -1,7 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { PulsaKilatLoadingScreen } from "@/components/shared/PulsaKilatLoadingScreen";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://pulsakilat.local"),
@@ -62,7 +61,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             gtag('config', 'G-PC162D40HT');
           `}
         </Script>
-        <PulsaKilatLoadingScreen />
         {children}
       </body>
     </html>
