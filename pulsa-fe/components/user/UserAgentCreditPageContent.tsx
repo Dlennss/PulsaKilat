@@ -941,36 +941,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
         <section className="rounded-[26px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
           <div className="mb-4 flex items-start gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
-              <BadgeCheck className="h-5 w-5" strokeWidth={2.4} />
-            </span>
-            <div>
-              <h2 className="text-lg font-black text-slate-950">Ringkasan Kredit</h2>
-              <p className="mt-0.5 text-[11px] font-semibold text-slate-400">Cek dulu sebelum tanda tangan pengajuan.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-2xl bg-emerald-50 px-3 py-3 ring-1 ring-emerald-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Nominal Diajukan</p>
-              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(requestedAmount)}</p>
-            </div>
-            <div className="rounded-2xl bg-sky-50 px-3 py-3 ring-1 ring-sky-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-sky-700">Saldo Utama</p>
-              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(displayMainBalance)}</p>
-            </div>
-            <div className="rounded-2xl bg-lime-50 px-3 py-3 ring-1 ring-lime-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-lime-700">Sudah Lunas</p>
-              <p className="mt-1 text-base font-black text-slate-950">{formatIDR(totalPaidAmount)}</p>
-            </div>
-            <div className="rounded-2xl bg-amber-50 px-3 py-3 ring-1 ring-amber-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">Tagihan</p>
-              <p className="mt-1 text-sm font-black text-slate-950">{totalActiveCredit > 0 ? "Wajib lunas" : "Bersih"}</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[26px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
-          <div className="mb-4 flex items-start gap-3">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-lime-50 text-[#047857]">
               <FileText className="h-5 w-5" strokeWidth={2.4} />
             </span>
