@@ -349,11 +349,25 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [paymentProofName, setPaymentProofName] = useState("");
   const [surveyFiles, setSurveyFiles] = useState<Record<string, File | null>>({});
+  const [surveyPreviewUrls, setSurveyPreviewUrls] = useState<Record<string, string>>({});
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [displayMainBalance, setDisplayMainBalance] = useState(mainBalance);
   const router = useRouter();
+
+  useEffect(() => {
+    const nextPreviewUrls: Record<string, string> = {};
+    Object.entries(surveyFiles).forEach(([key, file]) => {
+      if (file) nextPreviewUrls[key] = URL.createObjectURL(file);
+    });
+    setSurveyPreviewUrls(nextPreviewUrls);
+
+    return () => {
+      Object.values(nextPreviewUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [surveyFiles]);
+
   const notice = getApplicationNotice(latestApplication);
   const NoticeIcon = notice?.icon;
   const isPendingStatus = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review" || latestApplication?.status === "analysis_review" || latestApplication?.status === "master_review" || latestApplication?.status === "ready_to_disburse";
@@ -913,6 +927,15 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                         {selected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Upload className="h-3.5 w-3.5" strokeWidth={3} />}
                       </span>
                     </div>
+                    {selected && surveyPreviewUrls[item.key] ? (
+                      <div className="mt-3 h-24 overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-emerald-100">
+                        <img
+                          src={surveyPreviewUrls[item.key]}
+                          alt={`Preview ${item.title}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ) : null}
                     <p className="mt-3 truncate text-[11px] font-black text-slate-950">{item.title}</p>
                     <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-500">{selected ? selected.name : item.desc}</p>
                     <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => setSurveyFiles((current) => ({ ...current, [item.key]: event.target.files?.[0] || null }))} />
