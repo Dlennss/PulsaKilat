@@ -368,12 +368,10 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const creditLevelName = latestApplication?.credit_level_name || "Kilat Start";
   const creditLevelImage = levelBadgeByCode[creditLevelCode] || levelBadgeByCode.start;
   const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
-  const creditLimitAmount = Number(latestApplication?.credit_limit_amount || defaultCreditAmount);
   const requestedAmount = defaultCreditAmount;
   const surveyDocumentsComplete = ["ktp", "store", "selfie_ktp", "selfie_marketing"].every((key) => Boolean(surveyFiles[key]));
   const totalPaidAmount = applications.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
   const totalActiveCredit = applications.reduce((sum, item) => sum + Math.max(0, Number(item.outstanding_amount || 0)), 0);
-  const currentOutstanding = Math.max(0, Number(latestApplication?.outstanding_amount || 0));
   const statusIsApproved = latestApplication?.status === "approved";
   const applicantDefaults = latestApplication?.applicant_data || {};
   const applicantText = (key: string, fallback = "") => {
@@ -594,7 +592,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
             <div className="min-w-0 flex-1">
               <p className="truncate text-base font-black text-slate-950">{name || "Agent PulsaKilat"}</p>
               <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
-                {acceptedApplications} pengajuan diterima • Limit aktif {formatIDR(creditLimitAmount)}
+                {acceptedApplications} pengajuan diterima
               </p>
             </div>
             <span className="rounded-full bg-emerald-950 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">
@@ -610,20 +608,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                 <p className="mt-2 text-[10px] font-semibold leading-4 text-emerald-50/80">Saldo untuk pembelian produk dan transaksi harian. Kredit yang disetujui operator langsung masuk ke saldo ini.</p>
               </div>
             </div>
-            <div className="rounded-[22px] border border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4_0%,#ffffff_70%,#ecfccb_130%)] p-4 text-slate-950 shadow-[0_12px_26px_rgba(6,78,59,0.07)]">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">{isApproved ? "Limit kredit aktif" : "Limit pengajuan"}</p>
-              <p className="mt-2 text-2xl font-black">{formatIDR(isApproved ? creditLimitAmount : requestedAmount)}</p>
-              <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">
-                {isApproved ? "Kredit telah dicairkan ke saldo utama dan wajib dilunasi penuh sesuai tagihan." : "Pengajuan boleh di bawah limit aktif."}
-              </p>
-            </div>
-          </div>
-
-          <div className="mx-4 mb-4 h-2 rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-[linear-gradient(90deg,#047857,#84cc16)]"
-              style={{ width: `${Math.min(100, Math.round((currentOutstanding / Math.max(creditLimitAmount, 1)) * 100))}%` }}
-            />
           </div>
         </section>
 
