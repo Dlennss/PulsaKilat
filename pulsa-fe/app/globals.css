@@ -136,8 +136,10 @@ body {
 
 /* Biarkan tailwind yang pegang warna melalui token shadcn */
 body {
-  background: var(--bg); /* legacy fallback */
-  color: var(--text);    /* legacy fallback */
+  /* Jangan gunakan navy sebagai fallback: pada Safari mobile warna ini terlihat
+     sesaat ketika halaman Next sedang berpindah atau melakukan hydration. */
+  background: #eef8f3;
+  color: #052e26;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
 }
 
