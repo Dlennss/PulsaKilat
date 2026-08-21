@@ -7,7 +7,7 @@ type Props = {
 
 export function BackgroundAuth({ children }: Props) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-[#052e26] via-[#0b7a2d] to-[#9be22b] px-3 py-5 auth-shell">
+    <main className="relative flex min-h-svh items-start justify-center overflow-x-hidden overflow-y-auto bg-linear-to-br from-[#052e26] via-[#0b7a2d] to-[#9be22b] px-3 py-4 auth-shell sm:min-h-screen sm:items-center sm:py-5">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(560px_360px_at_72%_12%,rgba(190,242,100,0.45),transparent_70%),radial-gradient(620px_420px_at_12%_72%,rgba(20,184,166,0.22),transparent_66%)]" />
         <div className="absolute inset-0 opacity-[0.11] [background-image:linear-gradient(rgba(255,255,255,.55)_1px,transparent_1px)] [background-size:100%_34px]" />

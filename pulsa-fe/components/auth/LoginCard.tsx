@@ -82,7 +82,6 @@ export function LoginCard() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [authChecked, setAuthChecked] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(false);
   const [shake, setShake] = useState(false);
   const loginCallbackUrl = normalizeGoogleNext((searchParams.get("callbackUrl") || "").trim(), "/user");
@@ -102,10 +101,9 @@ export function LoginCard() {
 
       const sess = (await withTimeout(getSession(), 3000, null)) as SessionShape | null;
       const backendToken = (sess?.backendToken || "").trim();
-      if (!backendToken) { setAuthChecked(true); return; }
+      if (!backendToken) return;
       if (!isJwtValid(backendToken)) {
         void withTimeout(signOut({ redirect: false }), 1500, undefined);
-        setAuthChecked(true);
         return;
       }
       localStorage.setItem("auth_token", backendToken);
@@ -177,18 +175,9 @@ export function LoginCard() {
     }
   }
 
-  if (!authChecked) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-        <span className="text-sm font-medium text-white/70">Memeriksa...</span>
-      </div>
-    );
-  }
-
   return (
     <section className={cn(
-      "auth-card auth-jiggle overflow-hidden rounded-[28px] bg-white/95 shadow-[0_24px_64px_rgba(5,46,38,0.32)]",
+      "auth-card overflow-hidden rounded-[28px] bg-white/95 shadow-[0_24px_64px_rgba(5,46,38,0.32)]",
       shake && "auth-shake"
     )}>
       <div className="px-7 py-8">
