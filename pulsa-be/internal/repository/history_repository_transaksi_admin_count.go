@@ -77,7 +77,7 @@ func (r *HistoryRepository) AdminCountTransaksiByMember(ctx context.Context, mem
 	return total, nil
 }
 
-func (r *HistoryRepository) AdminCountTransaksiAll(ctx context.Context, search, status, kodeProduk, refID, dest, fromStr, toStr string) (int64, error) {
+func (r *HistoryRepository) AdminCountTransaksiAll(ctx context.Context, search, status, kodeProduk, refID, dest, fromStr, toStr, memberRole string) (int64, error) {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 
 	var (
@@ -86,6 +86,10 @@ func (r *HistoryRepository) AdminCountTransaksiAll(ctx context.Context, search, 
 	)
 
 	wheres = append(wheres, "1=1")
+	if role := strings.ToLower(strings.TrimSpace(memberRole)); role != "" {
+		args = append(args, role)
+		wheres = append(wheres, fmt.Sprintf("LOWER(COALESCE(m.role, '')) = $%d", len(args)))
+	}
 
 	search = strings.TrimSpace(search)
 	if search != "" {
@@ -139,7 +143,7 @@ func (r *HistoryRepository) AdminCountTransaksiAll(ctx context.Context, search, 
 			return 0, fmt.Errorf("invalid from (expected YYYY-MM-DD): %w", err)
 		}
 		args = append(args, t)
-		wheres = append(wheres, fmt.Sprintf("dibuat_pada >= $%d", len(args)))
+		wheres = append(wheres, fmt.Sprintf("tm.dibuat_pada >= $%d", len(args)))
 	}
 
 	toStr = strings.TrimSpace(toStr)
@@ -149,10 +153,10 @@ func (r *HistoryRepository) AdminCountTransaksiAll(ctx context.Context, search, 
 			return 0, fmt.Errorf("invalid to (expected YYYY-MM-DD): %w", err)
 		}
 		args = append(args, t.AddDate(0, 0, 1))
-		wheres = append(wheres, fmt.Sprintf("dibuat_pada < $%d", len(args)))
+		wheres = append(wheres, fmt.Sprintf("tm.dibuat_pada < $%d", len(args)))
 	}
 
-	q := fmt.Sprintf(`SELECT COUNT(1) FROM transaksi_member WHERE %s`, strings.Join(wheres, " AND "))
+	q := fmt.Sprintf(`SELECT COUNT(1) FROM transaksi_member tm LEFT JOIN public.member m ON m.id = tm.member_id WHERE %s`, strings.Join(wheres, " AND "))
 	var total int64
 	if err := r.db.QueryRowContext(ctx, q, args...).Scan(&total); err != nil {
 		return 0, err

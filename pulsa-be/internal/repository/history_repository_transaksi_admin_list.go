@@ -128,7 +128,7 @@ func (r *HistoryRepository) AdminListTransaksiByMember(ctx context.Context, memb
 	return out, rows.Err()
 }
 
-func (r *HistoryRepository) AdminListTransaksiAll(ctx context.Context, limit, offset int, search, status, kodeProduk, refID, dest, fromStr, toStr string) ([]AdminTrxRow, error) {
+func (r *HistoryRepository) AdminListTransaksiAll(ctx context.Context, limit, offset int, search, status, kodeProduk, refID, dest, fromStr, toStr, memberRole string) ([]AdminTrxRow, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -144,6 +144,10 @@ func (r *HistoryRepository) AdminListTransaksiAll(ctx context.Context, limit, of
 	)
 
 	wheres = append(wheres, "1=1")
+	if role := strings.ToLower(strings.TrimSpace(memberRole)); role != "" {
+		args = append(args, role)
+		wheres = append(wheres, fmt.Sprintf("LOWER(COALESCE(m.role, '')) = $%d", len(args)))
+	}
 
 	search = strings.TrimSpace(search)
 	if search != "" {

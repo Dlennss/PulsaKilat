@@ -76,7 +76,7 @@ func (s *HistoryService) AdminListTransaksi(
 	ctx context.Context,
 	memberID int64,
 	limit, offset int,
-	search, status, kodeProduk, refID, dest, fromStr, toStr string,
+	search, status, kodeProduk, refID, dest, fromStr, toStr, memberRole string,
 ) ([]repository.AdminTrxRow, int64, error) {
 	if memberID > 0 {
 		items, err := s.repo.AdminListTransaksiByMember(ctx, memberID, limit, offset, search, status, kodeProduk, fromStr, toStr)
@@ -90,11 +90,11 @@ func (s *HistoryService) AdminListTransaksi(
 		return items, total, nil
 	}
 
-	items, err := s.repo.AdminListTransaksiAll(ctx, limit, offset, search, status, kodeProduk, refID, dest, fromStr, toStr)
+	items, err := s.repo.AdminListTransaksiAll(ctx, limit, offset, search, status, kodeProduk, refID, dest, fromStr, toStr, memberRole)
 	if err != nil {
 		return nil, 0, err
 	}
-	total, err := s.repo.AdminCountTransaksiAll(ctx, search, status, kodeProduk, refID, dest, fromStr, toStr)
+	total, err := s.repo.AdminCountTransaksiAll(ctx, search, status, kodeProduk, refID, dest, fromStr, toStr, memberRole)
 	if err != nil {
 		return nil, 0, err
 	}

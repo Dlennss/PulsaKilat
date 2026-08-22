@@ -53,7 +53,7 @@ func HistoryRouter(mux *http.ServeMux, wrap Middleware, deps HistoryDeps) {
 	mux.HandleFunc("/v1/history/transaksi", wrap(ctrl.MemberTransaksi))
 
 	mux.HandleFunc("/v1/admin/history/mutasi", wrap(helper.RequireRoles("admin", "operator_trx", "operator_wallet")(ctrl.AdminMutasi)))
-	mux.HandleFunc("/v1/admin/history/transaksi", wrap(helper.RequireRoles("admin", "operator_trx", "operator_wallet")(ctrl.AdminTransaksi)))
+	mux.HandleFunc("/v1/admin/history/transaksi", wrap(helper.RequireRoles("admin", "operator_trx", "operator_wallet", "analis")(ctrl.AdminTransaksi)))
 	mux.HandleFunc("/v1/admin/history/transaksi/logs", wrap(helper.RequireRoles("admin", "operator_trx", "operator_wallet")(ctrl.AdminTransaksiStatusLogs)))
 	mux.HandleFunc("/v1/admin/history/transaksi/logs/manual", wrap(helper.RequireRoles("admin", "operator_trx", "operator_wallet")(ctrl.AdminTransaksiStatusLogsManual)))
 	mux.HandleFunc("/v1/admin/history/transaksi/cancel", wrap(helper.RequireRoles("admin", "operator_trx", "operator_wallet")(ctrl.AdminCancelTransaksi)))

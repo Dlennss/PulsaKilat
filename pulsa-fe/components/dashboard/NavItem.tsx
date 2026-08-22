@@ -76,6 +76,7 @@ const iconByHref = {
   "/dashboard/master/operator/kenaikan-limit": ArrowUpCircle,
   "/dashboard/master/operator/penarikan-agent": Download,
   "/dashboard/master/operator/monitor-pelunasan": WalletCards,
+  "/dashboard/master/operator/transaksi-agent": ReceiptText,
   "/dashboard/master/operator/bukti-pelunasan": FileCheck2,
   "/dashboard/master/operator/penolakan-catatan": XCircle,
   "/dashboard/master/operator/arsip-keputusan": Archive,

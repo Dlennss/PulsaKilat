@@ -56,6 +56,7 @@ func (h *HistoryController) AdminTransaksi(w http.ResponseWriter, r *http.Reques
 		helper.QueryString(r, "dest"),
 		helper.QueryString(r, "from"),
 		helper.QueryString(r, "to"),
+		helper.QueryString(r, "member_role"),
 	)
 	if err != nil {
 		helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
