@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Eye, EyeOff, KeyRound, Mail, ShieldCheck, ToggleLeft, UserRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Mail, ShieldCheck, ToggleLeft, Trash2, UserRound } from "lucide-react";
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { alertError, alertSuccess, alertWarning } from "@/components/ui/alerts";
+import { alertConfirm, alertError, alertSuccess, alertWarning } from "@/components/ui/alerts";
 import { ALL_MEMBER_ROLES, roleLabel, type AccountScope, type MemberRole } from "@/lib/memberRoles";
 
 type UserRow = {
@@ -61,6 +61,7 @@ export default function EditUserModal({ open, user, onClose, onSuccess, allowedR
   const [showPIN, setShowPIN] = useState(false);
   const [showConfirmPIN, setShowConfirmPIN] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isMember = useMemo(() => isH2HRole(role), [role]);
   const isConvertingToH2H = Boolean(user && isMember && !isH2HRole(user.role));
@@ -79,6 +80,7 @@ export default function EditUserModal({ open, user, onClose, onSuccess, allowedR
     setShowConfirmPassword(false);
     setShowPIN(false);
     setShowConfirmPIN(false);
+    setDeleting(false);
   }, [open, user]);
 
   if (!open || !user) return null;
@@ -130,6 +132,35 @@ export default function EditUserModal({ open, user, onClose, onSuccess, allowedR
     }
   }
 
+  async function removeAccount() {
+    if (!user || saving || deleting) return;
+    const confirmed = await alertConfirm({
+      title: "Nonaktifkan akun ini?",
+      text: `Akun ${user.nama || user.email} akan dihapus dari daftar akun aktif. Riwayat transaksi dan data audit tetap disimpan.`,
+      confirmButtonText: "Ya, hapus akun",
+      cancelButtonText: "Batal",
+    });
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const r = await fetch(`/api/admin/members/${user.id}`, {
+        method: "DELETE",
+        headers: authHeader(),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) {
+        await alertError(j.error || "Gagal menghapus akun");
+        return;
+      }
+      await alertSuccess("Akun berhasil dinonaktifkan.");
+      if (onSuccess) await onSuccess();
+      onClose();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <AppModal
       open={open}
@@ -138,18 +169,30 @@ export default function EditUserModal({ open, user, onClose, onSuccess, allowedR
       subtitle={`Edit profil pengguna #${user.id}`}
       maxWidthClassName="max-w-2xl"
       footer={
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            type="button"
+            variant="danger"
+            className="h-11 justify-center px-4"
+            onClick={removeAccount}
+            disabled={saving || deleting}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {deleting ? "Menghapus..." : "Hapus Akun"}
+          </Button>
+          <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={saving || deleting}>
             Tutup
           </Button>
           <Button
             variant="success"
             className="h-11 px-5"
             onClick={submit}
-            disabled={saving}
+            disabled={saving || deleting}
           >
             {saving ? "Saving..." : "Simpan Perubahan"}
           </Button>
+          </div>
         </div>
       }
     >
