@@ -143,7 +143,7 @@ export default async function UserAccountPage() {
       icon: HelpCircle,
     },
     {
-      href: "/kebijakan-privasi",
+      href: "/kebijakan-privasi?from=account",
       label: "Syarat & Kebijakan",
       desc: "Ketentuan penggunaan PulsaKilat",
       icon: FileText,

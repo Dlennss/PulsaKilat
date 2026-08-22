@@ -35,6 +35,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function KebijakanPrivasiPage() {
-  return <PrivacyPolicyPageContent />;
+type PageProps = {
+  searchParams?: Promise<{ from?: string }>;
+};
+
+export default async function KebijakanPrivasiPage({ searchParams }: PageProps) {
+  const params = searchParams ? await searchParams : undefined;
+  const backHref = params?.from === "account" ? "/user/account" : "/";
+  return <PrivacyPolicyPageContent backHref={backHref} />;
 }

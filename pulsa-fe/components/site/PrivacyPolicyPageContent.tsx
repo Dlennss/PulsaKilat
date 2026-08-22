@@ -7,7 +7,7 @@ const principles = [
     title: "Layanan PulsaKilat",
     items: [
       "PulsaKilat menyediakan pulsa, paket data, token listrik, e-wallet, voucher game, PPOB, dan produk digital lain yang tersedia di aplikasi.",
-      "Harga, ketersediaan produk, estimasi proses, dan status transaksi dapat berubah mengikuti kondisi provider dan sistem pembayaran.",
+      "Harga, ketersediaan produk, estimasi proses, dan status transaksi dapat berubah mengikuti kondisi mitra layanan dan sistem pembayaran.",
       "Setiap transaksi harus dilakukan menggunakan nomor tujuan dan data yang benar. Kesalahan input menjadi tanggung jawab pengguna.",
     ],
   },
@@ -145,7 +145,7 @@ export function PrivacyPolicyPageContent({ backHref = "/" }: PrivacyPolicyPageCo
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">Kontak Resmi</p>
               <h2 className="mt-2 text-xl font-black tracking-tight">
-                Hubungi PulsaKilat jika Anda membutuhkan bantuan terkait privasi dan data akun
+                Hubungi PulsaKilat jika Anda membutuhkan bantuan terkait akun, transaksi, atau ketentuan layanan
               </h2>
             </div>
           </div>
