@@ -130,5 +130,7 @@ func Routes(d Deps) http.Handler {
 		reconcileH.Reconcile(w, r)
 	})
 
-	return helper.PlayIntegrityGuard(helper.SanitizeErrors(helper.CORS(helper.MaxBodySize(1<<20, mux))))
+	// Credit applications carry four compressed survey photos in one JSON payload.
+	// Keep a bounded but practical limit so the request is not truncated into invalid JSON.
+	return helper.PlayIntegrityGuard(helper.SanitizeErrors(helper.CORS(helper.MaxBodySize(8<<20, mux))))
 }

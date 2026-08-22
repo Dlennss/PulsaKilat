@@ -105,12 +105,43 @@ function readStoredImage(file: File | null): Promise<StoredImage | null> {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error(`Gagal membaca file ${file.name}`));
     reader.onload = () => {
-      resolve({
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        data_url: String(reader.result || ""),
-      });
+      const originalDataUrl = String(reader.result || "");
+      if (!file.type.startsWith("image/") || !originalDataUrl) {
+        resolve({ name: file.name, type: file.type, size: file.size, data_url: originalDataUrl });
+        return;
+      }
+
+      const image = new window.Image();
+      image.onload = () => {
+        const maxDimension = 900;
+        const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+        canvas.height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+        const context = canvas.getContext("2d");
+        if (!context) {
+          resolve({ name: file.name, type: file.type, size: file.size, data_url: originalDataUrl });
+          return;
+        }
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve({ name: file.name, type: file.type, size: file.size, data_url: originalDataUrl });
+            return;
+          }
+          const compressedReader = new FileReader();
+          compressedReader.onload = () => resolve({
+            name: file.name,
+            type: "image/jpeg",
+            size: blob.size,
+            data_url: String(compressedReader.result || originalDataUrl),
+          });
+          compressedReader.onerror = () => resolve({ name: file.name, type: file.type, size: file.size, data_url: originalDataUrl });
+          compressedReader.readAsDataURL(blob);
+        }, "image/jpeg", 0.68);
+      };
+      image.onerror = () => resolve({ name: file.name, type: file.type, size: file.size, data_url: originalDataUrl });
+      image.src = originalDataUrl;
     };
     reader.readAsDataURL(file);
   });
