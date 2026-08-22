@@ -862,13 +862,13 @@ export function MasterAgentCreditApplicationList({
                 key={item.id}
                 className={
                   useCompactTable
-                    ? "min-w-0 border-b border-slate-100 bg-white p-3 transition last:border-b-0 hover:bg-emerald-50/30 lg:p-0"
+                    ? "min-w-0 border-b border-emerald-100 bg-white p-3 transition last:border-b-0 hover:bg-emerald-50/40 lg:p-0"
                     : "min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-emerald-300 hover:shadow-[0_14px_28px_rgba(5,122,69,0.08)] sm:p-3"
                 }
               >
                 <div className={useCompactTable ? "grid gap-3 lg:grid-cols-[minmax(220px,1.45fr)_150px_130px_145px_110px] lg:items-center lg:px-4 lg:py-3" : "grid gap-3 lg:grid-cols-[minmax(260px,1fr)_130px_120px] lg:items-center"}>
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-950 text-xs font-black text-lime-300">
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(145deg,#053b2f,#08764f)] text-xs font-black text-lime-200 shadow-[0_8px_16px_rgba(5,59,47,0.16)]">
                       {agentName.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -895,14 +895,14 @@ export function MasterAgentCreditApplicationList({
                     </div>
                   ) : null}
                   <div className={useCompactTable ? "rounded-xl bg-emerald-50 px-3 py-2 text-left lg:bg-transparent lg:px-0 lg:py-0" : "rounded-xl bg-emerald-50 px-3 py-2 text-left lg:text-center"}>
-                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">{isPending ? "Diajukan" : "Sisa"}</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">{isPending ? "Diajukan" : "Modal Berjalan"}</p>
                     <p className="mt-0.5 text-sm font-black text-slate-950">{formatIDR(isPending ? item.requested_amount : outstanding)}</p>
                     {!isPending && approvedAmount ? <p className="mt-0.5 text-[9px] font-bold text-slate-400">Limit {formatIDR(approvedAmount)}</p> : null}
                   </div>
                   <button
                     type="button"
                     onClick={() => setOpenId((current) => (current === item.id ? null : item.id))}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-xs font-black text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50"
                   >
                     Detail
                     <ChevronDown className={`h-4 w-4 transition ${openId === item.id ? "rotate-180" : ""}`} />
@@ -928,7 +928,7 @@ export function MasterAgentCreditApplicationList({
                 ) : null}
 
                 {openId === item.id ? (
-                  <div className="mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-2 sm:p-3">
+                  <div className="mt-3 min-w-0 rounded-3xl border border-emerald-200 bg-[linear-gradient(135deg,#f5fff9_0%,#ffffff_58%,#effcf5_100%)] p-3 shadow-[0_12px_28px_rgba(5,122,69,0.06)] sm:p-5">
                     {showActions && mode !== "marketing" && useCompactTable ? (
                       <div className="mb-3 space-y-3">
                         <MasterAgentCreditDecisionControls
@@ -947,28 +947,28 @@ export function MasterAgentCreditApplicationList({
                         />
                       </div>
                     ) : null}
-                    <div className="grid min-w-0 gap-2 text-[11px] font-semibold text-slate-500 sm:gap-3 lg:grid-cols-2">
-                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                    <div className="grid min-w-0 gap-3 text-[11px] font-semibold text-slate-500 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                         <p className="font-black text-slate-950">Status Pinjaman</p>
                         <p className="mt-1 break-words leading-5">{getDisplayStatus(item)}</p>
                       </div>
-                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                      <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                         <p className="font-black text-slate-950">Transaksi Terakhir</p>
                         <p className="mt-1 break-words leading-5">{item.last_transaction_at ? formatDateTime(item.last_transaction_at) : "Belum ada transaksi"}</p>
                       </div>
-                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                      <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                         <p className="font-black text-slate-950">Jatuh Tempo</p>
                         <p className="mt-1 break-words leading-5">{formatDate(item.loan_due_date)}</p>
                       </div>
-                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                      <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                         <p className="font-black text-slate-950">Email</p>
                         <p className="mt-1 break-all leading-5">{getApplicantText(item, "email", item.member_email || "-")}</p>
                       </div>
-                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                      <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                         <p className="font-black text-slate-950">Alamat Rumah</p>
                         <p className="mt-1 break-words leading-5">{getApplicantText(item, "home_address")}</p>
                       </div>
-                      <div className="min-w-0 rounded-2xl bg-white p-3 ring-1 ring-emerald-100">
+                      <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                         <p className="font-black text-slate-950">Alamat Toko</p>
                         <p className="mt-1 break-words leading-5">{getApplicantText(item, "store_address")}</p>
                       </div>
@@ -979,7 +979,7 @@ export function MasterAgentCreditApplicationList({
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 grid min-w-0 gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                    <div className="mt-4 grid min-w-0 gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                       <MasterAgentCreditDocumentButton agentName={agentName} documents={docs} />
                     </div>
                     <div className="hidden mt-3 min-w-0 rounded-2xl border border-emerald-100 bg-white p-2 sm:p-3">
