@@ -9,8 +9,8 @@ type SessionShape = {
 
 export default async function OperatorLimitUpgradePage() {
   const session = (await getAppServerSession()) as SessionShape | null;
-  const backendApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const backendApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken, 50) : [];
   const rawApplications = backendApplications.length ? backendApplications : await getAgentCreditApplicationsDatabaseFallback();
-  const applications = await attachAgentCreditPaymentsFallback(rawApplications);
+  const applications = backendApplications.length ? rawApplications : await attachAgentCreditPaymentsFallback(rawApplications);
   return <AgentCreditRiskPage applications={applications} mode="operator" />;
 }

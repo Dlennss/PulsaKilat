@@ -143,8 +143,8 @@ export async function getRetailCommissionSummary(token: string): Promise<RetailC
   return null;
 }
 
-export async function getAgentCreditApplications(token: string): Promise<AgentCreditApplication[]> {
-  const response = await fetchAPIFull<AgentCreditApplication>('/v1/master/agent-credit/applications', {
+export async function getAgentCreditApplications(token: string, limit = 50): Promise<AgentCreditApplication[]> {
+  const response = await fetchAPIFull<AgentCreditApplication>(`/v1/master/agent-credit/applications?limit=${Math.min(200, Math.max(1, limit))}`, {
     cache: 'no-store',
     headers: {
       Authorization: `Bearer ${token}`,

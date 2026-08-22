@@ -82,7 +82,8 @@ func (h *AgentCreditController) MasterApplications(w http.ResponseWriter, r *htt
 		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
 		return
 	}
-	items, err := h.svc.ListApplications(r.Context(), auth)
+	limit := helper.QueryInt(r, "limit", 50)
+	items, err := h.svc.ListApplications(r.Context(), auth, limit)
 	if err != nil {
 		helper.WriteJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": err.Error()})
 		return

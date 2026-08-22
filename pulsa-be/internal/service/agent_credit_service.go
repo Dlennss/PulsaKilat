@@ -218,11 +218,14 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	})
 }
 
-func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.AuthInfo) ([]repository.AgentCreditApplication, error) {
+func (s *AgentCreditService) ListApplications(ctx context.Context, auth helper.AuthInfo, limit int) ([]repository.AgentCreditApplication, error) {
 	if !canViewCreditApplications(auth.Role) {
 		return nil, errors.New("akses pemantauan kredit tidak tersedia")
 	}
-	items, err := s.repo.ListApplications(ctx, 200)
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	items, err := s.repo.ListApplications(ctx, limit)
 	if err != nil {
 		return nil, err
 	}

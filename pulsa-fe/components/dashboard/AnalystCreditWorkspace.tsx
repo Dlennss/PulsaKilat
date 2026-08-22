@@ -165,9 +165,9 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const config = viewConfig[view];
   const Icon = config.icon;
   const session = (await getAppServerSession()) as SessionShape | null;
-  const backendApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken) : [];
+  const backendApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken, 50) : [];
   const rawApplications = backendApplications.length ? backendApplications : await getAgentCreditApplicationsDatabaseFallback();
-  const applications = await attachAgentCreditPaymentsFallback(rawApplications);
+  const applications = backendApplications.length ? rawApplications : await attachAgentCreditPaymentsFallback(rawApplications);
   const analysisItems = applications.filter((item) => item.status === "submitted" || item.status === "analysis_review");
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
