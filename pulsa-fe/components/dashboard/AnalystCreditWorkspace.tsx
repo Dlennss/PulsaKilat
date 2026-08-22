@@ -255,7 +255,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
 
           <div className="min-w-0 space-y-4 p-2 sm:space-y-5 sm:p-6 lg:p-7">
             {view === "decision" ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="hidden grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {stats.map((item) => {
                   const StatIcon = item.icon;
                   return (
@@ -277,7 +277,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
             ) : null}
 
             {view === "decision" ? (
-              <div className="overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f2fff8_62%,#e4f8ee_100%)] p-4 shadow-[0_16px_36px_rgba(6,78,59,0.06)] sm:p-5">
+              <div className="hidden overflow-hidden rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ffffff_0%,#f2fff8_62%,#e4f8ee_100%)] p-4 shadow-[0_16px_36px_rgba(6,78,59,0.06)] sm:p-5">
                 <div className="relative">
                   <div className="absolute -right-16 -top-20 hidden h-44 w-44 rounded-full bg-emerald-100/70 sm:block" />
                   <div className="relative">
