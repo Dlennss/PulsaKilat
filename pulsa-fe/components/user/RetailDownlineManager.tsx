@@ -157,9 +157,6 @@ export function RetailDownlineManager({ authToken, role }: Props) {
           ))}
         </div>
       </section>
-
-      {ok ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold leading-5 text-emerald-700">{ok}</div> : null}
-
       <section className="overflow-hidden rounded-[28px] border border-emerald-950/5 bg-white shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-[linear-gradient(135deg,#f8fffb,#eefbf4)] px-4 py-4">
           <div>
