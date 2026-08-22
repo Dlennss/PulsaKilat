@@ -112,7 +112,7 @@ export function RetailDownlineManager({ authToken, role }: Props) {
         setErr(j?.error || "Gagal membuat akun retail.");
         return;
       }
-      setOk(`Akun retail berhasil dibuat dan langsung menjadi downline anda. member_id=${j.member_id}`);
+      setOk(`${role === "agent" ? "Member" : "Akun retail"} berhasil dibuat dan langsung terhubung ke akun anda. member_id=${j.member_id}`);
       setEmail("");
       setNama("");
       setPassword("");
@@ -137,8 +137,8 @@ export function RetailDownlineManager({ authToken, role }: Props) {
             <Users className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-lime-100">Downline Retail</div>
-            <h1 className="mt-1 text-xl font-black">Jaringan Retail</h1>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-lime-100">{role === "agent" ? "Member Bawahan" : "Downline Retail"}</div>
+            <h1 className="mt-1 text-xl font-black">{role === "agent" ? "Tambah Member" : "Jaringan Retail"}</h1>
             <p className="mt-1 text-xs font-semibold leading-5 text-white/75">
               {role === "master" ? "Master dapat menambahkan agent atau user." : role === "agent" ? "Agent dapat menambahkan user." : "Daftar jaringan di atas akun retail."}
             </p>
@@ -163,8 +163,8 @@ export function RetailDownlineManager({ authToken, role }: Props) {
       <section className="overflow-hidden rounded-[28px] border border-emerald-950/5 bg-white shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-[linear-gradient(135deg,#f8fffb,#eefbf4)] px-4 py-4">
           <div>
-            <h2 className="text-sm font-black text-slate-950">Daftar Agent/User</h2>
-            <p className="mt-1 text-xs font-semibold text-slate-500">Downline retail yang terhubung ke akun ini.</p>
+            <h2 className="text-sm font-black text-slate-950">{role === "agent" ? "Member Terdaftar" : "Daftar Agent/User"}</h2>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{role === "agent" ? "Member yang terhubung ke akun agent ini." : "Downline retail yang terhubung ke akun ini."}</p>
           </div>
           {canCreate ? (
             <button
@@ -191,7 +191,7 @@ export function RetailDownlineManager({ authToken, role }: Props) {
                   <Users className="h-7 w-7" />
                 </div>
                 <p className="mt-3 text-sm font-black text-slate-950">Belum ada jaringan</p>
-                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Agent atau user yang kamu tambahkan akan tampil di sini.</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{role === "agent" ? "Member yang kamu tambahkan akan tampil di sini." : "Agent atau user yang kamu tambahkan akan tampil di sini."}</p>
               </div>
             </div>
           ) : null}
@@ -225,8 +225,8 @@ export function RetailDownlineManager({ authToken, role }: Props) {
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#047857]">Tambah Downline</div>
-                <h3 className="mt-1 text-xl font-black text-slate-950">Buat Akun Retail</h3>
-                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Akun baru akan langsung masuk ke jaringan anda.</p>
+                <h3 className="mt-1 text-xl font-black text-slate-950">{role === "agent" ? "Buat Member" : "Buat Akun Retail"}</h3>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">Akun baru akan langsung terhubung sebagai member anda.</p>
               </div>
               <button
                 type="button"

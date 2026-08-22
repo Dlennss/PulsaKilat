@@ -118,8 +118,8 @@ export default async function UserAccountPage() {
       ? [
           {
             href: "/user/account/downline",
-            label: "Jaringan Retail",
-            desc: role === "master" ? "Kelola agent dan user bawahan" : "Kelola user bawahan",
+            label: role === "agent" ? "Tambah Member" : "Jaringan Retail",
+            desc: role === "master" ? "Kelola agent dan user bawahan" : "Tambahkan member/user bawahan",
             icon: UsersRound,
           },
         ]
