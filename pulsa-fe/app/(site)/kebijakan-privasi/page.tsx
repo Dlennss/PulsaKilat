@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { PrivacyPolicyPageContent } from "@/components/site/PrivacyPolicyPageContent";
 import { CANONICAL_SITE_URL } from "@/lib/seo-articles";
 
-const pageTitle = "Kebijakan Privasi PulsaKilat | Website dan Aplikasi Android";
+const pageTitle = "Syarat & Ketentuan PulsaKilat | Layanan Produk Digital";
 const pageDescription =
-  "Kebijakan privasi PulsaKilat untuk website dan aplikasi Android, termasuk penggunaan data akun, transaksi, keamanan, dan login Google.";
+  "Syarat dan ketentuan penggunaan PulsaKilat untuk transaksi produk digital, saldo, agent, marketing, dan kredit agent.";
 
 export const metadata: Metadata = {
   title: pageTitle,
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Kebijakan Privasi PulsaKilat",
+        alt: "Syarat dan Ketentuan PulsaKilat",
       },
     ],
   },

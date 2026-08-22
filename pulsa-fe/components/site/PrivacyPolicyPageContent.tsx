@@ -4,42 +4,43 @@ import { GuestBottomNav } from "@/components/guest/GuestBottomNav";
 
 const principles = [
   {
-    title: "Data yang Kami Kumpulkan",
+    title: "Layanan PulsaKilat",
     items: [
-      "Data akun seperti nama, email, nomor WhatsApp, dan informasi profil yang Anda kirim saat mendaftar atau login.",
-      "Data transaksi seperti produk yang dibeli, nomor tujuan, nominal, status transaksi, pembayaran, dan riwayat penggunaan layanan.",
-      "Data teknis seperti alamat IP, perangkat, browser, aplikasi, dan log sistem yang dibutuhkan untuk keamanan serta analisa gangguan.",
+      "PulsaKilat menyediakan pulsa, paket data, token listrik, e-wallet, voucher game, PPOB, dan produk digital lain yang tersedia di aplikasi.",
+      "Harga, ketersediaan produk, estimasi proses, dan status transaksi dapat berubah mengikuti kondisi provider dan sistem pembayaran.",
+      "Setiap transaksi harus dilakukan menggunakan nomor tujuan dan data yang benar. Kesalahan input menjadi tanggung jawab pengguna.",
     ],
   },
   {
-    title: "Cara Data Digunakan",
+    title: "Akun dan Saldo",
     items: [
-      "Memproses transaksi produk digital, PPOB, deposit, withdraw, komisi, dan layanan kemitraan yang Anda gunakan di PulsaKilat.",
-      "Melakukan verifikasi akun, pencegahan penyalahgunaan, audit keamanan, dan penanganan keluhan atau permintaan bantuan pelanggan.",
-      "Mengirim informasi transaksi, status pembayaran, bukti pembelian, notifikasi sistem, dan pembaruan layanan yang relevan.",
+      "Satu akun hanya boleh digunakan oleh pemiliknya. Pengguna wajib menjaga password, PIN, kode verifikasi, dan perangkat login.",
+      "Saldo utama digunakan untuk pembelian produk dan transaksi yang tersedia. Saldo yang sudah terpotong hanya dapat dikembalikan sesuai hasil pemeriksaan transaksi.",
+      "Top up dianggap berhasil setelah pembayaran terverifikasi dan saldo masuk ke akun. Bukti pembayaran wajib disimpan sampai transaksi selesai.",
     ],
   },
   {
-    title: "Pihak Ketiga yang Terkait",
+    title: "Program Kredit Agent",
     items: [
-      "Penyedia login seperti Google untuk autentikasi akun saat Anda memilih masuk menggunakan Google.",
-      "Penyedia pembayaran seperti QRIS, payment gateway, bank, dan mitra biller atau provider produk digital untuk memproses transaksi.",
-      "Layanan infrastruktur dan keamanan yang kami gunakan untuk menjaga kestabilan aplikasi, pemantauan, dan perlindungan sistem.",
+      "Fasilitas kredit hanya tersedia untuk agent yang mengajukan dan memenuhi pemeriksaan sistem serta dokumen yang ditentukan.",
+      "Operator Kredit memiliki keputusan akhir untuk menyetujui, menolak, menonaktifkan, atau mengubah limit kredit agent.",
+      "Kredit yang disetujui masuk sebagai saldo utama dan hanya dapat digunakan sesuai aturan aplikasi. Saat agent berhenti menggunakan layanan, seluruh kewajiban kredit harus diselesaikan.",
+      "Agent yang tidak bertransaksi selama beberapa hari dapat masuk pemantauan operator untuk ditindaklanjuti bersama marketing.",
     ],
   },
   {
-    title: "Penyimpanan dan Perlindungan Data",
+    title: "Peran Marketing dan Operator",
     items: [
-      "Kami menyimpan data yang diperlukan selama akun aktif atau selama dibutuhkan untuk kewajiban hukum, audit, dan penyelesaian sengketa.",
-      "Kami menerapkan pembatasan akses internal, pencatatan aktivitas penting, serta kontrol teknis yang wajar untuk melindungi data.",
-      "Walaupun kami berupaya menjaga keamanan, tidak ada sistem elektronik yang dapat dijamin 100% bebas risiko.",
+      "Marketing membantu memantau agent binaan, melihat dokumen dan aktivitas yang diizinkan, serta menyampaikan informasi kepada operator.",
+      "Marketing tidak dapat menyetujui kredit, menolak kredit, atau menaikkan limit agent.",
+      "Operator dan admin dapat melakukan pemantauan, pemeriksaan, pembatasan akun, dan penanganan masalah demi keamanan layanan.",
     ],
   },
   {
-    title: "Hak Pengguna",
+    title: "Penggunaan yang Dilarang",
     items: [
-      "Anda dapat meminta pembaruan data profil, penutupan akun, atau bantuan terkait informasi akun melalui kontak resmi PulsaKilat.",
-      "Permintaan tertentu dapat tunduk pada kewajiban penyimpanan data transaksi, audit, dan kepatuhan hukum yang masih berlaku.",
+      "Dilarang menggunakan PulsaKilat untuk penipuan, pencucian uang, penyalahgunaan identitas, manipulasi transaksi, atau aktivitas yang melanggar hukum.",
+      "PulsaKilat dapat menunda transaksi, membatasi fitur, atau menonaktifkan akun jika ditemukan aktivitas mencurigakan atau pelanggaran ketentuan.",
     ],
   },
 ];
@@ -65,13 +66,12 @@ export function PrivacyPolicyPageContent({ backHref = "/" }: PrivacyPolicyPageCo
 
         <div className="overflow-hidden rounded-[28px] border border-white/70 bg-linear-to-br from-[#0f6fcb] via-[#1576d0] to-[#2f92df] px-5 py-6 text-white shadow-[0_24px_60px_rgba(15,111,203,0.22)]">
           <div className="max-w-[20rem]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/72">Kebijakan Privasi</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/72">Syarat & Ketentuan</p>
             <h1 className="mt-3 text-balance text-[30px] font-black leading-[1.02] tracking-tight">
-              Privasi pengguna PulsaKilat untuk website dan aplikasi Android.
+              Aturan penggunaan layanan PulsaKilat.
             </h1>
             <p className="mt-4 text-sm leading-6 text-white/90 text-justify">
-              Kebijakan ini menjelaskan jenis data yang kami gunakan, tujuan penggunaannya, dan bagaimana PulsaKilat
-              melindungi informasi pengguna saat mengakses layanan retail, agen, H2H, website, maupun aplikasi Android.
+              Ketentuan ini menjelaskan cara menggunakan produk digital, saldo, akun agent, program kredit, dan fitur pendampingan marketing di PulsaKilat.
             </p>
             <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/72">Berlaku sejak 6 April 2026</p>
           </div>
@@ -87,7 +87,7 @@ export function PrivacyPolicyPageContent({ backHref = "/" }: PrivacyPolicyPageCo
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-700">Ringkasan</p>
               <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">
-                PulsaKilat memakai data seperlunya untuk menjalankan transaksi dan menjaga keamanan layanan
+                PulsaKilat menjaga transaksi tetap aman, jelas, dan bertanggung jawab
               </h2>
             </div>
           </div>
@@ -117,21 +117,20 @@ export function PrivacyPolicyPageContent({ backHref = "/" }: PrivacyPolicyPageCo
               <LockKeyhole className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-700">Persetujuan & Perubahan</p>
-              <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">
-                Dengan memakai layanan PulsaKilat, Anda menyetujui pengolahan data sesuai kebijakan ini
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-700">Persetujuan & Perubahan</p>
+            <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+                Dengan memakai layanan PulsaKilat, Anda menyetujui ketentuan penggunaan ini
               </h2>
             </div>
           </div>
 
           <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600 text-justify">
             <p>
-              PulsaKilat dapat memperbarui kebijakan privasi ini dari waktu ke waktu untuk menyesuaikan perubahan fitur,
-              proses bisnis, atau kewajiban hukum. Versi terbaru akan dipublikasikan pada halaman ini.
+              PulsaKilat dapat memperbarui ketentuan ini mengikuti perubahan fitur, proses layanan, dan kebutuhan keamanan.
+              Versi terbaru akan dipublikasikan pada halaman ini.
             </p>
             <p>
-              Jika Anda menggunakan login Google pada aplikasi Android PulsaKilat, data akun Google yang tersedia untuk
-              proses autentikasi hanya digunakan untuk masuk ke akun, verifikasi identitas, dan pengamanan akses.
+              Pengguna dianggap menyetujui perubahan ketentuan apabila tetap menggunakan akun dan layanan PulsaKilat setelah pembaruan dipublikasikan.
             </p>
           </div>
         </div>
