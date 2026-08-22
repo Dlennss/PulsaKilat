@@ -135,8 +135,8 @@ export default function EditUserModal({ open, user, onClose, onSuccess, allowedR
   async function removeAccount() {
     if (!user || saving || deleting) return;
     const confirmed = await alertConfirm({
-      title: "Nonaktifkan akun ini?",
-      text: `Akun ${user.nama || user.email} akan dihapus dari daftar akun aktif. Riwayat transaksi dan data audit tetap disimpan.`,
+      title: "Hapus akun permanen?",
+      text: `Akun ${user.nama || user.email} dan data yang terkait akan dihapus dari database. Tindakan ini tidak dapat dibatalkan.`,
       confirmButtonText: "Ya, hapus akun",
       cancelButtonText: "Batal",
     });
@@ -153,7 +153,7 @@ export default function EditUserModal({ open, user, onClose, onSuccess, allowedR
         await alertError(j.error || "Gagal menghapus akun");
         return;
       }
-      await alertSuccess("Akun berhasil dinonaktifkan.");
+      await alertSuccess("Akun berhasil dihapus dari database.");
       if (onSuccess) await onSuccess();
       onClose();
     } finally {

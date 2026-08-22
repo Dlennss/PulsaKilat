@@ -79,8 +79,7 @@ WHERE id = $1
 
 func (r *UserRepository) Delete(ctx context.Context, id int64) error {
 	res, err := r.db.ExecContext(ctx, `
-UPDATE public.member
-SET aktif = false
+DELETE FROM public.member
 WHERE id = $1
 `, id)
 	if err != nil {
