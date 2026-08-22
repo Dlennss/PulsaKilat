@@ -72,13 +72,9 @@ const iconByHref = {
   "/dashboard/master/analis/penolakan-catatan": XCircle,
   "/dashboard/master/analis/arsip-keputusan": Archive,
   "/dashboard/master/operator": ShieldCheck,
-  "/dashboard/master/operator/antrean": ClipboardList,
   "/dashboard/master/operator/kenaikan-limit": ArrowUpCircle,
-  "/dashboard/master/operator/penarikan-agent": Download,
   "/dashboard/master/operator/monitor-pelunasan": WalletCards,
   "/dashboard/master/operator/transaksi-agent": ReceiptText,
-  "/dashboard/master/operator/bukti-pelunasan": FileCheck2,
-  "/dashboard/master/operator/penolakan-catatan": XCircle,
   "/dashboard/master/operator/arsip-keputusan": Archive,
   "/dashboard/master/riwayat-acc-analis": FileText,
 } as const;
