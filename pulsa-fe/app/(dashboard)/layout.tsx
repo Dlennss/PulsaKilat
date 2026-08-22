@@ -211,14 +211,18 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
         return;
       }
 
-      if ((normalizedRole === "master" || normalizedRole === "marketing" || normalizedRole === "analis") && !inMasterArea) {
+      if (normalizedRole === "marketing") {
+        router.replace("/user");
+        return;
+      }
+
+      if ((normalizedRole === "master" || normalizedRole === "analis") && !inMasterArea) {
         router.replace("/dashboard/master");
         return;
       }
 
       if (
         normalizedRole !== "master" &&
-        normalizedRole !== "marketing" &&
         masterOnlyPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
       ) {
         router.replace(targetPathByRole(normalizedRole));

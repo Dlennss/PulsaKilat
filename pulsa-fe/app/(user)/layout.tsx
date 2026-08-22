@@ -17,7 +17,7 @@ type SessionShape = {
 export default async function UserLayout({ children }: { children: React.ReactNode }) {
   const session = (await getAppServerSession()) as SessionShape | null;
   const role = String(session?.user?.role || "").trim().toLowerCase();
-  const isRetailRole = role === "user" || role === "agent" || role === "master";
+  const isRetailRole = role === "user" || role === "agent" || role === "master" || role === "marketing";
 
   if (!session?.backendToken) {
     redirect("/login");

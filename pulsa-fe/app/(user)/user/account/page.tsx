@@ -3,13 +3,16 @@ import { redirect } from "next/navigation";
 import {
   Bell,
   BriefcaseBusiness,
+  ClipboardList,
   ChevronRight,
+  FileBarChart,
   FileText,
   HelpCircle,
   LockKeyhole,
   Mail,
   Phone,
   ShieldCheck,
+  UserPlus,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -46,7 +49,7 @@ function panelDescriptionByRole(role: string) {
   if (role === "admin" || role === "staff") return "Masuk ke panel admin";
   if (role === "auditor") return "Masuk ke panel audit";
   if (role === "analis") return "Masuk ke panel operator kredit";
-  if (role === "marketing") return "Masuk ke panel marketing";
+  if (role === "marketing") return "Menu kerja marketing tersedia di Akun";
   if (role === "master") return "Masuk ke panel master";
   if (role === "operator_trx") return "Masuk ke panel transaksi";
   if (role === "operator_wallet") return "Masuk ke panel wallet";
@@ -72,7 +75,7 @@ export default async function UserAccountPage() {
   const profilePhotoURL = profile?.profile_photo_url || user?.image || "";
   const role = normalizeRole(profile?.role || user?.role);
   const canManageRetailNetwork = role === "master" || role === "agent";
-  const canOpenWorkPanel = role !== "user" && role !== "agent";
+  const canOpenWorkPanel = role !== "user" && role !== "agent" && role !== "marketing";
 
   const personalItems = [
     {
@@ -93,6 +96,14 @@ export default async function UserAccountPage() {
   ];
 
   const settingItems = [
+    ...(role === "marketing"
+      ? [
+          { href: "/user/account/tambah-agent", label: "Tambah Agent", desc: "Daftarkan agent baru dari lapangan", icon: UserPlus },
+          { href: "/user/account/pengajuan-agent", label: "Pengajuan & Dokumen", desc: "Pantau dokumen pengajuan agent", icon: ClipboardList },
+          { href: "/user/account/agent-binaan", label: "Agent Binaan", desc: "Lihat saldo dan aktivitas agent", icon: UsersRound },
+          { href: "/user/account/laporan-marketing", label: "Laporan Marketing", desc: "Cetak dan unduh rekap pendampingan", icon: FileBarChart },
+        ]
+      : []),
     ...(canOpenWorkPanel
       ? [
           {
