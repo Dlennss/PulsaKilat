@@ -220,8 +220,8 @@ export function RetailDownlineManager({ authToken, role }: Props) {
       </section>
 
       {showCreateModal ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-[2px]">
-          <div className="absolute inset-x-0 bottom-0 left-1/2 max-h-[88vh] w-full max-w-md -translate-x-1/2 overflow-y-auto rounded-t-[30px] bg-white p-5 shadow-[0_18px_46px_rgba(15,23,42,0.24)] md:w-[390px] md:max-w-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[30px] bg-white p-5 shadow-[0_18px_46px_rgba(15,23,42,0.24)] md:w-[390px] md:max-w-none">
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#047857]">Tambah Downline</div>
