@@ -736,9 +736,9 @@ export function MasterAgentCreditApplicationList({
   }
 
   return (
-    <section className="min-w-0 rounded-[22px] border border-slate-200 bg-white p-2 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:rounded-[28px] sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+    <section className="min-w-0 overflow-hidden rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_18px_42px_rgba(15,23,42,0.06)] sm:rounded-[28px] sm:p-5">
+      <div className="flex min-w-0 flex-col items-start gap-3">
+        <div className="min-w-0 max-w-2xl">
           <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">{eyebrow || (showActions ? "Meja Review" : "Arsip Kredit")}</p>
           <h2 className="mt-1 text-xl font-black text-slate-950">{title || (showActions ? "Pengajuan Kredit Terbaru" : "Riwayat Pinjaman Agent")}</h2>
           <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-slate-500">
@@ -749,12 +749,12 @@ export function MasterAgentCreditApplicationList({
                 : "Tugas marketing: dampingi agent, lengkapi selfie pertemuan, tanda tangan verifikasi, lalu kirim data ke operator."}
           </p>
         </div>
-        <span className="inline-flex w-fit items-center rounded-full bg-[linear-gradient(135deg,#047857,#8bdc24)] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-[0_12px_28px_rgba(5,122,69,0.18)]">
+        <span className="inline-flex w-fit items-center rounded-full bg-[linear-gradient(135deg,#047857,#8bdc24)] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-[0_12px_28px_rgba(5,122,69,0.18)]">
           {mode === "admin" ? "Admin" : mode === "analyst" ? "Operator" : "Marketing"}
         </span>
       </div>
 
-      <div className="mt-4 flex min-w-0 flex-col gap-3 sm:mt-5 xl:flex-row xl:items-center">
+      <div className="mt-4 flex min-w-0 flex-col gap-3 sm:mt-5">
         <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-500 focus-within:border-emerald-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-100">
           <Search className="h-4 w-4" />
           <input
@@ -764,7 +764,7 @@ export function MasterAgentCreditApplicationList({
             placeholder="Cari nama agent"
           />
         </label>
-        <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 xl:pb-0">
+        <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-slate-200 bg-white text-emerald-700">
             <SlidersHorizontal className="h-4 w-4" strokeWidth={2.5} />
           </span>
