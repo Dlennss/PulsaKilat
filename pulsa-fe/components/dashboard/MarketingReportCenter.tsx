@@ -307,17 +307,17 @@ export function MarketingReportCenter({ applications }: Props) {
 
   return (
     <section className="mx-auto w-full max-w-7xl overflow-hidden rounded-lg border border-emerald-200 bg-white shadow-[0_18px_42px_rgba(6,78,59,0.08)]">
-      <header className="flex flex-col gap-4 bg-[linear-gradient(135deg,#052e26,#047857)] px-4 py-5 text-white sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-        <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-lime-200">Administrasi Marketing</p><h1 className="mt-1 text-2xl font-black">Laporan Agent Binaan</h1><p className="mt-1 text-xs font-semibold text-emerald-100/75">Rekap onboarding, survei, dan aktivitas agent binaan.</p></div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={printReport} disabled={!rows.length || exporting} className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-xs font-black disabled:opacity-40"><Printer className="h-4 w-4" />Cetak</button>
-          <button type="button" onClick={() => void downloadPdf()} disabled={!rows.length || exporting} className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-3 text-xs font-black text-emerald-800 disabled:opacity-40"><FileDown className="h-4 w-4" />PDF</button>
-          <button type="button" onClick={() => void downloadExcel()} disabled={!rows.length || exporting} className="inline-flex h-10 items-center gap-2 rounded-lg bg-lime-300 px-3 text-xs font-black text-emerald-950 disabled:opacity-40"><Sheet className="h-4 w-4" />Excel</button>
+      <header className="grid gap-4 bg-[linear-gradient(135deg,#052e26,#047857)] px-4 py-5 text-white sm:px-6 sm:py-6">
+        <div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-lime-200">Administrasi Marketing</p><h1 className="mt-1 text-2xl font-black leading-tight sm:text-3xl">Laporan Agent Binaan</h1><p className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-emerald-100/75">Rekap onboarding, survei, dan aktivitas agent binaan.</p></div>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <button type="button" onClick={printReport} disabled={!rows.length || exporting} className="inline-flex h-10 min-w-[92px] flex-1 items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-xs font-black disabled:opacity-40 sm:flex-none"><Printer className="h-4 w-4" />Cetak</button>
+          <button type="button" onClick={() => void downloadPdf()} disabled={!rows.length || exporting} className="inline-flex h-10 min-w-[92px] flex-1 items-center justify-center gap-2 rounded-lg bg-white px-3 text-xs font-black text-emerald-800 disabled:opacity-40 sm:flex-none"><FileDown className="h-4 w-4" />PDF</button>
+          <button type="button" onClick={() => void downloadExcel()} disabled={!rows.length || exporting} className="inline-flex h-10 min-w-[92px] flex-1 items-center justify-center gap-2 rounded-lg bg-lime-300 px-3 text-xs font-black text-emerald-950 disabled:opacity-40 sm:flex-none"><Sheet className="h-4 w-4" />Excel</button>
         </div>
       </header>
 
       <div className="border-b border-emerald-100 bg-[#f8fffb] p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_160px_160px_180px]">
+        <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
           <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-500"><Search className="h-4 w-4 text-emerald-600" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent font-semibold outline-none" placeholder="Cari agent, toko, WA, atau ID" /></label>
           <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} aria-label="Tanggal awal" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-400" />
           <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} aria-label="Tanggal akhir" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 outline-none focus:border-emerald-400" />
@@ -325,7 +325,7 @@ export function MarketingReportCenter({ applications }: Props) {
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto border-b border-slate-200 px-4 pt-3">
+      <div className="flex min-w-0 gap-2 overflow-x-auto border-b border-slate-200 px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((item) => <button key={item.value} type="button" onClick={() => setTab(item.value)} className={tab === item.value ? "shrink-0 border-b-2 border-emerald-700 px-3 pb-3 text-xs font-black text-emerald-700" : "shrink-0 border-b-2 border-transparent px-3 pb-3 text-xs font-black text-slate-500 hover:text-emerald-700"}>{item.label}</button>)}
       </div>
 
