@@ -33,6 +33,7 @@ type RegisterMemberModalProps = {
   title?: string;
   subtitle?: string;
   theme?: "dark" | "retail";
+  createEndpoint?: string;
   onSuccess?: (payload: RegisterSuccessPayload) => Promise<void> | void;
 };
 
@@ -119,7 +120,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
 
     setLoading(true);
     try {
-      const r = await fetch("/api/admin/members/create", {
+      const r = await fetch(props.createEndpoint ?? "/api/admin/members/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify({

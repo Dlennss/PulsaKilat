@@ -55,6 +55,7 @@ export default function OperatorTambahMarketingPage() {
         title="Tambah Marketing"
         subtitle="Buat akun marketing PulsaKilat untuk memantau agent binaan."
         theme="retail"
+        createEndpoint="/api/operator/marketing/create"
       />
     </main>
   );

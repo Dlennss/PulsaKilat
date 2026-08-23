@@ -193,3 +193,26 @@ func (h *UserController) Handle(w http.ResponseWriter, r *http.Request) {
 		helper.WriteJSON(w, http.StatusMethodNotAllowed, commondto.MapError("method not allowed"))
 	}
 }
+
+func (h *UserController) CreateMarketing(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, commondto.MapError("method not allowed"))
+		return
+	}
+	var req struct {
+		Email    string `json:"email"`
+		Nama     string `json:"nama"`
+		Phone    string `json:"phone"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError("invalid json"))
+		return
+	}
+	id, err := h.svc.Create(r.Context(), req.Email, req.Nama, req.Password, "", helper.RoleRetailMarketing, true)
+	if err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "member_id": id, "phone": req.Phone})
+}

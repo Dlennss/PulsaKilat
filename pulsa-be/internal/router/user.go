@@ -43,4 +43,5 @@ func UserRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB) {
 	mux.HandleFunc("/v1/admin/members/stats", wrap(adminOrWallet(ctrl.Stats)))
 	mux.HandleFunc("/v1/admin/members/hierarchy/preview", wrap(adminOnly(ctrl.PreviewHierarchy)))
 	mux.HandleFunc("/v1/admin/members/hierarchy/apply", wrap(adminOnly(ctrl.ApplyHierarchy)))
+	mux.HandleFunc("/v1/master/operator/marketing", wrap(helper.RequireRoles("admin", helper.RoleRetailAnalyst)(ctrl.CreateMarketing)))
 }

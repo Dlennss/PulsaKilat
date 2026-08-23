@@ -35,8 +35,8 @@ func (s *UserService) Create(ctx context.Context, email, nama, password, pin, ro
 		role != helper.RoleOperatorWallet {
 		return 0, errors.New("role tidak valid")
 	}
-	if email == "" || password == "" || pin == "" {
-		return 0, errors.New("email/password/pin required")
+	if email == "" || password == "" {
+		return 0, errors.New("email/password required")
 	}
 	if len(password) < 8 {
 		return 0, errors.New("password min 8 chars")
