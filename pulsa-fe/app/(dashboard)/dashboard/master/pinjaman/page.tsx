@@ -15,7 +15,7 @@ export default async function MasterDashboardPage() {
   const applications = await attachAgentCreditPaymentsFallback(rawApplications);
   const role = String(session?.user?.role || "").trim().toLowerCase();
   const masterItems = applications.filter((item) => {
-    if (role === "marketing") return item.status === "submitted" || item.status === "marketing_review";
+    if (role === "marketing") return true;
     if (item.status === "submitted" || item.status === "marketing_review" || item.status === "master_review") return true;
     if (item.status !== "approved") return false;
     const loanStatus = String(item.loan_status || "").toLowerCase();
@@ -38,7 +38,7 @@ export default async function MasterDashboardPage() {
                 </p>
                 <h1 className="text-3xl font-black tracking-normal sm:text-4xl">Pendampingan lapangan marketing</h1>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-emerald-50/90 sm:text-base">
-                  Lengkapi selfie bersama agent, cek dokumen pengajuan, tanda tangan sebagai marketing, lalu kirim berkas lengkap ke operator.
+                  Pantau seluruh status agent binaan, lengkapi dokumen yang diperlukan, lalu ikuti proses keputusan operator.
                 </p>
               </div>
               <div className="rounded-3xl border border-white/20 bg-white/12 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur">
@@ -63,7 +63,7 @@ export default async function MasterDashboardPage() {
                 eyebrow="Pengajuan Masuk"
                 title="Daftar pendampingan agent"
                 emptyTitle="Belum ada pengajuan"
-                emptyDescription="Data agent yang perlu didampingi marketing akan muncul di sini setelah pengajuan dikirim."
+                emptyDescription="Data agent binaan akan muncul di sini setelah pengajuan dibuat dan tetap terlihat setelah operator mengambil keputusan."
               />
             </div>
           </div>
