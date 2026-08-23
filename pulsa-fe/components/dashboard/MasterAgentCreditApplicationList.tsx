@@ -1,12 +1,13 @@
 "use client";
 
-import { Camera, CheckCircle2, ChevronDown, Download, Eye, FileDown, FileSignature, Loader2, Printer, ReceiptText, Search, SlidersHorizontal, Store, Upload, UserRound, UsersRound, X } from "lucide-react";
+import { Camera, CheckCircle2, ChevronDown, Download, Eye, FileDown, FileSignature, Loader2, Printer, ReceiptText, Search, SlidersHorizontal, Store, Trash2, Upload, UserRound, UsersRound, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 import { MasterAgentCreditDecisionControls } from "@/components/dashboard/MasterAgentCreditDecisionControls";
 import { MasterAgentCreditDocumentButton } from "@/components/dashboard/MasterAgentCreditDocumentButton";
 import { downloadXlsx } from "@/components/dashboard/auditorHelpers";
+import { alertConfirm, alertError, alertSuccess } from "@/components/ui/alerts";
 
 function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
@@ -521,12 +522,14 @@ export function MasterAgentCreditApplicationList({
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<number | null>(null);
   const [previewProof, setPreviewProof] = useState<{ agentName: string; src: string; title: string } | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [removedIds, setRemovedIds] = useState<Set<number>>(() => new Set());
   const trimmedQuery = query.trim().toLowerCase();
   const filteredApplications = useMemo(() => {
-    const byFilter = applications.filter((item) => matchesFilter(item, filter));
+    const byFilter = applications.filter((item) => !removedIds.has(item.id) && matchesFilter(item, filter));
     if (!trimmedQuery) return byFilter;
     return byFilter.filter((item) => searchableText(item).includes(trimmedQuery));
-  }, [applications, filter, trimmedQuery]);
+  }, [applications, filter, removedIds, trimmedQuery]);
   const pageSize = 20;
   const pageCount = Math.max(1, Math.ceil(filteredApplications.length / pageSize));
   const safePage = Math.min(page, pageCount);
@@ -540,6 +543,34 @@ export function MasterAgentCreditApplicationList({
   const reportSubtitle = `${filter === "all" ? "Semua status" : applicationFilters.find((item) => item.key === filter)?.label || filter}${trimmedQuery ? ` - pencarian "${query.trim()}"` : ""}`;
   const canExportReport = enableReportActions && filteredApplications.length > 0;
   const useCompactTable = mode === "analyst" || mode === "marketing";
+
+  async function deleteRejectedApplication(item: AgentCreditApplication) {
+    if (deletingId !== null || !["rejected", "analysis_rejected", "master_rejected"].includes(String(item.status || "").toLowerCase())) return;
+    const confirmed = await alertConfirm({
+      title: "Hapus pengajuan ditolak?",
+      text: "Data pengajuan ini akan dihapus permanen dari database dan tidak dapat dipulihkan.",
+      confirmButtonText: "Ya, hapus",
+      cancelButtonText: "Batal",
+    });
+    if (!confirmed) return;
+    setDeletingId(item.id);
+    try {
+      const response = await fetch("/api/agent-credit/applications/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: item.id }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!response.ok || !body.ok) throw new Error(body.error || "Pengajuan gagal dihapus");
+      setRemovedIds((current) => new Set(current).add(item.id));
+      setOpenId(null);
+      await alertSuccess("Pengajuan ditolak berhasil dihapus.");
+    } catch (error) {
+      await alertError(error instanceof Error ? error.message : "Pengajuan gagal dihapus");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   async function exportXlsxReport() {
     if (!canExportReport) return;
@@ -899,14 +930,28 @@ export function MasterAgentCreditApplicationList({
                     <p className="mt-0.5 text-sm font-black text-slate-950">{formatIDR(isPending ? item.requested_amount : outstanding)}</p>
                     {!isPending && approvedAmount ? <p className="mt-0.5 text-[9px] font-bold text-slate-400">Limit {formatIDR(approvedAmount)}</p> : null}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setOpenId((current) => (current === item.id ? null : item.id))}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-xs font-black text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50"
-                  >
-                    Detail
-                    <ChevronDown className={`h-4 w-4 transition ${openId === item.id ? "rotate-180" : ""}`} />
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOpenId((current) => (current === item.id ? null : item.id))}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-xs font-black text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50"
+                    >
+                      Detail
+                      <ChevronDown className={`h-4 w-4 transition ${openId === item.id ? "rotate-180" : ""}`} />
+                    </button>
+                    {showActions && (mode === "analyst" || mode === "admin") && ["rejected", "analysis_rejected", "master_rejected"].includes(String(item.status || "").toLowerCase()) ? (
+                      <button
+                        type="button"
+                        onClick={() => void deleteRejectedApplication(item)}
+                        disabled={deletingId === item.id}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-black text-rose-700 shadow-sm transition hover:border-rose-300 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60"
+                        title="Hapus pengajuan ditolak"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={2.4} />
+                        {deletingId === item.id ? "Menghapus..." : "Hapus"}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 {showActions && mode !== "marketing" && !useCompactTable ? (
                   <div className="mt-3 space-y-3">

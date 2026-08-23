@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -938,6 +939,50 @@ LIMIT $2
 		return nil, err
 	}
 	return items, nil
+}
+
+func (r *AgentCreditRepository) DeleteRejectedApplication(ctx context.Context, applicationID int64) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var status string
+	if err := tx.QueryRowContext(ctx, `
+SELECT status
+FROM public.agent_credit_application
+WHERE id = $1
+FOR UPDATE
+`, applicationID).Scan(&status); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return sql.ErrNoRows
+		}
+		return err
+	}
+	status = strings.ToLower(strings.TrimSpace(status))
+	if status != "rejected" && status != "analysis_rejected" && status != "master_rejected" {
+		return errors.New("hanya pengajuan yang ditolak yang dapat dihapus")
+	}
+
+	// Hapus data turunan yang mungkin tercatat saat uji coba sebelum menghapus pengajuan.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM public.agent_credit_mutation WHERE application_id = $1`, applicationID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM public.agent_credit_payment WHERE application_id = $1`, applicationID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM public.agent_credit_loan WHERE application_id = $1`, applicationID); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `DELETE FROM public.agent_credit_application WHERE id = $1`, applicationID)
+	if err != nil {
+		return err
+	}
+	if affected, _ := result.RowsAffected(); affected == 0 {
+		return sql.ErrNoRows
+	}
+	return tx.Commit()
 }
 
 func parseAgentCreditPaymentNote(raw string) (string, map[string]any) {

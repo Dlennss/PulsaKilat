@@ -339,6 +339,16 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 	}
 }
 
+func (s *AgentCreditService) DeleteRejectedApplication(ctx context.Context, auth helper.AuthInfo, applicationID int64) error {
+	if !isCreditReviewer(auth.Role) {
+		return errors.New("penghapusan pengajuan hanya dapat dilakukan operator")
+	}
+	if applicationID <= 0 {
+		return errors.New("pengajuan tidak valid")
+	}
+	return s.repo.DeleteRejectedApplication(ctx, applicationID)
+}
+
 func creditApplicationMarketingID(role string, memberID int64) int64 {
 	if helper.NormalizeRole(role) == helper.RoleRetailMarketing {
 		return memberID

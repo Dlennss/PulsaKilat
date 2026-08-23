@@ -114,6 +114,30 @@ func (h *AgentCreditController) MasterDecision(w http.ResponseWriter, r *http.Re
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "item": item})
 }
 
+func (h *AgentCreditController) DeleteRejectedApplication(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
+		return
+	}
+	auth, ok := helper.GetAuth(r.Context())
+	if !ok {
+		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	var in struct {
+		ApplicationID int64 `json:"application_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"})
+		return
+	}
+	if err := h.svc.DeleteRejectedApplication(r.Context(), auth, in.ApplicationID); err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
 func (h *AgentCreditController) CreditRanks(w http.ResponseWriter, r *http.Request) {
 	auth, ok := helper.GetAuth(r.Context())
 	if !ok {
