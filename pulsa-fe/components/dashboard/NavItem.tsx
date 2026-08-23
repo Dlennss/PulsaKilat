@@ -72,6 +72,7 @@ const iconByHref = {
   "/dashboard/master/analis/penolakan-catatan": XCircle,
   "/dashboard/master/analis/arsip-keputusan": Archive,
   "/dashboard/master/operator": ShieldCheck,
+  "/dashboard/master/operator/tambah-marketing": UserPlus,
   "/dashboard/master/operator/kenaikan-limit": ArrowUpCircle,
   "/dashboard/master/operator/monitor-pelunasan": WalletCards,
   "/dashboard/master/operator/transaksi-agent": ReceiptText,

@@ -185,7 +185,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
             onClick={submit}
             disabled={loading}
           >
-            {loading ? "Saving..." : isMember ? "Simpan Akun H2H" : role === "operator_wallet" ? "Simpan Operator Wallet" : role === "operator_trx" ? "Simpan Operator" : "Simpan Akun Retail"}
+            {loading ? "Saving..." : isMember ? "Simpan Akun H2H" : role === "operator_wallet" ? "Simpan Operator Wallet" : role === "operator_trx" ? "Simpan Operator" : role === "marketing" ? "Simpan Akun Marketing" : "Simpan Akun Retail"}
           </Button>
         </div>
       }
@@ -215,7 +215,13 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
                             ? "Master"
                             : roleValue === "operator_trx"
                               ? "Operator Transaksi"
-                              : "Operator Wallet"}
+                              : roleValue === "operator_wallet"
+                                ? "Operator Wallet"
+                                : roleValue === "marketing"
+                                  ? "Marketing"
+                                  : roleValue === "analis"
+                                    ? "Operator Kredit"
+                                    : roleValue}
               </option>
             ))}
           </select>
