@@ -88,7 +88,7 @@ const viewConfig = {
     emptyTitle: "Arsip masih kosong",
     emptyDescription: "Data yang sudah diputuskan operator akan disimpan di sini.",
     icon: Archive,
-    showActions: false,
+    showActions: true,
   },
 } satisfies Record<AnalystCreditWorkspaceView, {
   eyebrow: string;
