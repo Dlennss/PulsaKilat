@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"pulsa2/internal/helper"
 	"pulsa2/internal/repository"
@@ -149,7 +150,15 @@ func (s *UserService) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return errors.New("id invalid")
 	}
-	return s.repo.Delete(ctx, id)
+	err := s.repo.Delete(ctx, id)
+	if err == nil {
+		return nil
+	}
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == "23503" {
+		return errors.New("akun tidak dapat dihapus karena masih memiliki riwayat transaksi, kredit, atau audit; nonaktifkan akun agar riwayat tetap aman")
+	}
+	return err
 }
 
 func (s *UserService) SetFee(ctx context.Context, userID int64, feeRp int64) error {
