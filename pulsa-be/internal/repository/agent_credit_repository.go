@@ -790,7 +790,7 @@ SELECT
   a.approved_amount,
   a.status,
   a.applicant_data,
-  a.document_data,
+  '{}'::jsonb AS document_data,
   COALESCE(a.agent_signature_data, '') AS agent_signature_data,
   a.agent_signature_at,
   a.marketing_note,

@@ -70,6 +70,11 @@ function fallbackPath(mode: DirectoryMode, slug: string) {
   return mode === "user" ? `/user/kategori?layanan=${slug}` : `/kategori?layanan=${slug}`;
 }
 
+function isAgentRole(role?: string | null) {
+  const normalized = String(role || "").trim().toLowerCase();
+  return normalized === "agent" || normalized === "retail_agent" || normalized === "agent_retail";
+}
+
 const iconPath = {
   pulsa: "/service-icons/pulsa.png",
   paketData: "/service-icons/paket-data.png",
@@ -106,7 +111,7 @@ const iconPath = {
 function getGroups(mode: DirectoryMode, role?: string | null): ServiceGroup[] {
   const path = mode === "user" ? userPath : guestPath;
   const normalizedRole = String(role || "").trim().toLowerCase();
-  const canUseAgentCredit = mode === "user" && normalizedRole === "agent";
+  const canUseAgentCredit = mode === "user" && isAgentRole(normalizedRole);
 
   return [
     {

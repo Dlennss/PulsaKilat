@@ -113,7 +113,9 @@ function readStoredImage(file: File | null): Promise<StoredImage | null> {
 
       const image = new window.Image();
       image.onload = () => {
-        const maxDimension = 900;
+        // Dokumen cukup jelas untuk validasi di 640px dan jauh lebih ringan
+        // saat ikut tersimpan di data pengajuan.
+        const maxDimension = 640;
         const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
         const canvas = document.createElement("canvas");
         canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
@@ -138,7 +140,7 @@ function readStoredImage(file: File | null): Promise<StoredImage | null> {
           });
           compressedReader.onerror = () => resolve({ name: file.name, type: file.type, size: file.size, data_url: originalDataUrl });
           compressedReader.readAsDataURL(blob);
-        }, "image/jpeg", 0.68);
+        }, "image/jpeg", 0.55);
       };
       image.onerror = () => resolve({ name: file.name, type: file.type, size: file.size, data_url: originalDataUrl });
       image.src = originalDataUrl;
@@ -965,6 +967,8 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                         <img
                           src={surveyPreviewUrls[item.key]}
                           alt={`Preview ${item.title}`}
+                          loading="lazy"
+                          decoding="async"
                           className="h-full w-full object-cover"
                         />
                       </div>
