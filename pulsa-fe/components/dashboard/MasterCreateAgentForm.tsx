@@ -114,20 +114,20 @@ export function MasterCreateAgentForm() {
   }
 
   return (
-    <form onSubmit={submit}>
-      <section className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.08)] sm:p-6">
+    <form onSubmit={submit} className="w-full min-w-0">
+      <section className="w-full min-w-0 overflow-hidden rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.08)] sm:p-6">
         <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">Form Agent</p>
-            <h2 className="mt-1 text-2xl font-black tracking-normal text-slate-950">Identitas Agent Baru</h2>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">Akun akan dibuat sebagai role agent PulsaKilat.</p>
+            <h2 className="mt-1 text-[clamp(1.5rem,5vw,2rem)] font-black leading-tight tracking-normal text-slate-950">Identitas Agent Baru</h2>
+            <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-500">Akun akan dibuat sebagai role agent PulsaKilat.</p>
           </div>
-          <span className="grid h-13 w-13 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 sm:h-14 sm:w-14">
             <UserPlus className="h-6 w-6" />
           </span>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Nama Agent" icon={UserRound}>
             <input
               value={name}
@@ -162,12 +162,13 @@ export function MasterCreateAgentForm() {
               className="h-12 w-full rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
             />
           </Field>
-          <Field label="Password Awal" icon={KeyRound} helper="Berikan password ini ke agent, lalu sarankan diganti setelah login.">
-            <div className="flex gap-2">
+          <div className="min-w-0 md:col-span-2">
+            <Field label="Password Awal" icon={KeyRound} helper="Berikan password ini ke agent, lalu sarankan diganti setelah login.">
+              <div className="flex min-w-0 gap-2">
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="h-12 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                className="h-12 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-[#fbfffd] px-3 text-sm font-bold text-slate-950 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 sm:px-4"
               />
               <button
                 type="button"
@@ -185,8 +186,9 @@ export function MasterCreateAgentForm() {
               >
                 <Copy className="h-4 w-4" />
               </button>
-            </div>
-          </Field>
+              </div>
+            </Field>
+          </div>
         </div>
 
         {message ? (
