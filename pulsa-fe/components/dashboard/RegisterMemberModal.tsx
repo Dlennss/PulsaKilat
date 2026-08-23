@@ -29,6 +29,10 @@ type RegisterMemberModalProps = {
   onClose: () => void;
   scope?: AccountScope;
   allowedRoles?: ManageableRole[];
+  fixedRole?: ManageableRole;
+  title?: string;
+  subtitle?: string;
+  theme?: "dark" | "retail";
   onSuccess?: (payload: RegisterSuccessPayload) => Promise<void> | void;
 };
 
@@ -45,13 +49,14 @@ function isH2HRole(role: RoleOption) {
 
 export default function RegisterMemberModal(props: RegisterMemberModalProps) {
   const { open, onClose, onSuccess } = props;
+  const fixedRole = props.fixedRole;
   const scope = props.scope ?? "h2h";
   const allowedRoles = useMemo(
     () => props.allowedRoles ?? createRolesForScope(scope),
     [props.allowedRoles, scope],
   );
 
-  const [role, setRole] = useState<RoleOption>("");
+  const [role, setRole] = useState<RoleOption>(fixedRole ?? "");
   const [email, setEmail] = useState("");
   const [nama, setNama] = useState("");
   const [password, setPassword] = useState("");
@@ -71,7 +76,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
   if (!open) return null;
 
   function resetForm() {
-    setRole("");
+    setRole(fixedRole ?? "");
     setEmail("");
     setNama("");
     setPassword("");
@@ -171,8 +176,9 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
         resetForm();
         onClose();
       }}
-      title="Tambah Pengguna"
-      subtitle="Pilih role lalu isi data yang diperlukan."
+      title={props.title ?? "Tambah Pengguna"}
+      subtitle={props.subtitle ?? "Pilih role lalu isi data yang diperlukan."}
+      theme={props.theme}
       maxWidthClassName="max-w-2xl"
       footer={
         <div className="flex justify-end gap-2">
@@ -191,8 +197,8 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
       }
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="grid gap-2 md:col-span-2">
-          <span className="text-sm text-slate-200">Role</span>
+        {!fixedRole ? <label className="grid gap-2 md:col-span-2">
+          <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Role</span>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as RoleOption)}
@@ -225,12 +231,12 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
               </option>
             ))}
           </select>
-        </label>
+        </label> : null}
 
         {roleChosen ? (
           <>
             <label className="grid gap-2">
-              <span className="text-sm text-slate-200">Email</span>
+              <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Email</span>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input className="h-11 pl-9" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@domain.com" />
@@ -238,7 +244,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
             </label>
 
             <label className="grid gap-2">
-              <span className="text-sm text-slate-200">Nama</span>
+              <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Nama</span>
               <div className="relative">
                 <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -251,7 +257,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
             </label>
 
             <label className="grid gap-2 md:col-span-2">
-              <span className="text-sm text-slate-200">Password</span>
+              <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Password</span>
               <div className="relative">
                 <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input className="h-11 pl-9" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 8 char" type="password" />
@@ -261,7 +267,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
             {isMember ? (
               <>
                 <label className="grid gap-2">
-                  <span className="text-sm text-slate-200">PIN</span>
+                  <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>PIN</span>
                   <div className="relative">
                     <ShieldCheck className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input className="h-11 pl-9" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="4-12 char" />
@@ -269,31 +275,31 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
                 </label>
 
                 <label className="grid gap-2">
-                  <span className="text-sm text-slate-200">Fee DANA</span>
+                  <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Fee DANA</span>
                   <Input className="h-11" value={feeDana} onChange={(e) => setFeeDana(e.target.value)} inputMode="numeric" />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm text-slate-200">Fee GOPAY</span>
+                  <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Fee GOPAY</span>
                   <Input className="h-11" value={feeGopay} onChange={(e) => setFeeGopay(e.target.value)} inputMode="numeric" />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm text-slate-200">Fee LINKAJA</span>
+                  <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Fee LINKAJA</span>
                   <Input className="h-11" value={feeLinkAja} onChange={(e) => setFeeLinkAja(e.target.value)} inputMode="numeric" />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm text-slate-200">Fee OVO</span>
+                  <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Fee OVO</span>
                   <Input className="h-11" value={feeOvo} onChange={(e) => setFeeOvo(e.target.value)} inputMode="numeric" />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm text-slate-200">Fee SHOPEE</span>
+                  <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Fee SHOPEE</span>
                   <Input className="h-11" value={feeShopee} onChange={(e) => setFeeShopee(e.target.value)} inputMode="numeric" />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm text-slate-200">Fee BANK</span>
+                  <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Fee BANK</span>
                   <Input className="h-11" value={feeBank} onChange={(e) => setFeeBank(e.target.value)} inputMode="numeric" />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm text-slate-200">Fee Lainnya</span>
+                  <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Fee Lainnya</span>
                   <Input className="h-11" value={feeLainnya} onChange={(e) => setFeeLainnya(e.target.value)} inputMode="numeric" />
                 </label>
 

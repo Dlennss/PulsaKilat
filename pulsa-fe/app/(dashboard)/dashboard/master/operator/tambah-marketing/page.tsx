@@ -48,7 +48,14 @@ export default function OperatorTambahMarketingPage() {
         </div>
       </section>
 
-      <RegisterMemberModal open={open} onClose={() => setOpen(false)} scope="retail" allowedRoles={["marketing"]} />
+      <RegisterMemberModal
+        open={open}
+        onClose={() => setOpen(false)}
+        fixedRole="marketing"
+        title="Tambah Marketing"
+        subtitle="Buat akun marketing PulsaKilat untuk memantau agent binaan."
+        theme="retail"
+      />
     </main>
   );
 }
