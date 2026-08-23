@@ -9,7 +9,7 @@ export default function MarketingAddAgentPage() {
           <h1 className="mt-2 text-2xl font-black">Tambah Agent</h1>
           <p className="mt-1 text-xs font-semibold leading-5 text-emerald-50/80">Daftarkan agent baru saat kunjungan lapangan.</p>
         </header>
-        <MasterCreateAgentForm />
+        <MasterCreateAgentForm useRetailEndpoint />
       </section>
     </main>
   );

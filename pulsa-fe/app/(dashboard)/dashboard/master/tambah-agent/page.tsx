@@ -34,7 +34,7 @@ export default function MasterTambahAgentPage() {
           </div>
         </div>
 
-        <MasterCreateAgentForm />
+        <MasterCreateAgentForm useRetailEndpoint />
       </section>
     </main>
   );

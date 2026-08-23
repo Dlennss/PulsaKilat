@@ -56,7 +56,7 @@ function Field({
   );
 }
 
-export function MasterCreateAgentForm() {
+export function MasterCreateAgentForm({ useRetailEndpoint = false }: { useRetailEndpoint?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -82,7 +82,7 @@ export function MasterCreateAgentForm() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/admin/members/create", {
+      const response = await fetch(useRetailEndpoint ? "/api/me/retail/downlines" : "/api/admin/members/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader() },
         body: JSON.stringify({
