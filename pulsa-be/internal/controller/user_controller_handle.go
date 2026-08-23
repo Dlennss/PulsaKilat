@@ -214,5 +214,18 @@ func (h *UserController) CreateMarketing(w http.ResponseWriter, r *http.Request)
 		helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
 		return
 	}
+	if req.Phone != "" {
+		if err := h.svc.Update(r.Context(), repository.UserUpdateInput{
+			ID:    id,
+			Email: req.Email,
+			Nama:  req.Nama,
+			Phone: req.Phone,
+			Role:  helper.RoleRetailMarketing,
+			Aktif: true,
+		}, "", ""); err != nil {
+			helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))
+			return
+		}
+	}
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "member_id": id, "phone": req.Phone})
 }

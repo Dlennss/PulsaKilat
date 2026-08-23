@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { alertError, alertSuccess, alertWarning } from "@/components/ui/alerts";
 import { Input } from "@/components/ui/input";
 import { AppModal } from "@/components/ui/app-modal";
-import { KeyRound, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { KeyRound, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
 import { createRolesForScope, type AccountScope, type ManageableRole } from "@/lib/memberRoles";
 
 type CreateResp = {
@@ -60,6 +60,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
   const [role, setRole] = useState<RoleOption>(fixedRole ?? "");
   const [email, setEmail] = useState("");
   const [nama, setNama] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
   const [feeDana, setFeeDana] = useState("");
@@ -80,6 +81,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
     setRole(fixedRole ?? "");
     setEmail("");
     setNama("");
+    setPhone("");
     setPassword("");
     setPin("");
     setFeeDana("");
@@ -95,6 +97,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
     if (!roleChosen) return alertWarning("Role wajib dipilih.");
     if (!email.trim()) return alertWarning("Email wajib diisi.");
     if (!nama.trim()) return alertWarning("Nama wajib diisi.");
+    if (role === "marketing" && !phone.trim()) return alertWarning("Nomor telepon marketing wajib diisi.");
     if (password.trim().length < 8) return alertWarning("Password minimal 8 karakter.");
     if (isMember && (pin.trim().length < 4 || pin.trim().length > 12)) return alertWarning("PIN harus 4-12 karakter.");
     if (isMember) {
@@ -126,6 +129,7 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
         body: JSON.stringify({
           email: email.trim(),
           nama: nama.trim(),
+          phone: phone.trim(),
           password: password.trim(),
           pin: isMember ? pin.trim() : undefined,
           role,
@@ -256,6 +260,16 @@ export default function RegisterMemberModal(props: RegisterMemberModalProps) {
                 />
               </div>
             </label>
+
+            {role === "marketing" ? (
+              <label className="grid gap-2 md:col-span-2">
+                <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Nomor Telepon</span>
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="h-11 pl-9" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" inputMode="tel" />
+                </div>
+              </label>
+            ) : null}
 
             <label className="grid gap-2 md:col-span-2">
               <span className={`text-sm ${props.theme === "retail" ? "text-slate-700" : "text-slate-200"}`}>Password</span>
