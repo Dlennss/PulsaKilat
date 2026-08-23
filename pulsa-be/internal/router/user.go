@@ -17,7 +17,7 @@ func UserRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB) {
 	svc := service.NewUserService(repo, retailRepo, h2hRepo)
 	ctrl := controller.NewUserController(svc, "/v1/admin")
 	denyStaff := helper.ForbidRoles(helper.RoleStaff)
-	userReadRoles := helper.RequireRoles("admin", "operator_trx", "operator_wallet", helper.RoleRetailMaster, helper.RoleRetailMarketing)
+	userReadRoles := helper.RequireRoles("admin", "operator_trx", "operator_wallet", helper.RoleRetailMaster, helper.RoleRetailMarketing, helper.RoleRetailAnalyst)
 	adminOnly := func(next http.HandlerFunc) http.HandlerFunc {
 		return helper.RequireRoles("admin")(denyStaff(next))
 	}
