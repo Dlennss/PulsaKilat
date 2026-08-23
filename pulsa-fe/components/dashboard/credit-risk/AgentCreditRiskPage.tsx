@@ -211,7 +211,7 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
           </div>
 
           <div className="space-y-5 p-4 sm:p-6 lg:p-7">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
               {[
                 { label: "Total Agent", value: summaries.length, hint: "Punya histori kredit", icon: ShieldCheck },
                 { label: "Kandidat Naik", value: upgradeCandidates, hint: "Siklus selesai tepat waktu", icon: TrendingUp },
@@ -220,12 +220,12 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
               ].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.label} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
+                  <div key={item.label} className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
                     <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-slate-500">{item.label}</p>
-                        <p className="mt-1 text-2xl font-black text-slate-950">{item.value}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</p>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold text-slate-500">{item.label}</p>
+                        <p className="mt-1 break-words text-2xl font-black text-slate-950">{item.value}</p>
+                        <p className="mt-1 line-clamp-2 text-xs font-semibold leading-4 text-slate-400">{item.hint}</p>
                       </div>
                       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
                         <Icon className="h-6 w-6" />
