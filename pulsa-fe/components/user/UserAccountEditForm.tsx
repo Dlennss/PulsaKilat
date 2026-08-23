@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, CheckCircle2, ImagePlus, Mail, Phone, Save, UserRound } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, Mail, Phone, Save, UserRound } from "lucide-react";
 import { getInitials } from "@/components/user/helpers";
 
 type UserAccountEditFormProps = {
@@ -177,23 +177,6 @@ export function UserAccountEditForm({ nama, email, phone, profilePhotoURL = "" }
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700">{error}</div>
             ) : null}
 
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-3 transition hover:border-emerald-400 hover:bg-emerald-50">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#047857] shadow-[0_8px_18px_rgba(6,78,59,0.08)]">
-                <ImagePlus className="h-5 w-5" strokeWidth={2.3} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-black text-slate-950">Foto Profil</span>
-                <span className="mt-0.5 block truncate text-[10px] font-semibold text-slate-500">
-                  {photoValue ? "Foto siap disimpan" : "Pilih foto wajah atau logo toko"}
-                </span>
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => void onPhotoChange(event.target.files?.[0])}
-              />
-            </label>
             {success ? (
               <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
                 <CheckCircle2 className="h-4 w-4" />
