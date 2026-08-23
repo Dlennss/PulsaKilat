@@ -78,7 +78,7 @@ const viewConfig = {
     emptyTitle: "Belum ada data ditolak",
     emptyDescription: "Keputusan tolak dari operator akan masuk ke daftar ini.",
     icon: XCircle,
-    showActions: false,
+    showActions: true,
   },
   archive: {
     eyebrow: "Arsip Keputusan",
