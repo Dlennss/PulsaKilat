@@ -14,6 +14,7 @@ type AgentMember = {
   nama?: string;
   email?: string;
   phone?: string;
+  role?: string;
   aktif?: boolean;
 };
 
@@ -93,11 +94,10 @@ export function MarketingAgentCreditCreateForm({ defaultOpen = false }: Marketin
     let cancelled = false;
     async function loadAgents() {
       try {
-        const query = new URLSearchParams({ scope: "retail", role: "agent", limit: "200", offset: "0" });
-        const response = await fetch(`/api/admin/members?${query.toString()}`, { headers: authHeader(), cache: "no-store" });
+        const response = await fetch("/api/me/retail/downlines", { headers: authHeader(), cache: "no-store" });
         const body = (await response.json().catch(() => ({}))) as { ok?: boolean; items?: AgentMember[]; rows?: AgentMember[]; error?: string };
         if (!response.ok || !body.ok) throw new Error(body.error || "Data agent gagal dimuat");
-        if (!cancelled) setAgents((Array.isArray(body.items) ? body.items : body.rows || []).filter((item) => item.aktif !== false));
+        if (!cancelled) setAgents((Array.isArray(body.items) ? body.items : body.rows || []).filter((item) => item.aktif !== false && String(item.role || "").toLowerCase() === "agent"));
       } catch (error) {
         if (!cancelled) setMessage({ type: "error", text: error instanceof Error ? error.message : "Data agent gagal dimuat" });
       } finally {

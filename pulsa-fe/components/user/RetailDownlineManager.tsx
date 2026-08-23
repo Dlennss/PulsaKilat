@@ -49,14 +49,14 @@ export function RetailDownlineManager({ authToken, role }: Props) {
   const [password, setPassword] = useState("");
   const [targetRole, setTargetRole] = useState("user");
 
-  const canCreate = role === "master" || role === "agent";
+  const canCreate = role === "master" || role === "agent" || role === "marketing";
   const activeCount = items.filter((item) => item.aktif).length;
   const agentCount = items.filter((item) => String(item.role || "").toLowerCase() === "agent").length;
   const roleOptions = useMemo(
     () => (role === "master" ? [
       { value: "user", label: "User" },
       { value: "agent", label: "Agent" },
-    ] : [{ value: "user", label: "User" }]),
+    ] : role === "marketing" ? [{ value: "agent", label: "Agent" }] : [{ value: "user", label: "User" }]),
     [role],
   );
 
@@ -112,7 +112,7 @@ export function RetailDownlineManager({ authToken, role }: Props) {
         setErr(j?.error || "Gagal membuat akun retail.");
         return;
       }
-      setOk(`${role === "agent" ? "Member" : "Akun retail"} berhasil dibuat dan langsung terhubung ke akun anda. member_id=${j.member_id}`);
+      setOk(`${role === "marketing" ? "Agent binaan" : role === "agent" ? "Member" : "Akun retail"} berhasil dibuat dan langsung terhubung ke akun anda. member_id=${j.member_id}`);
       setEmail("");
       setNama("");
       setPassword("");

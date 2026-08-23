@@ -74,7 +74,7 @@ export default async function UserAccountPage() {
   const initials = getInitials(displayName, displayEmail);
   const profilePhotoURL = profile?.profile_photo_url || user?.image || "";
   const role = normalizeRole(profile?.role || user?.role);
-  const canManageRetailNetwork = role === "master" || role === "agent";
+  const canManageRetailNetwork = role === "master" || role === "agent" || role === "marketing";
   const canOpenWorkPanel = role !== "user" && role !== "agent" && role !== "marketing";
 
   const personalItems = [

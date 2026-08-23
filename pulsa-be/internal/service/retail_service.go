@@ -91,6 +91,10 @@ func (s *RetailService) RegisterDownline(ctx context.Context, actorID int64, in 
 		if in.Role != helper.RoleUser {
 			return 0, errors.New("agent hanya boleh menambahkan user")
 		}
+	case helper.RoleRetailMarketing:
+		if in.Role != helper.RoleRetailAgent {
+			return 0, errors.New("marketing hanya boleh mendaftarkan agent")
+		}
 	default:
 		return 0, errors.New("role tidak boleh menambahkan downline")
 	}
@@ -117,9 +121,6 @@ func (s *RetailService) RegisterDownline(ctx context.Context, actorID int64, in 
 			createIn.RetailMasterID = actor.RetailMasterID
 		}
 	case helper.RoleRetailMarketing:
-		if in.Role != helper.RoleRetailAgent {
-			return 0, errors.New("marketing hanya boleh mendaftarkan agent")
-		}
 		createIn.MarketingID = &actor.MemberID
 	}
 	return s.repo.CreateRetailChild(ctx, createIn)
