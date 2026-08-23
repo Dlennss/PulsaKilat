@@ -71,6 +71,82 @@ type AgentCreditTeamActivity struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+type AgentCreditInactiveAgent struct {
+	MemberID          int64      `json:"member_id"`
+	MemberName        string     `json:"member_name"`
+	MemberEmail       string     `json:"member_email"`
+	MemberPhone       string     `json:"member_phone"`
+	MarketingID       int64      `json:"marketing_id"`
+	MarketingName     string     `json:"marketing_name"`
+	MarketingEmail    string     `json:"marketing_email"`
+	LastTransactionAt *time.Time `json:"last_transaction_at,omitempty"`
+	LastProduct       string     `json:"last_product"`
+	LastStatus        string     `json:"last_status"`
+	LastAmount        int64      `json:"last_amount"`
+	InactiveDays      int        `json:"inactive_days"`
+}
+
+func (r *AgentCreditRepository) ListInactiveAgents(ctx context.Context, days int, search string, limit int) ([]AgentCreditInactiveAgent, error) {
+	if days < 1 {
+		days = 3
+	}
+	if days > 365 {
+		days = 365
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	search = strings.TrimSpace(search)
+
+	rows, err := r.db.QueryContext(ctx, `
+SELECT
+  m.id,
+  COALESCE(m.nama, ''),
+  COALESCE(m.email, ''),
+  COALESCE(m.phone, ''),
+  COALESCE(m.marketing_id, 0),
+  COALESCE(mark.nama, ''),
+  COALESCE(mark.email, ''),
+  last_trx.dibuat_pada,
+  COALESCE(last_trx.kode_produk, ''),
+  COALESCE(last_trx.status, ''),
+  COALESCE(last_trx.nominal, 0),
+  CASE
+    WHEN last_trx.dibuat_pada IS NULL THEN 0
+    ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - last_trx.dibuat_pada)) / 86400)::int)
+  END AS inactive_days
+FROM public.member m
+LEFT JOIN public.member mark ON mark.id = m.marketing_id
+LEFT JOIN LATERAL (
+  SELECT tm.dibuat_pada, tm.kode_produk, tm.status,
+         COALESCE(tm.biaya_aktual, tm.biaya_perkiraan, 0) AS nominal
+  FROM public.transaksi_member tm
+  WHERE tm.member_id = m.id
+  ORDER BY tm.dibuat_pada DESC, tm.id DESC
+  LIMIT 1
+) last_trx ON true
+WHERE LOWER(COALESCE(m.role, '')) = 'agent'
+  AND (last_trx.dibuat_pada IS NULL OR last_trx.dibuat_pada < NOW() - ($1 * INTERVAL '1 day'))
+  AND ($2 = '' OR m.nama ILIKE '%' || $2 || '%' OR m.email ILIKE '%' || $2 || '%' OR m.phone ILIKE '%' || $2 || '%' OR mark.nama ILIKE '%' || $2 || '%')
+ORDER BY last_trx.dibuat_pada ASC NULLS FIRST, m.id DESC
+LIMIT $3
+`, days, search, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]AgentCreditInactiveAgent, 0)
+	for rows.Next() {
+		var item AgentCreditInactiveAgent
+		if err := rows.Scan(&item.MemberID, &item.MemberName, &item.MemberEmail, &item.MemberPhone, &item.MarketingID, &item.MarketingName, &item.MarketingEmail, &item.LastTransactionAt, &item.LastProduct, &item.LastStatus, &item.LastAmount, &item.InactiveDays); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 func (r *AgentCreditRepository) ListTeamActivity(ctx context.Context, actorRole string, limit int) ([]AgentCreditTeamActivity, error) {
 	if limit <= 0 {
 		limit = 50

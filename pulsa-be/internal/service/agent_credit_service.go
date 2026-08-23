@@ -78,6 +78,14 @@ func (s *AgentCreditService) ListTeamActivity(ctx context.Context, auth helper.A
 	return s.repo.ListTeamActivity(ctx, actorRole, limit)
 }
 
+func (s *AgentCreditService) ListInactiveAgents(ctx context.Context, auth helper.AuthInfo, days int, search string, limit int) ([]repository.AgentCreditInactiveAgent, error) {
+	role := helper.NormalizeRole(auth.Role)
+	if role != helper.RoleAdmin && role != helper.RoleRetailAnalyst {
+		return nil, errors.New("admin/operator kredit only")
+	}
+	return s.repo.ListInactiveAgents(ctx, days, search, limit)
+}
+
 func isCreditReviewer(role string) bool {
 	normalized := helper.NormalizeRole(role)
 	return normalized == helper.RoleAdmin ||

@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"pulsa2/internal/helper"
 	"pulsa2/internal/service"
@@ -209,6 +210,28 @@ func (h *AgentCreditController) AdminTeamActivity(w http.ResponseWriter, r *http
 		return
 	}
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
+}
+
+func (h *AgentCreditController) AdminInactiveAgents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
+		return
+	}
+	auth, ok := helper.GetAuth(r.Context())
+	if !ok {
+		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	items, err := h.svc.ListInactiveAgents(r.Context(), auth, helper.QueryInt(r, "days", 3), helper.QueryString(r, "q"), helper.QueryInt(r, "limit", 200))
+	if err != nil {
+		status := http.StatusBadRequest
+		if strings.Contains(err.Error(), "only") {
+			status = http.StatusForbidden
+		}
+		helper.WriteJSON(w, status, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items, "days": helper.QueryInt(r, "days", 3)})
 }
 
 func (h *AgentCreditController) PayInstallment(w http.ResponseWriter, r *http.Request) {
