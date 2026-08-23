@@ -37,6 +37,7 @@ func (h *RetailController) Downlines(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Email    string `json:"email"`
 			Nama     string `json:"nama"`
+			Phone    string `json:"phone"`
 			Password string `json:"password"`
 			Role     string `json:"role"`
 		}
@@ -47,6 +48,7 @@ func (h *RetailController) Downlines(w http.ResponseWriter, r *http.Request) {
 		id, err := h.svc.RegisterDownline(r.Context(), a.MemberID, service.RetailRegisterDownlineInput{
 			Email:    req.Email,
 			Nama:     req.Nama,
+			Phone:    req.Phone,
 			Password: req.Password,
 			Role:     req.Role,
 		})

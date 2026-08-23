@@ -25,6 +25,7 @@ type RetailService struct {
 type RetailRegisterDownlineInput struct {
 	Email    string
 	Nama     string
+	Phone    string
 	Password string
 	Role     string
 }
@@ -75,6 +76,7 @@ func (s *RetailService) RegisterDownline(ctx context.Context, actorID int64, in 
 
 	in.Email = strings.TrimSpace(strings.ToLower(in.Email))
 	in.Nama = strings.TrimSpace(in.Nama)
+	in.Phone = normalizeMemberPhone(in.Phone)
 	in.Password = strings.TrimSpace(in.Password)
 	in.Role = helper.NormalizeRole(in.Role)
 
@@ -107,6 +109,7 @@ func (s *RetailService) RegisterDownline(ctx context.Context, actorID int64, in 
 	createIn := repository.UserCreateInput{
 		Email:        in.Email,
 		Nama:         in.Nama,
+		Phone:        in.Phone,
 		PasswordHash: string(passHash),
 		Role:         in.Role,
 		Aktif:        true,

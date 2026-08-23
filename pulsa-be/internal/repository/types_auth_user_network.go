@@ -209,6 +209,7 @@ type RetailDownlineRow struct {
 	ID               int64      `json:"id"`
 	Email            string     `json:"email"`
 	Nama             string     `json:"nama"`
+	Phone            string     `json:"phone"`
 	Role             string     `json:"role"`
 	Aktif            bool       `json:"aktif"`
 	Saldo            int64      `json:"saldo"`

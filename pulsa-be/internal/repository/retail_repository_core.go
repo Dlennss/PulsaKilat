@@ -133,15 +133,15 @@ LIMIT 1
 	var memberID int64
 	err = tx.QueryRowContext(ctx, `
 INSERT INTO public.member (
-  email, nama, password_hash, role, aktif,
+  email, nama, phone, password_hash, role, aktif,
   retail_agent_commission_rp, retail_master_commission_rp,
   h2h_agent_commission_rp, h2h_master_commission_rp,
   retail_agent_id, retail_master_id, h2h_agent_member_id, h2h_master_member_id, marketing_id
 )
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 RETURNING id
 `,
-		in.Email, retailNullString(in.Nama), in.PasswordHash, in.Role, in.Aktif,
+		in.Email, retailNullString(in.Nama), retailNullString(in.Phone), in.PasswordHash, in.Role, in.Aktif,
 		in.RetailAgentCommissionRp, in.RetailMasterCommissionRp,
 		in.H2HAgentCommissionRp, in.H2HMasterCommissionRp,
 		retailNullableInt64(in.RetailAgentID), retailNullableInt64(in.RetailMasterID),
@@ -186,7 +186,7 @@ func (r *RetailRepository) ListDownlines(ctx context.Context, actor *RetailMembe
 
 	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
 SELECT
-  m.id, COALESCE(m.email, ''), COALESCE(m.nama, ''), COALESCE(m.role, ''), m.aktif, COALESCE(d.saldo, 0),
+  m.id, COALESCE(m.email, ''), COALESCE(m.nama, ''), COALESCE(m.phone, ''), COALESCE(m.role, ''), m.aktif, COALESCE(d.saldo, 0),
   m.retail_agent_id, COALESCE(ra.nama, ''), m.retail_master_id, COALESCE(rm.nama, ''), m.dibuat_pada
 FROM public.member m
 LEFT JOIN public.dompet_member d ON d.member_id = m.id
@@ -212,7 +212,7 @@ ORDER BY CASE lower(COALESCE(m.role, '')) WHEN 'agent' THEN 0 ELSE 1 END, m.id D
 			dibuat           sql.NullTime
 		)
 		if err := rows.Scan(
-			&item.ID, &item.Email, &item.Nama, &item.Role, &item.Aktif, &item.Saldo,
+			&item.ID, &item.Email, &item.Nama, &item.Phone, &item.Role, &item.Aktif, &item.Saldo,
 			&retailAgentID, &retailAgentNama, &retailMasterID, &retailMasterNama, &dibuat,
 		); err != nil {
 			return nil, err

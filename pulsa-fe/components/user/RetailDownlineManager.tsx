@@ -8,6 +8,7 @@ type RetailDownline = {
   id: number;
   email: string;
   nama: string;
+  phone?: string;
   role: string;
   aktif: boolean;
   saldo: number;
@@ -198,6 +199,7 @@ export function RetailDownlineManager({ authToken, role }: Props) {
                 <div className="min-w-0">
                   <div className="truncate text-sm font-black text-slate-950">{item.nama || item.email}</div>
                   <div className="truncate text-xs font-semibold text-slate-500">{item.email}</div>
+                  {item.phone ? <div className="mt-1 text-[11px] font-semibold text-slate-500">WA {item.phone}</div> : null}
                   <div className="mt-1 text-[11px] font-semibold text-slate-500">
                     {roleLabel(item.role)}
                     {item.retail_agent_nama ? ` • Agent: ${item.retail_agent_nama}` : ""}
