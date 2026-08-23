@@ -475,26 +475,21 @@ function searchableText(item: AgentCreditApplication) {
   return fields.join(" ").toLowerCase();
 }
 
-type ApplicationFilter = "all" | "review" | "analysis" | "approved" | "rejected" | "paid";
+type ApplicationFilter = "all" | "pending" | "approved" | "rejected";
 
 const applicationFilters: { key: ApplicationFilter; label: string }[] = [
   { key: "all", label: "Semua" },
-  { key: "review", label: "Review" },
-  { key: "analysis", label: "Dikirim Operator" },
+  { key: "pending", label: "Pending" },
   { key: "approved", label: "Disetujui" },
   { key: "rejected", label: "Ditolak" },
-  { key: "paid", label: "Siklus selesai" },
 ];
 
 function matchesFilter(item: AgentCreditApplication, filter: ApplicationFilter) {
   const status = String(item.status || "").toLowerCase();
-  const loanStatus = String(item.loan_status || "").toLowerCase();
   if (filter === "all") return true;
-  if (filter === "review") return status === "submitted" || status === "marketing_review" || status === "master_review";
-  if (filter === "analysis") return status === "analysis_review";
-  if (filter === "approved") return status === "approved" && loanStatus !== "paid";
+  if (filter === "pending") return status !== "approved" && !status.includes("rejected") && status !== "rejected";
+  if (filter === "approved") return status === "approved";
   if (filter === "rejected") return status.includes("rejected") || status === "rejected";
-  if (filter === "paid") return loanStatus === "paid";
   return true;
 }
 
