@@ -969,9 +969,8 @@ FOR UPDATE
 	if _, err := tx.ExecContext(ctx, `DELETE FROM public.agent_credit_mutation WHERE application_id = $1`, applicationID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.agent_credit_payment WHERE application_id = $1`, applicationID); err != nil {
-		return err
-	}
+	// Pembayaran tidak menyimpan application_id secara langsung; pembayaran
+	// akan ikut terhapus melalui ON DELETE CASCADE saat loan dihapus.
 	if _, err := tx.ExecContext(ctx, `DELETE FROM public.agent_credit_loan WHERE application_id = $1`, applicationID); err != nil {
 		return err
 	}
