@@ -122,6 +122,17 @@ function hasPaymentProof(item: AgentCreditApplication) {
   });
 }
 
+function isPendingCreditApplication(item: AgentCreditApplication) {
+  return [
+    "draft",
+    "submitted",
+    "marketing_review",
+    "analysis_review",
+    "master_review",
+    "ready_to_disburse",
+  ].includes(String(item.status || "").toLowerCase());
+}
+
 function inactiveDays(item: AgentCreditApplication) {
   const source = item.last_transaction_at || item.loan_approved_at;
   if (!source) return 999;
@@ -131,7 +142,7 @@ function inactiveDays(item: AgentCreditApplication) {
 }
 
 function getItemsForView(view: AnalystCreditWorkspaceView, applications: AgentCreditApplication[]) {
-  const analysisItems = applications.filter((item) => item.status === "submitted" || item.status === "analysis_review");
+  const analysisItems = applications.filter(isPendingCreditApplication);
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
   const usedCredits = activeCredits;
@@ -168,7 +179,7 @@ export async function AnalystCreditWorkspace({ view }: { view: AnalystCreditWork
   const backendApplications = session?.backendToken ? await getAgentCreditApplications(session.backendToken, 50) : [];
   const rawApplications = backendApplications.length ? backendApplications : await getAgentCreditApplicationsDatabaseFallback();
   const applications = backendApplications.length ? rawApplications : await attachAgentCreditPaymentsFallback(rawApplications);
-  const analysisItems = applications.filter((item) => item.status === "submitted" || item.status === "analysis_review");
+  const analysisItems = applications.filter(isPendingCreditApplication);
   const approvedItems = applications.filter((item) => item.status === "approved");
   const activeCredits = approvedItems.filter((item) => !isPaid(item));
   const usedCredits = activeCredits;
