@@ -48,7 +48,12 @@ export default function OperatorInactiveAgentsPage() {
     try {
       const params = new URLSearchParams({ days: String(days), limit: "200" });
       if (query) params.set("q", query);
-      const response = await fetch(`/api/admin/agent-credit/inactive-agents?${params}`, { cache: "no-store", credentials: "same-origin" });
+      const token = localStorage.getItem("auth_token") || "";
+      const response = await fetch(`/api/admin/agent-credit/inactive-agents?${params}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error || "Data konter belum dapat dimuat.");
       setItems(Array.isArray(data.items) ? data.items : []);
@@ -79,7 +84,7 @@ export default function OperatorInactiveAgentsPage() {
             {periods.map((period) => <button key={period.days} type="button" onClick={() => setDays(period.days)} className={`min-h-11 rounded-2xl border px-4 text-xs font-black transition ${days === period.days ? "border-emerald-700 bg-emerald-700 text-white shadow-md" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-700"}`}>{period.label}</button>)}
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-[210px_minmax(0,1fr)_auto]">
-            <div className="flex overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"><input type="number" min={1} max={365} value={customDays} onChange={(event) => setCustomDays(Math.max(1, Number(event.target.value) || 1))} className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none" placeholder="Jumlah hari" /><button type="button" onClick={() => setDays(customDays)} className="bg-emerald-100 px-4 text-xs font-black text-emerald-800 hover:bg-emerald-200">Pilih</button></div>
+            <div className="flex overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"><input type="number" inputMode="numeric" min={1} max={365} step={1} value={customDays} onChange={(event) => setCustomDays(Math.min(365, Math.max(1, Number(event.target.value) || 1)))} className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none" placeholder="Jumlah hari" aria-label="Jumlah hari tidak transaksi" /><button type="button" onClick={() => setDays(customDays)} className="bg-emerald-100 px-4 text-xs font-black text-emerald-800 hover:bg-emerald-200">Pilih</button></div>
             <label className="flex min-w-0 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 focus-within:border-emerald-400"><Search className="h-4 w-4 shrink-0 text-emerald-700" /><input value={draftQuery} onChange={(event) => setDraftQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") setQuery(draftQuery.trim()); }} placeholder="Cari konter, email, nomor HP, atau marketing" className="min-w-0 flex-1 bg-transparent py-3 text-sm font-semibold outline-none placeholder:text-slate-400" /></label>
             <button type="button" onClick={() => { setQuery(draftQuery.trim()); void load(); }} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-5 text-sm font-black text-white hover:bg-emerald-800"><Search className="h-4 w-4" /> Cari</button>
           </div>
