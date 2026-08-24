@@ -161,7 +161,29 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	}
 	validateFullSubmission := role == helper.RoleRetailAgent || (isCreditReviewer(role) && in.ID <= 0)
 	if validateFullSubmission {
-		if err := validateAgentCreditSubmission(&in, true); err != nil {
+		validationInput := in
+		if role == helper.RoleRetailAgent && in.ID > 0 {
+			storedDocuments, err := s.repo.GetApplicationDocumentsForMember(ctx, in.ID, targetMemberID)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return nil, err
+			}
+			if err == nil {
+				mergedDocuments := make(map[string]any, len(storedDocuments)+len(in.DocumentData))
+				for key, value := range storedDocuments {
+					mergedDocuments[key] = value
+				}
+				for key, value := range in.DocumentData {
+					mergedDocuments[key] = value
+				}
+				if selfie, ok := mergedDocuments["selfie"]; ok {
+					if _, exists := mergedDocuments["selfie_marketing"]; !exists {
+						mergedDocuments["selfie_marketing"] = selfie
+					}
+				}
+				validationInput.DocumentData = mergedDocuments
+			}
+		}
+		if err := validateAgentCreditSubmission(&validationInput, true); err != nil {
 			return nil, fmt.Errorf(" %w", err)
 		}
 	}

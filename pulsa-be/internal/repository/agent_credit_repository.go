@@ -605,6 +605,23 @@ WHERE id = $1
 	return &state, nil
 }
 
+func (r *AgentCreditRepository) GetApplicationDocumentsForMember(ctx context.Context, applicationID, memberID int64) (map[string]any, error) {
+	var raw []byte
+	if err := r.db.QueryRowContext(ctx, `
+SELECT COALESCE(document_data, '{}'::jsonb)
+FROM public.agent_credit_application
+WHERE id = $1 AND member_id = $2
+`, applicationID, memberID).Scan(&raw); err != nil {
+		return nil, err
+	}
+
+	documents := map[string]any{}
+	if err := json.Unmarshal(raw, &documents); err != nil {
+		return nil, err
+	}
+	return documents, nil
+}
+
 func (r *AgentCreditRepository) CompleteApplicationConsent(ctx context.Context, in AgentCreditApplicationInput) (*AgentCreditApplication, error) {
 	applicantJSON, err := json.Marshal(in.ApplicantData)
 	if err != nil {
