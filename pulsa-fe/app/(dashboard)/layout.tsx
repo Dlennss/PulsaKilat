@@ -72,6 +72,8 @@ function normalizeAppRole(role?: string): AppRole {
                     ? "marketing"
                     : rawRole === "analis" || rawRole === "analyst"
                       ? "analis"
+                      : rawRole === "operator" || rawRole === "operator_kredit" || rawRole === "operator_credit" || rawRole === "operator-credit"
+                        ? "analis"
                       : rawRole === "operator_trx"
                       ? "operator_trx"
                       : rawRole === "operator_wallet"

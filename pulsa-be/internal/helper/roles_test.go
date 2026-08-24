@@ -2,6 +2,14 @@ package helper
 
 import "testing"
 
+func TestNormalizeRoleCreditOperatorAliases(t *testing.T) {
+	for _, role := range []string{"operator", "operator kredit", "operator_kredit", "operator_credit", "operator-credit", "analis", "analyst"} {
+		if got := NormalizeRole(role); got != RoleRetailAnalyst {
+			t.Fatalf("NormalizeRole(%q) = %q, want %q", role, got, RoleRetailAnalyst)
+		}
+	}
+}
+
 func TestApplyRetailCommissionDefaults(t *testing.T) {
 	tests := []struct {
 		name       string

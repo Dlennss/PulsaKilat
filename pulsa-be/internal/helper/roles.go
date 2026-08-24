@@ -27,7 +27,7 @@ func NormalizeRole(role string) string {
 		return RoleH2HAgent
 	case "master-member", "mester-member":
 		return RoleH2HMaster
-	case "analyst", "analis kredit", "credit_analyst", "credit-analyst", "operator kredit", "operator_credit", "operator-credit":
+	case "analyst", "analis kredit", "credit_analyst", "credit-analyst", "operator", "operator kredit", "operator_kredit", "operator_credit", "operator-credit":
 		return RoleRetailAnalyst
 	default:
 		return role

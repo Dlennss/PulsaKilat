@@ -31,7 +31,7 @@ type SessionShape = {
 
 function normalizeRole(role?: string | null) {
   const value = String(role || "").trim().toLowerCase();
-  return value === "analyst" ? "analis" : value;
+  return ["analyst", "operator", "operator kredit", "operator_kredit", "operator_credit", "operator-credit"].includes(value) ? "analis" : value;
 }
 
 function panelPathByRole(role: string) {
