@@ -745,6 +745,9 @@ func (r *AgentCreditRepository) GetApplicationCreditLimit(ctx context.Context, a
 }
 
 func (r *AgentCreditRepository) ListApplications(ctx context.Context, limit int) ([]AgentCreditApplication, error) {
+	if err := r.EnsureFlexibleLimitSchema(ctx); err != nil {
+		return nil, err
+	}
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
@@ -925,6 +928,9 @@ LIMIT $1
 }
 
 func (r *AgentCreditRepository) ListMemberApplications(ctx context.Context, memberID int64, limit int) ([]AgentCreditApplication, error) {
+	if err := r.EnsureFlexibleLimitSchema(ctx); err != nil {
+		return nil, err
+	}
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
