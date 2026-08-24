@@ -490,13 +490,11 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 	riskLevel = normalizeRiskLevel(riskLevel)
 	switch decision {
 	case "revision_required", "revision", "revisi", "perlu_revisi":
-		if strings.TrimSpace(note) == "" {
-			return nil, errors.New("catatan perbaikan wajib diisi")
-		}
 		documents := normalizeRevisionDocuments(revisionDocuments)
 		if len(documents) == 0 {
 			return nil, errors.New("pilih minimal satu dokumen yang perlu diperbaiki")
 		}
+		note = fallbackNote(note, "Operator meminta perbaikan pada dokumen yang dipilih.")
 		return s.repo.ReturnApplicationToMarketing(ctx, repository.AgentCreditDecisionInput{
 			ID:             applicationID,
 			AnalystID:      analystID,

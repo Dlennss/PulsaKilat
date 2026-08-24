@@ -232,10 +232,6 @@ export function MasterAgentCreditDecisionControls({
         setError("Pilih minimal satu dokumen yang perlu diperbaiki");
         return;
       }
-      if (!note.trim()) {
-        setError("Tulis alasan perbaikan dokumen terlebih dahulu");
-        return;
-      }
     }
     const parsedAmount = Number(amount.replace(/[^\d]/g, ""));
     const defaultNote = isPositiveDecision
@@ -261,7 +257,7 @@ export function MasterAgentCreditDecisionControls({
           id: applicationId,
           decision: apiDecision,
           approved_amount: decision === "approved" && !isMarketingReview ? parsedAmount : 0,
-          note: note.trim() || defaultNote,
+          note: note.trim() || (decision === "revision_required" ? "Operator meminta perbaikan pada dokumen yang dipilih." : defaultNote),
           reviewer_mode: mode,
           signature_data: needsReviewerSignature ? signatureData : "",
           risk_level: mode === "analyst" || mode === "admin" ? riskLevel : undefined,
