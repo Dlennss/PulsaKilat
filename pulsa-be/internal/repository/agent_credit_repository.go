@@ -126,6 +126,12 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) last_trx ON true
 WHERE LOWER(COALESCE(m.role, '')) = 'agent'
+  AND EXISTS (
+    SELECT 1
+    FROM public.agent_credit_loan active_loan
+    WHERE active_loan.member_id = m.id
+      AND active_loan.status IN ('active', 'due', 'overdue', 'suspended')
+  )
   AND COALESCE(last_trx.dibuat_pada, m.dibuat_pada) < NOW() - ($1 * INTERVAL '1 day')
   AND ($2 = '' OR m.nama ILIKE '%' || $2 || '%' OR m.email ILIKE '%' || $2 || '%' OR m.phone ILIKE '%' || $2 || '%' OR mark.nama ILIKE '%' || $2 || '%')
 ORDER BY last_trx.dibuat_pada ASC NULLS FIRST, m.id DESC
