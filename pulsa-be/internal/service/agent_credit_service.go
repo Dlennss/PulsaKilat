@@ -168,7 +168,7 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 			return nil, errors.New("tanda tangan wajib diisi")
 		}
 		if in.ID > 0 {
-			return s.repo.CompleteApplicationConsent(ctx, repository.AgentCreditApplicationInput{
+			item, err := s.repo.CompleteApplicationConsent(ctx, repository.AgentCreditApplicationInput{
 				ID:              in.ID,
 				MemberID:        targetMemberID,
 				RequestedAmount: in.RequestedAmount,
@@ -176,6 +176,27 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 				DocumentData:    in.DocumentData,
 				AgentSignature:  strings.TrimSpace(in.AgentSignature),
 			})
+			if err == nil {
+				return item, nil
+			}
+			// The client may hold an old application ID after a rejected or
+			// deleted record. Resolve the current open application before
+			// falling back to creating a new submitted application.
+			existingID, lookupErr := s.repo.FindOpenEarlyApplicationID(ctx, targetMemberID)
+			if lookupErr != nil {
+				return nil, lookupErr
+			}
+			if existingID > 0 && existingID != in.ID {
+				return s.repo.CompleteApplicationConsent(ctx, repository.AgentCreditApplicationInput{
+					ID:              existingID,
+					MemberID:        targetMemberID,
+					RequestedAmount: in.RequestedAmount,
+					ApplicantData:   in.ApplicantData,
+					DocumentData:    in.DocumentData,
+					AgentSignature:  strings.TrimSpace(in.AgentSignature),
+				})
+			}
+			return nil, err
 		}
 		existingID, err := s.repo.FindOpenEarlyApplicationID(ctx, targetMemberID)
 		if err != nil {

@@ -561,7 +561,12 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: unsignedPendingApplication ? latestApplication?.id : undefined,
+          // Keep the pre-created draft attached to this agent. The backend can
+          // then promote the same row to submitted instead of creating a row
+          // that the operator queue cannot relate to the agent.
+          id: latestApplication && !["approved", "rejected", "analysis_rejected", "master_rejected"].includes(latestApplication.status)
+            ? latestApplication.id
+            : undefined,
           requested_amount: requestedAmount,
           applicant_data: {
             agent_name: String(form.get("agent_name") || ""),
