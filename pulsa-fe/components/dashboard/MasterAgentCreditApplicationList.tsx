@@ -40,6 +40,8 @@ function getApplicantText(item: AgentCreditApplication, key: string, fallback = 
 
 function getStatusLabel(status: string) {
   switch (status) {
+    case "draft":
+      return "Pending dilengkapi";
     case "submitted":
       return "Baru dikirim";
     case "marketing_review":
@@ -856,7 +858,7 @@ export function MasterAgentCreditApplicationList({
             const paymentTotal = payments.length || Number(item.payment_count || 0);
             const outstanding = Number(item.outstanding_amount || 0);
             const approvedAmount = Number(item.approved_amount || 0);
-            const isPending = item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review" || item.status === "ready_to_disburse";
+            const isPending = item.status === "draft" || item.status === "submitted" || item.status === "marketing_review" || item.status === "analysis_review" || item.status === "master_review" || item.status === "ready_to_disburse";
             const termsAccepted = isTruthy(item.applicant_data?.terms_accepted);
             const docsCompleteFromServer = docs.every((doc) => Boolean(doc.src));
             const docsComplete = docsCompleteFromServer;

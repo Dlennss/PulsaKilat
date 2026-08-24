@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -161,6 +162,29 @@ VALUES ($1, 0)
 ON CONFLICT (member_id) DO NOTHING
 `, memberID); err != nil {
 		return 0, fmt.Errorf("create dompet failed: %w", err)
+	}
+
+	// Agent yang dibuat marketing langsung memiliki draft pengajuan kredit
+	// agar muncul di antrean marketing tanpa menunggu pengajuan kedua.
+	if in.MarketingID != nil && *in.MarketingID > 0 && strings.EqualFold(in.Role, "agent") {
+		applicantJSON, err := json.Marshal(map[string]any{
+			"agent_name":                in.Nama,
+			"email":                     in.Email,
+			"whatsapp":                  in.Phone,
+			"store_name":                "",
+			"store_address":             "",
+			"credit_application_origin": "marketing_agent_registration",
+		})
+		if err != nil {
+			return 0, fmt.Errorf("encode credit draft failed: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_application
+  (member_id, marketing_user_id, requested_amount, status, applicant_data, document_data)
+VALUES ($1, $2, $3, 'draft', $4::jsonb, '{}'::jsonb)
+`, memberID, *in.MarketingID, int64(500000), string(applicantJSON)); err != nil {
+			return 0, fmt.Errorf("create credit draft failed: %w", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
