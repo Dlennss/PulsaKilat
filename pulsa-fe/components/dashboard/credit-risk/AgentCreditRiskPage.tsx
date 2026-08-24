@@ -1,15 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { BadgeCheck, ChevronDown, Loader2, Search, ShieldCheck, TrendingUp, WalletCards } from "lucide-react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
-
-type RankOption = {
-  id: number;
-  code: string;
-  name: string;
-  limit_amount: number;
-};
 
 type Mode = "marketing" | "operator";
 
@@ -115,8 +108,7 @@ function buildAgentSummaries(applications: AgentCreditApplication[]): AgentSumma
 export function AgentCreditRiskPage({ applications, mode }: Props) {
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
-  const [rankOptions, setRankOptions] = useState<RankOption[]>([]);
-  const [rankByMember, setRankByMember] = useState<Record<number, string>>({});
+  const [limitByMember, setLimitByMember] = useState<Record<number, string>>({});
   const [noteByMember, setNoteByMember] = useState<Record<number, string>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -132,35 +124,11 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
   const availableCredit = summaries.reduce((sum, item) => sum + item.available, 0);
   const upgradeCandidates = summaries.filter((item) => item.lateCount === 0 && item.paidCount >= 3).length;
 
-  useEffect(() => {
-    if (mode !== "operator") return;
-    let cancelled = false;
-    async function loadRanks() {
-      try {
-        const token = window.localStorage.getItem("auth_token") || "";
-        const response = await fetch("/api/agent-credit/ranks", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          cache: "no-store",
-        });
-        const body = (await response.json().catch(() => ({}))) as { ok?: boolean; items?: RankOption[] };
-        if (!cancelled && response.ok && body.ok && Array.isArray(body.items)) {
-          setRankOptions(body.items);
-        }
-      } catch {
-        if (!cancelled) setRankOptions([]);
-      }
-    }
-    void loadRanks();
-    return () => {
-      cancelled = true;
-    };
-  }, [mode]);
-
   async function changeLimit(agent: AgentSummary) {
-    const rankId = Number(rankByMember[agent.memberId] || 0);
+    const limitAmount = Number(String(limitByMember[agent.memberId] || "").replace(/\D/g, ""));
     const reason = String(noteByMember[agent.memberId] || "").trim();
-    if (!rankId || !reason) {
-      setMessage({ type: "error", text: "Pilih tier dan isi catatan keputusan dulu." });
+    if (!limitAmount || !reason) {
+      setMessage({ type: "error", text: "Isi nominal limit dan catatan keputusan dulu." });
       return;
     }
     setBusyId(agent.memberId);
@@ -173,7 +141,7 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ member_id: agent.memberId, rank_id: rankId, reason }),
+        body: JSON.stringify({ member_id: agent.memberId, limit_amount: limitAmount, reason }),
       });
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!response.ok || !body.ok) throw new Error(body.error || "Limit gagal diubah");
@@ -329,17 +297,16 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
                               {mode === "operator" ? (
                                 <>
                                   <label className="block">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Naikkan/Turunkan Tier</span>
-                                    <select
-                                      value={rankByMember[agent.memberId] || ""}
-                                      onChange={(event) => setRankByMember((current) => ({ ...current, [agent.memberId]: event.target.value }))}
+                                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Naikkan/Turunkan Limit</span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      value={limitByMember[agent.memberId] || ""}
+                                      onChange={(event) => setLimitByMember((current) => ({ ...current, [agent.memberId]: event.target.value }))}
+                                      placeholder={String(agent.currentLimit || 500000)}
                                       className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-950 outline-none"
-                                    >
-                                      <option value="">Pilih tier</option>
-                                      {rankOptions.map((rank) => (
-                                        <option key={rank.id} value={rank.id}>{rank.name} - {formatIDR(rank.limit_amount)}</option>
-                                      ))}
-                                    </select>
+                                    />
                                   </label>
                                   <button
                                     type="button"

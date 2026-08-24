@@ -360,7 +360,7 @@ ORDER BY sort_order ASC, limit_amount ASC
 	return items, rows.Err()
 }
 
-func (r *AgentCreditRepository) ChangeMemberCreditRank(ctx context.Context, memberID, newRankID, actorID int64, reason string) (*AgentCreditRank, error) {
+func (r *AgentCreditRepository) ChangeMemberCreditRank(ctx context.Context, memberID, newRankID, customLimit, actorID int64, reason string) (*AgentCreditRank, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -368,7 +368,9 @@ func (r *AgentCreditRepository) ChangeMemberCreditRank(ctx context.Context, memb
 	defer tx.Rollback()
 
 	var newRank AgentCreditRank
-	if err := tx.QueryRowContext(ctx, `
+	if customLimit > 0 {
+		newRank = AgentCreditRank{Code: "custom", Name: "Limit Custom", LimitAmount: customLimit}
+	} else if err := tx.QueryRowContext(ctx, `
 SELECT id, code, name, COALESCE(description, ''), limit_amount, sort_order
 FROM public.agent_credit_rank
 WHERE id = $1 AND active = TRUE
@@ -419,9 +421,9 @@ WHERE member_id = $1
 
 	if _, err := tx.ExecContext(ctx, `
 INSERT INTO public.agent_credit_rank_history
-  (member_id, old_rank_id, new_rank_id, reason, on_time_payment_count, late_payment_count, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0))
-`, memberID, oldRankID, newRank.ID, reason, onTimeCount, lateCount, actorID); err != nil {
+  (member_id, old_rank_id, new_rank_id, custom_limit_amount, custom_limit_name, reason, on_time_payment_count, late_payment_count, created_by)
+VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, 0), $5, $6, $7, $8, NULLIF($9, 0))
+`, memberID, oldRankID, newRank.ID, customLimit, newRank.Name, reason, onTimeCount, lateCount, actorID); err != nil {
 		return nil, err
 	}
 
@@ -689,10 +691,10 @@ WHERE pl.member_id = $1
 	var manualCode, manualName string
 	var manualLimit int64
 	if err := r.db.QueryRowContext(ctx, `
-SELECT r.code, r.name, r.limit_amount
+SELECT COALESCE(r.code, 'custom'), COALESCE(NULLIF(h.custom_limit_name, ''), r.name, 'Limit Custom'), COALESCE(h.custom_limit_amount, r.limit_amount)
 FROM public.agent_credit_rank_history h
-JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
-WHERE h.member_id = $1 AND r.active = TRUE
+LEFT JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
+WHERE h.member_id = $1 AND (r.active = TRUE OR h.custom_limit_amount IS NOT NULL)
 ORDER BY h.created_at DESC, h.id DESC
 LIMIT 1
 `, memberID).Scan(&manualCode, &manualName, &manualLimit); err == nil {
@@ -820,10 +822,10 @@ LEFT JOIN LATERAL (
   WHERE pl.member_id = a.member_id
 ) credit ON TRUE
 LEFT JOIN LATERAL (
-  SELECT r.code, r.name, r.limit_amount
+  SELECT COALESCE(r.code, 'custom'), COALESCE(NULLIF(h.custom_limit_name, ''), r.name, 'Limit Custom'), COALESCE(h.custom_limit_amount, r.limit_amount)
   FROM public.agent_credit_rank_history h
-  JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
-  WHERE h.member_id = a.member_id AND r.active = TRUE
+  LEFT JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
+  WHERE h.member_id = a.member_id AND (r.active = TRUE OR h.custom_limit_amount IS NOT NULL)
   ORDER BY h.created_at DESC, h.id DESC
   LIMIT 1
 ) manual_rank ON TRUE
@@ -998,10 +1000,10 @@ LEFT JOIN LATERAL (
   WHERE pl.member_id = a.member_id
 ) credit ON TRUE
 LEFT JOIN LATERAL (
-  SELECT r.code, r.name, r.limit_amount
+  SELECT COALESCE(r.code, 'custom'), COALESCE(NULLIF(h.custom_limit_name, ''), r.name, 'Limit Custom'), COALESCE(h.custom_limit_amount, r.limit_amount)
   FROM public.agent_credit_rank_history h
-  JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
-  WHERE h.member_id = a.member_id AND r.active = TRUE
+  LEFT JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
+  WHERE h.member_id = a.member_id AND (r.active = TRUE OR h.custom_limit_amount IS NOT NULL)
   ORDER BY h.created_at DESC, h.id DESC
   LIMIT 1
 ) manual_rank ON TRUE

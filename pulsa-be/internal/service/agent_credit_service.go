@@ -56,9 +56,10 @@ type AgentCreditTransferInput struct {
 }
 
 type AgentCreditRankChangeInput struct {
-	MemberID int64  `json:"member_id"`
-	RankID   int64  `json:"rank_id"`
-	Reason   string `json:"reason"`
+	MemberID    int64  `json:"member_id"`
+	RankID      int64  `json:"rank_id"`
+	LimitAmount int64  `json:"limit_amount"`
+	Reason      string `json:"reason"`
 }
 
 type AgentCreditLoanStatusInput struct {
@@ -292,14 +293,14 @@ func (s *AgentCreditService) ChangeMemberCreditRank(ctx context.Context, auth he
 	if role != helper.RoleRetailAnalyst && role != helper.RoleAdmin {
 		return nil, errors.New("operator kredit only")
 	}
-	if in.MemberID <= 0 || in.RankID <= 0 {
-		return nil, errors.New("agent dan limit wajib dipilih")
+	if in.MemberID <= 0 || (in.RankID <= 0 && in.LimitAmount <= 0) {
+		return nil, errors.New("agent dan nominal limit wajib diisi")
 	}
 	reason := strings.TrimSpace(in.Reason)
 	if reason == "" {
 		return nil, errors.New("catatan keputusan wajib diisi")
 	}
-	return s.repo.ChangeMemberCreditRank(ctx, in.MemberID, in.RankID, auth.MemberID, reason)
+	return s.repo.ChangeMemberCreditRank(ctx, in.MemberID, in.RankID, in.LimitAmount, auth.MemberID, reason)
 }
 
 func (s *AgentCreditService) SetLoanOperationalStatus(ctx context.Context, auth helper.AuthInfo, in AgentCreditLoanStatusInput) (*repository.AgentCreditLoanStatusResult, error) {
