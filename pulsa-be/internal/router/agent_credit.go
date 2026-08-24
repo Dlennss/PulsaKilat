@@ -1,7 +1,9 @@
 package router
 
 import (
+	"context"
 	"database/sql"
+	"log"
 	"net/http"
 
 	"pulsa2/internal/controller"
@@ -11,6 +13,9 @@ import (
 
 func AgentCreditRouter(mux *http.ServeMux, wrap Middleware, db *sql.DB) {
 	repo := repository.NewAgentCreditRepository(db)
+	if err := repo.EnsureFlexibleLimitSchema(context.Background()); err != nil {
+		log.Printf("[agent_credit_schema] gagal menyiapkan skema limit kredit: %v", err)
+	}
 	svc := service.NewAgentCreditService(repo)
 	ctrl := controller.NewAgentCreditController(svc)
 

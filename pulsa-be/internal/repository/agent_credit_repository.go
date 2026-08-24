@@ -18,6 +18,28 @@ func NewAgentCreditRepository(db *sql.DB) *AgentCreditRepository {
 	return &AgentCreditRepository{db: db}
 }
 
+// EnsureFlexibleLimitSchema keeps older production databases compatible with
+// the credit list queries. Without these columns the submit response can look
+// successful, while every reload of the credit page fails during the SELECT.
+func (r *AgentCreditRepository) EnsureFlexibleLimitSchema(ctx context.Context) error {
+	if r == nil || r.db == nil {
+		return errors.New("agent credit repository tidak tersedia")
+	}
+	_, err := r.db.ExecContext(ctx, `
+ALTER TABLE public.agent_credit_rank_history
+  ADD COLUMN IF NOT EXISTS custom_limit_amount BIGINT,
+  ADD COLUMN IF NOT EXISTS custom_limit_name TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE public.agent_credit_rank_history
+  DROP CONSTRAINT IF EXISTS agent_credit_rank_history_custom_limit_check;
+
+ALTER TABLE public.agent_credit_rank_history
+  ADD CONSTRAINT agent_credit_rank_history_custom_limit_check
+  CHECK (custom_limit_amount IS NULL OR custom_limit_amount > 0);
+`)
+	return err
+}
+
 type AgentCreditApplicationInput struct {
 	ID              int64
 	MemberID        int64
