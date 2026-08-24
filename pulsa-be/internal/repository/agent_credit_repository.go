@@ -847,7 +847,10 @@ LEFT JOIN LATERAL (
   WHERE pl.member_id = a.member_id
 ) credit ON TRUE
 LEFT JOIN LATERAL (
-  SELECT COALESCE(r.code, 'custom'), COALESCE(NULLIF(h.custom_limit_name, ''), r.name, 'Limit Custom'), COALESCE(h.custom_limit_amount, r.limit_amount)
+  SELECT
+    COALESCE(r.code, 'custom') AS code,
+    COALESCE(NULLIF(h.custom_limit_name, ''), r.name, 'Limit Custom') AS name,
+    COALESCE(h.custom_limit_amount, r.limit_amount) AS limit_amount
   FROM public.agent_credit_rank_history h
   LEFT JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
   WHERE h.member_id = a.member_id AND (r.active = TRUE OR h.custom_limit_amount IS NOT NULL)
@@ -1028,7 +1031,10 @@ LEFT JOIN LATERAL (
   WHERE pl.member_id = a.member_id
 ) credit ON TRUE
 LEFT JOIN LATERAL (
-  SELECT COALESCE(r.code, 'custom'), COALESCE(NULLIF(h.custom_limit_name, ''), r.name, 'Limit Custom'), COALESCE(h.custom_limit_amount, r.limit_amount)
+  SELECT
+    COALESCE(r.code, 'custom') AS code,
+    COALESCE(NULLIF(h.custom_limit_name, ''), r.name, 'Limit Custom') AS name,
+    COALESCE(h.custom_limit_amount, r.limit_amount) AS limit_amount
   FROM public.agent_credit_rank_history h
   LEFT JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
   WHERE h.member_id = a.member_id AND (r.active = TRUE OR h.custom_limit_amount IS NOT NULL)
