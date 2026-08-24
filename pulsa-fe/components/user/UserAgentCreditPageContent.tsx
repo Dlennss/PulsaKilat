@@ -543,7 +543,23 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!agreed || !signatureReady || !signatureData || submitting) return;
+    if (submitting) return;
+    if (hasOpenApplication) {
+      setError("Pengajuan ini sudah masuk antrean dan sedang menunggu keputusan operator.");
+      return;
+    }
+    if (creditBalanceAvailable) {
+      setError("Saldo modal masih tersedia. Gunakan saldo tersebut terlebih dahulu sebelum mengajukan lagi.");
+      return;
+    }
+    if (!agreed) {
+      setError("Centang persetujuan syarat dan ketentuan terlebih dahulu.");
+      return;
+    }
+    if (!signatureReady || !signatureData) {
+      setError("Tanda tangan agent wajib diisi sebelum pengajuan dikirim.");
+      return;
+    }
 
     const surveyKeys = ["ktp", "store", "selfie_ktp", "selfie_marketing"];
     if (surveyKeys.some((key) => !surveyFiles[key])) {
@@ -1086,7 +1102,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
         <button
           type="submit"
-          disabled={!agreed || !signatureReady || !signatureData || !surveyDocumentsComplete || hasOpenApplication || creditBalanceAvailable || submitting}
+          disabled={submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
           {creditBalanceAvailable ? "Saldo Modal Masih Tersedia" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : !surveyDocumentsComplete ? "Lengkapi 4 Foto" : unsignedPendingApplication ? "Kirim Tanda Tangan" : canRefill ? "Ajukan Modal Lagi" : canReapply ? "Ajukan Modal Berikutnya" : "Ajukan Modal"}
