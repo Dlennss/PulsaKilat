@@ -376,6 +376,26 @@ WHERE id = $1 AND active = TRUE
 		return nil, err
 	}
 
+	var memberRole string
+	var outstanding int64
+	if err := tx.QueryRowContext(ctx, `
+SELECT COALESCE(m.role, ''), COALESCE((
+  SELECT MAX(l.outstanding_amount)
+  FROM public.agent_credit_loan l
+  WHERE l.member_id = m.id AND l.status IN ('active', 'due', 'overdue', 'suspended')
+), 0)
+FROM public.member m
+WHERE m.id = $1
+`, memberID).Scan(&memberRole, &outstanding); err != nil {
+		return nil, fmt.Errorf("agent tidak ditemukan")
+	}
+	if !strings.EqualFold(memberRole, "agent") {
+		return nil, fmt.Errorf("limit hanya dapat diubah untuk akun agent")
+	}
+	if outstanding > newRank.LimitAmount {
+		return nil, fmt.Errorf("limit baru tidak boleh lebih kecil dari kewajiban berjalan Rp%d", outstanding)
+	}
+
 	var oldRankID sql.NullInt64
 	_ = tx.QueryRowContext(ctx, `
 SELECT h.new_rank_id
@@ -666,6 +686,18 @@ WHERE pl.member_id = $1
 		return nil, err
 	}
 	code, name, limit := creditLevelFromProgress(qualifiedPaidCount, needsRepair)
+	var manualCode, manualName string
+	var manualLimit int64
+	if err := r.db.QueryRowContext(ctx, `
+SELECT r.code, r.name, r.limit_amount
+FROM public.agent_credit_rank_history h
+JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
+WHERE h.member_id = $1 AND r.active = TRUE
+ORDER BY h.created_at DESC, h.id DESC
+LIMIT 1
+`, memberID).Scan(&manualCode, &manualName, &manualLimit); err == nil {
+		code, name, limit = manualCode, manualName, manualLimit
+	}
 	return &AgentCreditProfile{
 		LevelCode:          code,
 		LevelName:          name,
@@ -719,12 +751,14 @@ SELECT
   COALESCE(pay.paid_amount, 0) AS paid_amount,
   COALESCE(pay.payment_count, 0) AS payment_count,
   CASE
+    WHEN manual_rank.code IS NOT NULL THEN manual_rank.code
     WHEN COALESCE(credit.needs_repair, false) THEN 'start'
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 'elite'
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 'plus'
     ELSE 'start'
   END AS credit_level_code,
   CASE
+    WHEN manual_rank.code IS NOT NULL THEN manual_rank.name
     WHEN COALESCE(credit.needs_repair, false) THEN 'Kilat Start'
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 'Kilat Elite'
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 'Kilat Plus'
@@ -733,6 +767,7 @@ SELECT
   COALESCE(credit.needs_repair, false) AS credit_needs_repair,
   COALESCE(credit.qualified_paid_total, 0) AS qualified_paid_total,
   CASE
+    WHEN manual_rank.code IS NOT NULL THEN manual_rank.limit_amount
     WHEN COALESCE(credit.needs_repair, false) THEN 500000
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 2000000
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 1000000
@@ -784,6 +819,14 @@ LEFT JOIN LATERAL (
   FROM public.agent_credit_loan pl
   WHERE pl.member_id = a.member_id
 ) credit ON TRUE
+LEFT JOIN LATERAL (
+  SELECT r.code, r.name, r.limit_amount
+  FROM public.agent_credit_rank_history h
+  JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
+  WHERE h.member_id = a.member_id AND r.active = TRUE
+  ORDER BY h.created_at DESC, h.id DESC
+  LIMIT 1
+) manual_rank ON TRUE
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT $1
 `, limit)
@@ -886,12 +929,14 @@ SELECT
   COALESCE(pay.paid_amount, 0) AS paid_amount,
   COALESCE(pay.payment_count, 0) AS payment_count,
   CASE
+    WHEN manual_rank.code IS NOT NULL THEN manual_rank.code
     WHEN COALESCE(credit.needs_repair, false) THEN 'start'
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 'elite'
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 'plus'
     ELSE 'start'
   END AS credit_level_code,
   CASE
+    WHEN manual_rank.code IS NOT NULL THEN manual_rank.name
     WHEN COALESCE(credit.needs_repair, false) THEN 'Kilat Start'
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 'Kilat Elite'
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 'Kilat Plus'
@@ -900,6 +945,7 @@ SELECT
   COALESCE(credit.needs_repair, false) AS credit_needs_repair,
   COALESCE(credit.qualified_paid_total, 0) AS qualified_paid_total,
   CASE
+    WHEN manual_rank.code IS NOT NULL THEN manual_rank.limit_amount
     WHEN COALESCE(credit.needs_repair, false) THEN 500000
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 5 THEN 2000000
     WHEN COALESCE(credit.qualified_paid_count, 0) >= 3 THEN 1000000
@@ -951,6 +997,14 @@ LEFT JOIN LATERAL (
   FROM public.agent_credit_loan pl
   WHERE pl.member_id = a.member_id
 ) credit ON TRUE
+LEFT JOIN LATERAL (
+  SELECT r.code, r.name, r.limit_amount
+  FROM public.agent_credit_rank_history h
+  JOIN public.agent_credit_rank r ON r.id = h.new_rank_id
+  WHERE h.member_id = a.member_id AND r.active = TRUE
+  ORDER BY h.created_at DESC, h.id DESC
+  LIMIT 1
+) manual_rank ON TRUE
 WHERE a.member_id = $1
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT $2
