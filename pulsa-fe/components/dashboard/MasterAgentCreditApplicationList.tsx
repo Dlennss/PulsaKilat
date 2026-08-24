@@ -202,7 +202,7 @@ function missingSurveyDocumentLabels(item: AgentCreditApplication) {
   const documents = [
     { key: "ktp", label: "Foto KTP" },
     { key: "store", label: "Foto Toko" },
-    { key: "selfie_ktp", label: "Selfie Pegang KTP" },
+    { key: "selfie_ktp", label: "Dokumen Formulir" },
     { key: "selfie_marketing", label: "Foto Bersama Marketing" },
   ];
   return documents.filter((doc) => !getStoredImageSrc(item, doc.key)).map((doc) => doc.label);
@@ -236,7 +236,7 @@ function MarketingSurveyDocumentUploader({ item, onComplete }: { item: AgentCred
   const fields = [
     { key: "ktp", name: "Foto KTP", desc: "KTP asli agent", icon: Upload },
     { key: "store", name: "Foto Toko", desc: "Tampak depan toko/usaha", icon: Store },
-    { key: "selfie_ktp", name: "Selfie Pegang KTP", desc: "Wajah agent dan KTP terlihat jelas", icon: UserRound },
+    { key: "selfie_ktp", name: "Dokumen Formulir", desc: "Formulir pengajuan terlihat jelas", icon: UserRound },
     { key: "selfie_marketing", name: "Foto Bersama Marketing", desc: "Agent dan marketing terlihat dalam satu foto", icon: UsersRound },
   ];
   const savedCount = fields.filter((field) => Boolean(getStoredImageSrc(item, field.key))).length;
@@ -848,7 +848,7 @@ export function MasterAgentCreditApplicationList({
             const docs = [
               { label: "Foto KTP", src: getStoredImageSrc(item, "ktp") },
               { label: "Foto Toko", src: getStoredImageSrc(item, "store") },
-              { label: "Selfie Pegang KTP", src: getStoredImageSrc(item, "selfie_ktp") },
+              { label: "Dokumen Formulir", src: getStoredImageSrc(item, "selfie_ktp") },
               { label: "Foto Bersama Marketing", src: getStoredImageSrc(item, "selfie_marketing") },
             ];
             const signatureSrc = getSignatureSrc(item);

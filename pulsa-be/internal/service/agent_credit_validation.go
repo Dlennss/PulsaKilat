@@ -105,8 +105,8 @@ func validateAgentCreditDocuments(documents map[string]any) error {
 	required := []struct{ key, label string }{
 		{"ktp", "foto KTP"},
 		{"store", "foto toko"},
-		{"selfie_ktp", "selfie pegang KTP"},
-		{"selfie_marketing", "selfie verifikasi agent"},
+		{"selfie_ktp", "dokumen formulir"},
+		{"selfie_marketing", "selfie bersama marketing"},
 	}
 	seen := make(map[string]string, len(required))
 	for _, field := range required {

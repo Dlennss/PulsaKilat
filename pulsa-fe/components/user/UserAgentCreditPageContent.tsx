@@ -947,8 +947,8 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               {[
                 { key: "ktp", title: "Foto KTP", desc: "KTP asli agent", icon: Upload },
                 { key: "store", title: "Foto Toko", desc: "Tampak depan usaha", icon: Store },
-                { key: "selfie_ktp", title: "Selfie Pegang KTP", desc: "Wajah dan KTP jelas", icon: UserRound },
-                { key: "selfie_marketing", title: "Selfie Verifikasi", desc: "Wajah agent terlihat jelas", icon: UsersRound },
+                { key: "selfie_ktp", title: "Dokumen Formulir", desc: "Formulir pengajuan terlihat jelas", icon: UserRound },
+                { key: "selfie_marketing", title: "Selfie Bersama Marketing", desc: "Wajah agent dan marketing terlihat jelas", icon: UsersRound },
               ].map((item) => {
                 const Icon = item.icon;
                 const selected = surveyFiles[item.key];

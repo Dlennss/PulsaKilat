@@ -425,7 +425,7 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 				missing = append(missing, "foto toko")
 			}
 			if !reviewState.HasSelfieKTPDocument {
-				missing = append(missing, "selfie pegang KTP")
+				missing = append(missing, "dokumen formulir")
 			}
 			if !reviewState.HasSelfieMarketing {
 				missing = append(missing, "foto bersama marketing")
@@ -506,7 +506,7 @@ func (s *AgentCreditService) decideAsMaster(ctx context.Context, masterID, appli
 				return nil, errors.New("agent wajib tanda tangan sebelum dikirim ke operator")
 			}
 			if !reviewState.HasKTPDocument || !reviewState.HasStoreDocument || !reviewState.HasSelfieKTPDocument || !reviewState.HasSelfieMarketing {
-				return nil, errors.New("foto KTP, foto toko, selfie pegang KTP, dan foto bersama marketing wajib lengkap")
+				return nil, errors.New("foto KTP, foto toko, dokumen formulir, dan selfie bersama marketing wajib lengkap")
 			}
 			if !strings.HasPrefix(signatureData, "data:image/") {
 				return nil, errors.New("tanda tangan marketing wajib diisi")
