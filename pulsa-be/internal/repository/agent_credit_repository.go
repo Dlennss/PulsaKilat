@@ -621,7 +621,10 @@ func (r *AgentCreditRepository) CompleteApplicationConsent(ctx context.Context, 
 UPDATE public.agent_credit_application
 SET
   requested_amount = CASE WHEN $3 > 0 THEN $3 ELSE requested_amount END,
-  applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $4::jsonb,
+  applicant_data = (COALESCE(applicant_data, '{}'::jsonb) || $4::jsonb)
+    - 'operator_revision_documents'
+    - 'operator_revision_required'
+    - 'operator_revision_requested_at',
   document_data = COALESCE(document_data, '{}'::jsonb) || $5::jsonb,
   marketing_user_id = COALESCE(marketing_user_id, NULLIF($7, 0)),
   agent_signature_data = CASE WHEN NULLIF($6, '') IS NULL THEN agent_signature_data ELSE $6 END,
@@ -1539,10 +1542,11 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	return &item, nil
 }
 
-func (r *AgentCreditRepository) ReturnApplicationToMarketing(ctx context.Context, in AgentCreditDecisionInput) (*AgentCreditApplication, error) {
+func (r *AgentCreditRepository) ReturnApplicationToMarketing(ctx context.Context, in AgentCreditDecisionInput, revisionDocuments []string) (*AgentCreditApplication, error) {
 	metaJSON, err := json.Marshal(map[string]any{
 		"operator_revision_requested_at": time.Now().UTC().Format(time.RFC3339),
 		"operator_revision_required":     true,
+		"operator_revision_documents":    revisionDocuments,
 		"operator_revision_resolved_at":  nil,
 	})
 	if err != nil {
@@ -1567,7 +1571,7 @@ SET
   analyst_recommended_amount = 0,
   applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $4::jsonb,
   updated_at = now()
-WHERE id = $1 AND status = 'analysis_review'
+WHERE id = $1 AND status IN ('submitted', 'marketing_review', 'analysis_review')
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note,
   COALESCE(analyst_note, ''), COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0),

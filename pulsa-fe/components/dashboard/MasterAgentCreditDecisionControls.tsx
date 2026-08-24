@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, LockKeyhole, RotateCcw, UnlockKeyhole, XCircle } from "lucide-react";
+import { CheckCircle2, FileWarning, Loader2, LockKeyhole, RotateCcw, UnlockKeyhole, XCircle } from "lucide-react";
 
 type Props = {
   applicationId: number;
@@ -24,7 +24,14 @@ type ApiBody = {
   error?: string;
 };
 
-type DecisionAction = "approved" | "rejected" | "forward_to_analysis";
+type DecisionAction = "approved" | "rejected" | "revision_required" | "forward_to_analysis";
+
+const revisionOptions = [
+  { key: "ktp", label: "Foto KTP" },
+  { key: "store", label: "Foto Toko" },
+  { key: "selfie_ktp", label: "Dokumen Formulir" },
+  { key: "selfie_marketing", label: "Foto Bersama Marketing" },
+] as const;
 
 function ReviewSignaturePad({
   label,
@@ -165,10 +172,11 @@ export function MasterAgentCreditDecisionControls({
   const [statusEditorOpen, setStatusEditorOpen] = useState(false);
   const [statusReason, setStatusReason] = useState("");
   const [statusBusy, setStatusBusy] = useState(false);
+  const [revisionDocuments, setRevisionDocuments] = useState<string[]>([]);
   const isFinal = status === "approved" || status === "rejected" || status === "analysis_rejected" || status === "master_rejected";
   const isMarketingReview = mode === "master" && (status === "submitted" || status === "marketing_review");
   const isAdminReview = mode === "admin" && ["submitted", "marketing_review", "analysis_review", "master_review", "ready_to_disburse"].includes(status);
-  const canAct = isMarketingReview || isAdminReview || (mode === "analyst" && status === "submitted") || isFinal;
+  const canAct = isMarketingReview || isAdminReview || (mode === "analyst" && ["submitted", "marketing_review", "analysis_review"].includes(status)) || isFinal;
   const needsReviewerSignature = isMarketingReview;
   const approveLabel = isMarketingReview ? "Kirim ke Operator" : mode === "analyst" || mode === "admin" ? "Setujui Pengajuan" : "Kirim ke Operator";
   const rejectLabel = "Tolak";
@@ -219,6 +227,16 @@ export function MasterAgentCreditDecisionControls({
       setError("Tanda tangan pemeriksa wajib diisi");
       return;
     }
+    if (decision === "revision_required") {
+      if (!revisionDocuments.length) {
+        setError("Pilih minimal satu dokumen yang perlu diperbaiki");
+        return;
+      }
+      if (!note.trim()) {
+        setError("Tulis alasan perbaikan dokumen terlebih dahulu");
+        return;
+      }
+    }
     const parsedAmount = Number(amount.replace(/[^\d]/g, ""));
     const defaultNote = isPositiveDecision
         ? mode === "analyst" || mode === "admin"
@@ -248,6 +266,7 @@ export function MasterAgentCreditDecisionControls({
           signature_data: needsReviewerSignature ? signatureData : "",
           risk_level: mode === "analyst" || mode === "admin" ? riskLevel : undefined,
           risk_score: mode === "analyst" || mode === "admin" ? Number(riskScore || 0) : undefined,
+          revision_documents: decision === "revision_required" ? revisionDocuments : undefined,
         }),
       });
       const body = (await response.json().catch(() => ({}))) as ApiBody;
@@ -374,6 +393,33 @@ export function MasterAgentCreditDecisionControls({
             </label>
           </div>
         ) : null}
+        {mode === "analyst" && !isFinal ? (
+          <div className="xl:col-span-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+            <div className="flex items-start gap-2">
+              <FileWarning className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.08em] text-amber-800">Perlu perbaikan dokumen</p>
+                <p className="mt-1 text-[10px] font-semibold leading-4 text-amber-700">Pilih hanya foto yang blur atau tidak jelas. Agent akan mengunggah ulang bagian ini tanpa mengulang data pinjaman.</p>
+              </div>
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+              {revisionOptions.map((option) => {
+                const checked = revisionDocuments.includes(option.key);
+                return (
+                  <label key={option.key} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black transition ${checked ? "border-amber-400 bg-white text-amber-800" : "border-amber-100 bg-white/60 text-slate-600"}`}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => setRevisionDocuments((current) => event.target.checked ? [...current, option.key] : current.filter((key) => key !== option.key))}
+                      className="h-4 w-4 accent-amber-600"
+                    />
+                    {option.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
         {needsReviewerSignature ? (
           <div className="xl:col-span-2">
             <ReviewSignaturePad
@@ -404,6 +450,17 @@ export function MasterAgentCreditDecisionControls({
             >
               {busy === "rejected" ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <XCircle className="h-4 w-4 shrink-0" />}
               <span className="truncate">{busy === "rejected" ? "Proses" : rejectLabel}</span>
+            </button>
+          ) : null}
+          {mode === "analyst" ? (
+            <button
+              type="button"
+              onClick={() => decide("revision_required")}
+              disabled={Boolean(busy)}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-[11px] font-black leading-3 text-amber-800 shadow-[0_8px_16px_rgba(245,158,11,0.08)] transition hover:-translate-y-0.5 hover:bg-amber-100 disabled:translate-y-0 disabled:opacity-60"
+            >
+              {busy === "revision_required" ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <FileWarning className="h-4 w-4 shrink-0" />}
+              <span className="truncate">{busy === "revision_required" ? "Proses" : "Minta Perbaikan"}</span>
             </button>
           ) : null}
         </div>

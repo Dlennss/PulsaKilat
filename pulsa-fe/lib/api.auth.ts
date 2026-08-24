@@ -41,6 +41,10 @@ export type AgentCreditApplication = {
   credit_needs_repair?: boolean;
   qualified_paid_total?: number;
   credit_limit_amount?: number;
+	operator_revision_documents?: string[];
+	operator_revision_required?: boolean;
+	operator_revision_requested_at?: string;
+	operator_revision_resolved_at?: string;
   loan_approved_at?: string;
   loan_due_date?: string;
   last_transaction_at?: string;

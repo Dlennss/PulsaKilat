@@ -32,14 +32,15 @@ type AgentCreditSubmitInput struct {
 }
 
 type AgentCreditDecisionInput struct {
-	ID             int64  `json:"id"`
-	Decision       string `json:"decision"`
-	ApprovedAmount int64  `json:"approved_amount"`
-	Note           string `json:"note"`
-	ReviewerMode   string `json:"reviewer_mode"`
-	SignatureData  string `json:"signature_data"`
-	RiskLevel      string `json:"risk_level"`
-	RiskScore      int64  `json:"risk_score"`
+	ID                int64    `json:"id"`
+	Decision          string   `json:"decision"`
+	ApprovedAmount    int64    `json:"approved_amount"`
+	Note              string   `json:"note"`
+	ReviewerMode      string   `json:"reviewer_mode"`
+	SignatureData     string   `json:"signature_data"`
+	RiskLevel         string   `json:"risk_level"`
+	RiskScore         int64    `json:"risk_score"`
+	RevisionDocuments []string `json:"revision_documents"`
 }
 
 type AgentCreditPaymentInput struct {
@@ -368,7 +369,7 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 	case helper.RoleAdmin, helper.RoleStaff:
 		return s.decideAsAdmin(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount)
 	case helper.RoleRetailAnalyst:
-		return s.decideAsAnalyst(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount)
+		return s.decideAsAnalyst(ctx, auth.MemberID, in.ID, reviewState, decision, note, strings.TrimSpace(in.SignatureData), strings.TrimSpace(in.RiskLevel), in.RiskScore, approvedAmount, limitAmount, in.RevisionDocuments)
 	default:
 		return nil, errors.New("keputusan kredit hanya dapat dilakukan operator")
 	}
@@ -482,12 +483,27 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 	}
 }
 
-func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData, riskLevel string, riskScore int64, approvedAmount, limitAmount int64) (*repository.AgentCreditApplication, error) {
+func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData, riskLevel string, riskScore int64, approvedAmount, limitAmount int64, revisionDocuments []string) (*repository.AgentCreditApplication, error) {
 	if reviewState.Status != "submitted" && reviewState.Status != "analysis_review" && reviewState.Status != "marketing_review" {
 		return nil, errors.New("pengajuan belum masuk tahap operator")
 	}
 	riskLevel = normalizeRiskLevel(riskLevel)
 	switch decision {
+	case "revision_required", "revision", "revisi", "perlu_revisi":
+		if strings.TrimSpace(note) == "" {
+			return nil, errors.New("catatan perbaikan wajib diisi")
+		}
+		documents := normalizeRevisionDocuments(revisionDocuments)
+		if len(documents) == 0 {
+			return nil, errors.New("pilih minimal satu dokumen yang perlu diperbaiki")
+		}
+		return s.repo.ReturnApplicationToMarketing(ctx, repository.AgentCreditDecisionInput{
+			ID:             applicationID,
+			AnalystID:      analystID,
+			AnalystNote:    note,
+			Recommendation: "revision_required",
+			ActorRole:      "operator_credit",
+		}, documents)
 	case "approve", "approved", "setujui":
 		if approvedAmount <= 0 {
 			approvedAmount = limitAmount
@@ -520,6 +536,20 @@ func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, app
 	default:
 		return nil, errors.New("operator wajib memilih setuju atau tolak")
 	}
+}
+
+func normalizeRevisionDocuments(values []string) []string {
+	allowed := map[string]bool{"ktp": true, "store": true, "selfie_ktp": true, "selfie_marketing": true}
+	seen := make(map[string]bool, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		key := strings.TrimSpace(strings.ToLower(value))
+		if allowed[key] && !seen[key] {
+			seen[key] = true
+			result = append(result, key)
+		}
+	}
+	return result
 }
 
 func (s *AgentCreditService) decideAsMaster(ctx context.Context, masterID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData string) (*repository.AgentCreditApplication, error) {

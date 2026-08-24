@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Clock3,
   FileText,
+  FileWarning,
   HandCoins,
   Home,
   Landmark,
@@ -307,6 +308,17 @@ function getApplicationNotice(application?: AgentCreditApplication) {
         icon: XCircle,
       };
     case "marketing_review":
+      if (application.applicant_data?.operator_revision_required) {
+        const requested = Array.isArray(application.applicant_data.operator_revision_documents)
+          ? application.applicant_data.operator_revision_documents.map((key) => ({ ktp: "Foto KTP", store: "Foto Toko", selfie_ktp: "Dokumen Formulir", selfie_marketing: "Foto Bersama Marketing" }[String(key)] || String(key))).join(", ")
+          : "dokumen yang dipilih operator";
+        return {
+          title: "Perbaiki dokumen yang diminta operator",
+          desc: `${requested}. Data pinjaman tidak perlu diisi ulang.`,
+          className: "border-amber-200 bg-amber-50 text-amber-700",
+          icon: FileWarning,
+        };
+      }
       return {
         title: "Sedang dicek",
         desc: "Dokumen agent sudah terkirim dan dapat dipantau oleh marketing.",
@@ -404,6 +416,10 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const notice = getApplicationNotice(latestApplication);
   const NoticeIcon = notice?.icon;
   const isPendingStatus = latestApplication?.status === "submitted" || latestApplication?.status === "marketing_review" || latestApplication?.status === "analysis_review" || latestApplication?.status === "master_review" || latestApplication?.status === "ready_to_disburse";
+  const revisionDocuments = Array.isArray(latestApplication?.applicant_data?.operator_revision_documents)
+    ? latestApplication.applicant_data.operator_revision_documents.filter((value): value is string => typeof value === "string")
+    : [];
+  const isDocumentRevision = Boolean(latestApplication?.status === "marketing_review" && latestApplication?.applicant_data?.operator_revision_required && revisionDocuments.length);
   const unsignedPendingApplication = Boolean(isPendingStatus && latestApplication && !latestApplication.has_agent_signature);
   const hasOpenApplication = Boolean(isPendingStatus && !unsignedPendingApplication);
   const isPaidOff = latestApplication?.status === "approved" && String(latestApplication.loan_status || "").toLowerCase() === "paid";
@@ -418,7 +434,9 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const creditLevelImage = levelBadgeByCode[creditLevelCode] || levelBadgeByCode.start;
   const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
   const requestedAmount = defaultCreditAmount;
-  const surveyDocumentsComplete = ["ktp", "store", "selfie_ktp", "selfie_marketing"].every((key) => Boolean(surveyFiles[key]));
+  const surveyKeys = ["ktp", "store", "selfie_ktp", "selfie_marketing"];
+  const requiredSurveyKeys = isDocumentRevision ? revisionDocuments : surveyKeys;
+  const surveyDocumentsComplete = requiredSurveyKeys.every((key) => Boolean(surveyFiles[key]));
   const totalPaidAmount = applications.reduce((sum, item) => sum + Number(item.paid_amount || 0), 0);
   const totalActiveCredit = applications.reduce((sum, item) => sum + Math.max(0, Number(item.outstanding_amount || 0)), 0);
   const statusIsApproved = latestApplication?.status === "approved";
@@ -544,7 +562,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
-    if (hasOpenApplication) {
+    if (hasOpenApplication && !isDocumentRevision) {
       setError("Pengajuan ini sudah masuk antrean dan sedang menunggu keputusan operator.");
       return;
     }
@@ -552,18 +570,17 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
       setError("Saldo modal masih tersedia. Gunakan saldo tersebut terlebih dahulu sebelum mengajukan lagi.");
       return;
     }
-    if (!agreed) {
+    if (!agreed && !isDocumentRevision) {
       setError("Centang persetujuan syarat dan ketentuan terlebih dahulu.");
       return;
     }
-    if (!signatureReady || !signatureData) {
+    if (!isDocumentRevision && (!signatureReady || !signatureData)) {
       setError("Tanda tangan agent wajib diisi sebelum pengajuan dikirim.");
       return;
     }
 
-    const surveyKeys = ["ktp", "store", "selfie_ktp", "selfie_marketing"];
-    if (surveyKeys.some((key) => !surveyFiles[key])) {
-      setError("Empat foto dokumen wajib dilengkapi sebelum pengajuan dikirim.");
+    if (requiredSurveyKeys.some((key) => !surveyFiles[key])) {
+      setError(isDocumentRevision ? "Unggah ulang semua dokumen yang diminta operator." : "Empat foto dokumen wajib dilengkapi sebelum pengajuan dikirim.");
       return;
     }
 
@@ -571,7 +588,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
     setSubmitting(true);
     setError("");
     try {
-      const documentEntries = await Promise.all(surveyKeys.map(async (key) => [key, await readStoredImage(surveyFiles[key])] as const));
+      const documentEntries = await Promise.all(requiredSurveyKeys.map(async (key) => [key, await readStoredImage(surveyFiles[key])] as const));
       const documentData = Object.fromEntries(documentEntries.filter(([, image]) => image));
       const response = await fetch("/api/agent-credit/applications", {
         method: "POST",
@@ -585,23 +602,23 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
             : undefined,
           requested_amount: requestedAmount,
           applicant_data: {
-            agent_name: String(form.get("agent_name") || ""),
-            store_name: String(form.get("store_name") || ""),
-            nik: String(form.get("nik") || ""),
-            whatsapp: String(form.get("whatsapp") || ""),
-            email: String(form.get("email") || ""),
-            home_address: String(form.get("home_address") || ""),
-            store_address: String(form.get("store_address") || ""),
-            family_name: String(form.get("family_name") || ""),
-            family_whatsapp: String(form.get("family_whatsapp") || ""),
-            family_relation: String(form.get("family_relation") || ""),
-            family_address: String(form.get("family_address") || ""),
-            terms_accepted: agreed,
+            agent_name: String(form.get("agent_name") || applicantText("agent_name")),
+            store_name: String(form.get("store_name") || applicantText("store_name")),
+            nik: String(form.get("nik") || applicantText("nik")),
+            whatsapp: String(form.get("whatsapp") || applicantText("whatsapp")),
+            email: String(form.get("email") || applicantText("email")),
+            home_address: String(form.get("home_address") || applicantText("home_address")),
+            store_address: String(form.get("store_address") || applicantText("store_address")),
+            family_name: String(form.get("family_name") || applicantText("family_name")),
+            family_whatsapp: String(form.get("family_whatsapp") || applicantText("family_whatsapp")),
+            family_relation: String(form.get("family_relation") || applicantText("family_relation")),
+            family_address: String(form.get("family_address") || applicantText("family_address")),
+            terms_accepted: agreed || Boolean(applicantDefaults.terms_accepted),
             terms_version: "pulsakilat-agent-credit-2026-07",
           },
           document_data: documentData,
-          agent_signature: signatureData,
-          terms_accepted: agreed,
+          agent_signature: isDocumentRevision ? "" : signatureData,
+          terms_accepted: agreed || Boolean(applicantDefaults.terms_accepted),
         }),
       });
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; item?: AgentCreditApplication };
@@ -959,7 +976,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Survey Lapangan</p>
                 <h2 className="mt-1 text-xl font-black leading-6 text-slate-950">Dokumen Pengajuan Agent</h2>
                 <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">
-                  Lengkapi empat foto yang jelas sebelum mengirim pengajuan. Marketing hanya dapat memantau hasilnya.
+                  {isDocumentRevision ? "Operator meminta perbaikan pada dokumen tertentu. Unggah ulang hanya bagian yang ditandai." : "Lengkapi empat foto yang jelas sebelum mengirim pengajuan. Marketing hanya dapat memantau hasilnya."}
                 </p>
               </div>
             </div>
@@ -973,8 +990,9 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               ].map((item) => {
                 const Icon = item.icon;
                 const selected = surveyFiles[item.key];
+                const isRequiredForRevision = !isDocumentRevision || requiredSurveyKeys.includes(item.key);
                 return (
-                  <label key={item.title} className={selected ? "min-w-0 cursor-pointer rounded-[22px] border border-emerald-300 bg-emerald-50 p-3 shadow-[0_10px_22px_rgba(6,78,59,0.055)]" : "min-w-0 cursor-pointer rounded-[22px] border border-dashed border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)] p-3 shadow-[0_10px_22px_rgba(6,78,59,0.055)]"}>
+                  <label key={item.title} className={`${selected ? "border-emerald-300 bg-emerald-50" : "border-dashed border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)]"} min-w-0 rounded-[22px] border p-3 shadow-[0_10px_22px_rgba(6,78,59,0.055)] ${isRequiredForRevision ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
                     <div className="flex items-start justify-between gap-2">
                       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-[#047857] ring-1 ring-emerald-100">
                         <Icon className="h-5 w-5" strokeWidth={2.4} />
@@ -996,7 +1014,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                     ) : null}
                     <p className="mt-3 truncate text-[11px] font-black text-slate-950">{item.title}</p>
                     <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-500">{selected ? selected.name : item.desc}</p>
-                    <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => setSurveyFiles((current) => ({ ...current, [item.key]: event.target.files?.[0] || null }))} />
+                    <input type="file" accept="image/*" capture="environment" disabled={!isRequiredForRevision} className="sr-only" onChange={(event) => setSurveyFiles((current) => ({ ...current, [item.key]: event.target.files?.[0] || null }))} />
                   </label>
                 );
               })}
@@ -1105,7 +1123,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
           disabled={submitting}
           className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_36px_rgba(4,120,87,0.24)] transition disabled:opacity-50"
         >
-          {creditBalanceAvailable ? "Saldo Modal Masih Tersedia" : hasOpenApplication ? "Menunggu Review" : submitting ? "Mengirim..." : !surveyDocumentsComplete ? "Lengkapi 4 Foto" : unsignedPendingApplication ? "Kirim Tanda Tangan" : canRefill ? "Ajukan Modal Lagi" : canReapply ? "Ajukan Modal Berikutnya" : "Ajukan Modal"}
+          {creditBalanceAvailable ? "Saldo Modal Masih Tersedia" : hasOpenApplication && !isDocumentRevision ? "Menunggu Review" : submitting ? "Mengirim..." : !surveyDocumentsComplete ? (isDocumentRevision ? "Lengkapi Foto Diminta" : "Lengkapi 4 Foto") : unsignedPendingApplication && !isDocumentRevision ? "Kirim Tanda Tangan" : isDocumentRevision ? "Kirim Perbaikan Dokumen" : canRefill ? "Ajukan Modal Lagi" : canReapply ? "Ajukan Modal Berikutnya" : "Ajukan Modal"}
           <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
         </button>
 
