@@ -270,6 +270,10 @@ export function MasterAgentCreditDecisionControls({
         throw new Error(body.error || "Keputusan gagal disimpan");
       }
       setEditing(false);
+      if (decision === "revision_required") {
+        window.location.reload();
+        return;
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Keputusan gagal disimpan");
