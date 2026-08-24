@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  AlertTriangle,
   Archive,
   ArrowUpCircle,
   BarChart3,
@@ -76,6 +77,7 @@ const iconByHref = {
   "/dashboard/master/operator/kenaikan-limit": ArrowUpCircle,
   "/dashboard/master/operator/monitor-pelunasan": WalletCards,
   "/dashboard/master/operator/transaksi-agent": ReceiptText,
+  "/dashboard/master/operator/konter-tidak-transaksi": AlertTriangle,
   "/dashboard/master/operator/arsip-keputusan": Archive,
   "/dashboard/master/riwayat-acc-analis": FileText,
 } as const;
