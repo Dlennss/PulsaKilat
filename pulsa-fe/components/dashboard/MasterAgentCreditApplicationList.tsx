@@ -884,7 +884,7 @@ export function MasterAgentCreditApplicationList({
                     ? "Empat dokumen wajib harus lengkap sebelum dikirim ke operator."
                   : !termsAccepted
                   ? "Agent belum mencentang persetujuan syarat & ketentuan."
-                  : "Agent belum tanda tangan persetujuan.";
+                      : "Agent belum tanda tangan persetujuan.";
             return (
               <article
                 key={item.id}

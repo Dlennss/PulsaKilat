@@ -477,7 +477,7 @@ export function MasterAgentCreditDecisionControls({
           Batal edit
         </button>
       ) : null}
-      {!canApprove ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-center text-[10px] font-black text-amber-700">{approveBlockReason || "Data agent wajib lengkap sebelum dikirim ke operator."}</p> : null}
+      {!canApprove && !(mode === "analyst" && !isFinal) ? <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-center text-[10px] font-black text-amber-700">{approveBlockReason || "Data agent wajib lengkap sebelum dikirim ke operator."}</p> : null}
       {error ? <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
     </div>
   );
