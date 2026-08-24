@@ -174,6 +174,7 @@ export function MasterAgentCreditDecisionControls({
   const [statusBusy, setStatusBusy] = useState(false);
   const [revisionDocuments, setRevisionDocuments] = useState<string[]>([]);
   const isFinal = status === "approved" || status === "rejected" || status === "analysis_rejected" || status === "master_rejected";
+  const isRevisionWaiting = mode === "analyst" && status === "marketing_review" && analystRecommendation === "revision_required";
   const isMarketingReview = mode === "master" && (status === "submitted" || status === "marketing_review");
   const isAdminReview = mode === "admin" && ["submitted", "marketing_review", "analysis_review", "master_review", "ready_to_disburse"].includes(status);
   const canAct = isMarketingReview || isAdminReview || (mode === "analyst" && ["submitted", "marketing_review", "analysis_review", "master_review", "ready_to_disburse"].includes(status)) || isFinal;
@@ -334,6 +335,21 @@ export function MasterAgentCreditDecisionControls({
             {error ? <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-center text-[10px] font-black text-rose-600">{error}</p> : null}
           </div>
         ) : null}
+      </div>
+    );
+  }
+
+  if (isRevisionWaiting) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+        <div className="flex items-start gap-2">
+          <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="text-xs font-black">Menunggu perbaikan agent</p>
+            <p className="mt-1 text-[10px] font-semibold leading-4">Permintaan perbaikan sudah dikirim. Agent hanya perlu mengganti dokumen yang dipilih.</p>
+            {analystNote ? <p className="mt-2 rounded-xl bg-white/70 px-3 py-2 text-[10px] font-bold">{analystNote}</p> : null}
+          </div>
+        </div>
       </div>
     );
   }

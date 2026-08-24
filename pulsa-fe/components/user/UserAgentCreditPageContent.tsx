@@ -372,6 +372,15 @@ function formatIDR(value: number) {
 
 const defaultCreditAmount = 500000;
 
+function hasOperatorDocumentRevision(application?: AgentCreditApplication) {
+  if (!application || application.status !== "marketing_review") return false;
+  const data = application.applicant_data;
+  return Boolean(
+    data?.operator_revision_required ||
+    application.analyst_recommendation === "revision_required"
+  );
+}
+
 const levelBadgeByCode: Record<string, string> = {
   start: "/agent-levels/kilat-start-badge.png",
   plus: "/agent-levels/kilat-plus-badge.png",
@@ -386,7 +395,9 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const [signatureData, setSignatureData] = useState("");
   const [latestApplication, setLatestApplication] = useState<AgentCreditApplication | undefined>(initialApplications[0]);
   const [applications, setApplications] = useState(initialApplications);
-  const [activeCreditTab, setActiveCreditTab] = useState<"list" | "new" | "status">(initialApplications.length ? "list" : "new");
+  const [activeCreditTab, setActiveCreditTab] = useState<"list" | "new" | "status">(
+    hasOperatorDocumentRevision(initialApplications[0]) ? "new" : initialApplications.length ? "list" : "new"
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -419,7 +430,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const revisionDocuments = Array.isArray(latestApplication?.applicant_data?.operator_revision_documents)
     ? latestApplication.applicant_data.operator_revision_documents.filter((value): value is string => typeof value === "string")
     : [];
-  const isDocumentRevision = Boolean(latestApplication?.status === "marketing_review" && latestApplication?.applicant_data?.operator_revision_required && revisionDocuments.length);
+  const isDocumentRevision = Boolean(hasOperatorDocumentRevision(latestApplication) && revisionDocuments.length);
   const unsignedPendingApplication = Boolean(isPendingStatus && latestApplication && !latestApplication.has_agent_signature);
   const hasOpenApplication = Boolean(isPendingStatus && !unsignedPendingApplication);
   const isPaidOff = latestApplication?.status === "approved" && String(latestApplication.loan_status || "").toLowerCase() === "paid";
@@ -457,11 +468,13 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const rejectedApplications = applications.filter((item) => isRejectedStatus(item.status)).length;
   const listApplications = applications.length ? applications : [];
   const statusLabel = (item: AgentCreditApplication) => {
+    if (hasOperatorDocumentRevision(item)) return "Perlu Perbaikan";
     if (item.status === "approved") return String(item.loan_status || "").toLowerCase() === "suspended" ? "Dibekukan" : isPaidStatus(item) ? "Siklus Selesai" : "Modal Aktif";
     if (isRejectedStatus(item.status)) return "Ditolak";
     return "Menunggu";
   };
   const statusClassName = (item: AgentCreditApplication) => {
+    if (hasOperatorDocumentRevision(item)) return "bg-amber-100 text-amber-800";
     if (item.status === "approved") return String(item.loan_status || "").toLowerCase() === "suspended" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800";
     if (isRejectedStatus(item.status)) return "bg-rose-100 text-rose-700";
     return "bg-amber-100 text-amber-800";
@@ -790,11 +803,11 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                           type="button"
                           onClick={() => {
                             setLatestApplication(item);
-                            setActiveCreditTab("status");
+                            setActiveCreditTab(hasOperatorDocumentRevision(item) ? "new" : "status");
                           }}
                           className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-2 text-[10px] font-black text-[#047857]"
                         >
-                          Lihat Status
+                          {hasOperatorDocumentRevision(item) ? "Perbaiki Dokumen" : "Lihat Status"}
                         </button>
                       </div>
                     </div>
