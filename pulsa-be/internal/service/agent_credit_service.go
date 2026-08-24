@@ -484,7 +484,7 @@ func (s *AgentCreditService) decideAsMarketing(ctx context.Context, marketingID,
 }
 
 func (s *AgentCreditService) decideAsAnalyst(ctx context.Context, analystID, applicationID int64, reviewState *repository.AgentCreditReviewState, decision, note, signatureData, riskLevel string, riskScore int64, approvedAmount, limitAmount int64, revisionDocuments []string) (*repository.AgentCreditApplication, error) {
-	if reviewState.Status != "submitted" && reviewState.Status != "analysis_review" && reviewState.Status != "marketing_review" {
+	if reviewState.Status != "submitted" && reviewState.Status != "analysis_review" && reviewState.Status != "marketing_review" && reviewState.Status != "master_review" && reviewState.Status != "ready_to_disburse" {
 		return nil, errors.New("pengajuan belum masuk tahap operator")
 	}
 	riskLevel = normalizeRiskLevel(riskLevel)

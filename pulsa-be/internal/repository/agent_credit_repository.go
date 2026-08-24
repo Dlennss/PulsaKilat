@@ -1511,7 +1511,7 @@ SET
   analyst_recommendation = $4,
   analyst_recommended_amount = $5,
   updated_at = now()
-WHERE id = $1 AND status IN ('submitted', 'marketing_review', 'analysis_review')
+WHERE id = $1 AND status IN ('submitted', 'marketing_review', 'analysis_review', 'master_review', 'ready_to_disburse')
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note,
   COALESCE(analyst_note, ''), COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0),
@@ -1567,11 +1567,11 @@ SET
   analyst_user_id = $2,
   analyst_reviewed_at = now(),
   analyst_note = $3,
-  analyst_recommendation = 'revision_required',
+	analyst_recommendation = 'revision_required',
   analyst_recommended_amount = 0,
   applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $4::jsonb,
   updated_at = now()
-WHERE id = $1 AND status IN ('submitted', 'marketing_review', 'analysis_review')
+WHERE id = $1 AND status IN ('submitted', 'marketing_review', 'analysis_review', 'master_review', 'ready_to_disburse')
 RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
   COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note,
   COALESCE(analyst_note, ''), COALESCE(analyst_recommendation, ''), COALESCE(analyst_recommended_amount, 0),

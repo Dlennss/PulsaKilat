@@ -176,7 +176,7 @@ export function MasterAgentCreditDecisionControls({
   const isFinal = status === "approved" || status === "rejected" || status === "analysis_rejected" || status === "master_rejected";
   const isMarketingReview = mode === "master" && (status === "submitted" || status === "marketing_review");
   const isAdminReview = mode === "admin" && ["submitted", "marketing_review", "analysis_review", "master_review", "ready_to_disburse"].includes(status);
-  const canAct = isMarketingReview || isAdminReview || (mode === "analyst" && ["submitted", "marketing_review", "analysis_review"].includes(status)) || isFinal;
+  const canAct = isMarketingReview || isAdminReview || (mode === "analyst" && ["submitted", "marketing_review", "analysis_review", "master_review", "ready_to_disburse"].includes(status)) || isFinal;
   const needsReviewerSignature = isMarketingReview;
   const approveLabel = isMarketingReview ? "Kirim ke Operator" : mode === "analyst" || mode === "admin" ? "Setujui Pengajuan" : "Kirim ke Operator";
   const rejectLabel = "Tolak";
