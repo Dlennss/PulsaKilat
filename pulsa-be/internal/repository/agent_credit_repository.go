@@ -112,8 +112,8 @@ SELECT
   COALESCE(last_trx.status, ''),
   COALESCE(last_trx.nominal, 0),
   CASE
-    WHEN last_trx.dibuat_pada IS NULL THEN 0
-    ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - last_trx.dibuat_pada)) / 86400)::int)
+    WHEN COALESCE(last_trx.dibuat_pada, m.dibuat_pada) IS NULL THEN 0
+    ELSE GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(last_trx.dibuat_pada, m.dibuat_pada))) / 86400)::int)
   END AS inactive_days
 FROM public.member m
 LEFT JOIN public.member mark ON mark.id = m.marketing_id
@@ -126,7 +126,7 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) last_trx ON true
 WHERE LOWER(COALESCE(m.role, '')) = 'agent'
-  AND (last_trx.dibuat_pada IS NULL OR last_trx.dibuat_pada < NOW() - ($1 * INTERVAL '1 day'))
+  AND COALESCE(last_trx.dibuat_pada, m.dibuat_pada) < NOW() - ($1 * INTERVAL '1 day')
   AND ($2 = '' OR m.nama ILIKE '%' || $2 || '%' OR m.email ILIKE '%' || $2 || '%' OR m.phone ILIKE '%' || $2 || '%' OR mark.nama ILIKE '%' || $2 || '%')
 ORDER BY last_trx.dibuat_pada ASC NULLS FIRST, m.id DESC
 LIMIT $3
