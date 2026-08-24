@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -179,6 +180,9 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 			if err == nil {
 				return item, nil
 			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return nil, err
+			}
 			// The client may hold an old application ID after a rejected or
 			// deleted record. Resolve the current open application before
 			// falling back to creating a new submitted application.
@@ -196,7 +200,8 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 					AgentSignature:  strings.TrimSpace(in.AgentSignature),
 				})
 			}
-			return nil, err
+			// No open row remains, so continue below and create a fresh
+			// submitted application for the agent.
 		}
 		existingID, err := s.repo.FindOpenEarlyApplicationID(ctx, targetMemberID)
 		if err != nil {
