@@ -140,11 +140,19 @@ SELECT
 FROM public.member m
 LEFT JOIN public.member mark ON mark.id = m.marketing_id
 LEFT JOIN LATERAL (
-  SELECT tm.dibuat_pada, tm.kode_produk, tm.status,
-         COALESCE(tm.biaya_aktual, tm.biaya_perkiraan, 0) AS nominal
-  FROM public.transaksi_member tm
-  WHERE tm.member_id = m.id
-  ORDER BY tm.dibuat_pada DESC, tm.id DESC
+  SELECT trx.dibuat_pada, trx.kode_produk, trx.status, trx.nominal
+  FROM (
+    SELECT ao.dibuat_pada, ao.produk_sku_snapshot AS kode_produk, ao.status,
+           COALESCE(ao.harga_final, 0) AS nominal, ao.id
+    FROM public.app_order ao
+    WHERE ao.member_id = m.id AND LOWER(COALESCE(ao.buyer_type, '')) = 'user'
+    UNION ALL
+    SELECT tm.dibuat_pada, tm.kode_produk, tm.status,
+           COALESCE(tm.biaya_aktual, tm.biaya_perkiraan, 0) AS nominal, tm.id
+    FROM public.transaksi_member tm
+    WHERE tm.member_id = m.id
+  ) trx
+  ORDER BY trx.dibuat_pada DESC, trx.id DESC
   LIMIT 1
 ) last_trx ON true
 WHERE LOWER(COALESCE(m.role, '')) = 'agent'
@@ -903,10 +911,9 @@ SELECT
   END AS credit_limit_amount,
   l.approved_at AS loan_approved_at,
   l.due_date AS loan_due_date,
-  (
-    SELECT MAX(t.diperbarui_pada)
-    FROM public.transaksi_member t
-    WHERE t.member_id = a.member_id AND lower(COALESCE(t.status, '')) = 'success'
+  GREATEST(
+    (SELECT MAX(COALESCE(o.diubah_pada, o.dibuat_pada)) FROM public.app_order o WHERE o.member_id = a.member_id AND lower(COALESCE(o.status, '')) = 'success'),
+    (SELECT MAX(t.diperbarui_pada) FROM public.transaksi_member t WHERE t.member_id = a.member_id AND lower(COALESCE(t.status, '')) = 'success')
   ) AS last_transaction_at,
   a.created_at,
   a.updated_at
@@ -1087,10 +1094,9 @@ SELECT
   END AS credit_limit_amount,
   l.approved_at AS loan_approved_at,
   l.due_date AS loan_due_date,
-  (
-    SELECT MAX(t.diperbarui_pada)
-    FROM public.transaksi_member t
-    WHERE t.member_id = a.member_id AND lower(COALESCE(t.status, '')) = 'success'
+  GREATEST(
+    (SELECT MAX(COALESCE(o.diubah_pada, o.dibuat_pada)) FROM public.app_order o WHERE o.member_id = a.member_id AND lower(COALESCE(o.status, '')) = 'success'),
+    (SELECT MAX(t.diperbarui_pada) FROM public.transaksi_member t WHERE t.member_id = a.member_id AND lower(COALESCE(t.status, '')) = 'success')
   ) AS last_transaction_at,
   a.created_at,
   a.updated_at

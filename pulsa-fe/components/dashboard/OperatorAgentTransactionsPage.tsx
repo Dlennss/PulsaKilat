@@ -10,6 +10,7 @@ type AgentTransaction = {
   member_nama?: string;
   ref_id: string;
   kode_produk: string;
+  produk_nama?: string;
   tujuan: string;
   qty: number;
   status: string;
@@ -21,7 +22,7 @@ type AgentTransaction = {
 function statusClass(status: string) {
   const value = status.toLowerCase();
   if (value === "success" || value === "sukses") return "bg-emerald-100 text-emerald-700";
-  if (value === "failed" || value === "gagal") return "bg-rose-100 text-rose-700";
+  if (value === "failed" || value === "gagal" || value === "refunded") return "bg-rose-100 text-rose-700";
   return "bg-amber-100 text-amber-700";
 }
 
@@ -29,6 +30,8 @@ function statusLabel(status: string) {
   const value = status.toLowerCase();
   if (value === "success") return "Berhasil";
   if (value === "failed") return "Gagal";
+  if (value === "refunded") return "Dikembalikan";
+  if (["pending", "pending_payment", "paid", "processing_provider"].includes(value)) return "Diproses";
   return status || "Diproses";
 }
 
@@ -50,10 +53,10 @@ export default function OperatorAgentTransactionsPage() {
     setError("");
     try {
       const token = localStorage.getItem("auth_token") || "";
-      const query = new URLSearchParams({ limit: "100", offset: "0", member_role: "agent" });
+      const query = new URLSearchParams({ limit: "100" });
       if (status) query.set("status", status);
       if (search) query.set("q", search);
-      const response = await fetch(`/api/admin/history/transaksi?${query.toString()}`, {
+      const response = await fetch(`/api/admin/agent-credit/transactions?${query.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         cache: "no-store",
       });
@@ -117,12 +120,12 @@ export default function OperatorAgentTransactionsPage() {
                 <tr><th className="px-4 py-3">Waktu</th><th className="px-4 py-3">Agent</th><th className="px-4 py-3">Produk</th><th className="px-4 py-3">Tujuan</th><th className="px-4 py-3">Nominal</th><th className="px-4 py-3">Status</th></tr>
               </thead>
               <tbody className="divide-y divide-emerald-50">
-                {items.map((item) => <tr key={item.id} className="text-slate-600 hover:bg-emerald-50/40"><td className="whitespace-nowrap px-4 py-4 font-semibold">{dateLabel(item.dibuat_pada)}</td><td className="px-4 py-4"><p className="font-black text-slate-900">{item.member_nama || "Agent"}</p><p className="mt-1 text-[11px] text-slate-400">{item.member_email || "-"}</p></td><td className="px-4 py-4 font-black text-slate-900">{item.kode_produk || "-"}</td><td className="px-4 py-4 font-semibold">{item.tujuan || "-"}</td><td className="whitespace-nowrap px-4 py-4 font-black text-slate-900">{fmtID(item.biaya_aktual || item.biaya_perkiraan || 0)}</td><td className="px-4 py-4"><span className={`rounded-full px-3 py-1 text-[10px] font-black ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></td></tr>)}
+                {items.map((item) => <tr key={item.id} className="text-slate-600 hover:bg-emerald-50/40"><td className="whitespace-nowrap px-4 py-4 font-semibold">{dateLabel(item.dibuat_pada)}</td><td className="px-4 py-4"><p className="font-black text-slate-900">{item.member_nama || "Agent"}</p><p className="mt-1 text-[11px] text-slate-400">{item.member_email || "-"}</p></td><td className="px-4 py-4"><p className="font-black text-slate-900">{item.produk_nama || item.kode_produk || "-"}</p>{item.produk_nama && item.kode_produk ? <p className="mt-1 text-[10px] font-bold text-slate-400">{item.kode_produk}</p> : null}</td><td className="px-4 py-4 font-semibold">{item.tujuan || "-"}</td><td className="whitespace-nowrap px-4 py-4 font-black text-slate-900">{fmtID(item.biaya_aktual || item.biaya_perkiraan || 0)}</td><td className="px-4 py-4"><span className={`rounded-full px-3 py-1 text-[10px] font-black ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></td></tr>)}
               </tbody>
             </table>
           </div>
           <div className="divide-y divide-emerald-50 lg:hidden">
-            {items.map((item) => <article key={item.id} className="space-y-3 p-4 hover:bg-emerald-50/40"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><ReceiptText className="h-5 w-5" /></span><div className="min-w-0"><p className="truncate text-sm font-black text-slate-950">{item.member_nama || "Agent"}</p><p className="truncate text-[11px] font-semibold text-slate-400">{item.member_email || "-"}</p></div></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></div><div className="grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Produk</p><p className="mt-1 font-black text-slate-800">{item.kode_produk || "-"}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Nominal</p><p className="mt-1 font-black text-slate-800">{fmtID(item.biaya_aktual || item.biaya_perkiraan || 0)}</p></div><div className="col-span-2 rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Tujuan · Waktu</p><p className="mt-1 break-words font-semibold text-slate-700">{item.tujuan || "-"} · {dateLabel(item.dibuat_pada)}</p></div></div></article>)}
+            {items.map((item) => <article key={item.id} className="space-y-3 p-4 hover:bg-emerald-50/40"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><ReceiptText className="h-5 w-5" /></span><div className="min-w-0"><p className="truncate text-sm font-black text-slate-950">{item.member_nama || "Agent"}</p><p className="truncate text-[11px] font-semibold text-slate-400">{item.member_email || "-"}</p></div></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></div><div className="grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Produk</p><p className="mt-1 font-black text-slate-800">{item.produk_nama || item.kode_produk || "-"}</p>{item.produk_nama && item.kode_produk ? <p className="mt-1 text-[10px] font-bold text-slate-400">{item.kode_produk}</p> : null}</div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Nominal</p><p className="mt-1 font-black text-slate-800">{fmtID(item.biaya_aktual || item.biaya_perkiraan || 0)}</p></div><div className="col-span-2 rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Tujuan · Waktu</p><p className="mt-1 break-words font-semibold text-slate-700">{item.tujuan || "-"} · {dateLabel(item.dibuat_pada)}</p></div></div></article>)}
           </div>
           {!loading && items.length === 0 ? <div className="px-4 py-12 text-center text-sm font-semibold text-slate-500">Belum ada transaksi agent yang sesuai filter.</div> : null}
           {loading ? <div className="px-4 py-12 text-center text-sm font-semibold text-slate-500">Memuat transaksi agent...</div> : null}
