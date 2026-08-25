@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BadgeCheck, ChevronDown, Loader2, Search, ShieldCheck, TrendingUp, WalletCards } from "lucide-react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 
@@ -106,6 +107,7 @@ function buildAgentSummaries(applications: AgentCreditApplication[]): AgentSumma
 }
 
 export function AgentCreditRiskPage({ applications, mode }: Props) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [limitByMember, setLimitByMember] = useState<Record<number, string>>({});
@@ -146,6 +148,7 @@ export function AgentCreditRiskPage({ applications, mode }: Props) {
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!response.ok || !body.ok) throw new Error(body.error || "Limit gagal diubah");
       setMessage({ type: "success", text: `Limit ${agent.name} berhasil diperbarui oleh Operator Kredit.` });
+      router.refresh();
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Limit gagal diubah" });
     } finally {

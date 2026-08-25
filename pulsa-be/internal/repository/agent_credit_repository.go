@@ -420,6 +420,84 @@ WHERE m.id = $1
 		return nil, fmt.Errorf("limit baru tidak boleh lebih kecil dari kewajiban berjalan Rp%d", outstanding)
 	}
 
+	var loanID, applicationID, currentPrincipal int64
+	loanErr := tx.QueryRowContext(ctx, `
+SELECT id, application_id, principal_amount
+FROM public.agent_credit_loan
+WHERE member_id = $1 AND status IN ('active', 'due', 'overdue', 'suspended')
+ORDER BY approved_at DESC, id DESC
+LIMIT 1
+FOR UPDATE
+`, memberID).Scan(&loanID, &applicationID, &currentPrincipal)
+	if loanErr != nil && !errors.Is(loanErr, sql.ErrNoRows) {
+		return nil, loanErr
+	}
+
+	if loanErr == nil && newRank.LimitAmount > currentPrincipal {
+		increaseAmount := newRank.LimitAmount - currentPrincipal
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.dompet_member (member_id, saldo)
+VALUES ($1, 0)
+ON CONFLICT (member_id) DO NOTHING
+`, memberID); err != nil {
+			return nil, err
+		}
+
+		var balanceBefore int64
+		if err := tx.QueryRowContext(ctx, `
+SELECT saldo FROM public.dompet_member WHERE member_id = $1 FOR UPDATE
+`, memberID).Scan(&balanceBefore); err != nil {
+			return nil, err
+		}
+		balanceAfter := balanceBefore + increaseAmount
+		if _, err := tx.ExecContext(ctx, `
+UPDATE public.dompet_member
+SET saldo = $2, diperbarui_pada = now()
+WHERE member_id = $1
+`, memberID, balanceAfter); err != nil {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+UPDATE public.agent_credit_loan
+SET
+  principal_amount = $2,
+  outstanding_amount = outstanding_amount + $3,
+  available_amount = 0,
+  updated_at = now()
+WHERE id = $1
+`, loanID, newRank.LimitAmount, increaseAmount); err != nil {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+UPDATE public.agent_credit_application
+SET
+  approved_amount = $2,
+  analyst_recommended_amount = $2,
+  updated_at = now()
+WHERE id = $1
+`, applicationID, newRank.LimitAmount); err != nil {
+			return nil, err
+		}
+
+		refID := fmt.Sprintf("KREDIT-LIMIT-%d-%d", applicationID, time.Now().UnixNano())
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.mutasi_dompet
+  (member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, dibuat_pada)
+VALUES
+  ($1, $2, 'CREDIT', $3, 'AGENT_CREDIT_LIMIT_INCREASE', $4, $5, $6, now())
+`, memberID, refID, increaseAmount, reason, balanceBefore, balanceAfter); err != nil {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.agent_credit_mutation
+  (loan_id, application_id, member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah)
+VALUES
+  ($1, $2, $3, $4, 'DEBIT', $5, 'CREDIT_LIMIT_INCREASE_TO_MAIN_BALANCE', $6, $7, $8)
+`, loanID, applicationID, memberID, refID, increaseAmount, reason, currentPrincipal, newRank.LimitAmount); err != nil {
+			return nil, err
+		}
+	}
+
 	var oldRankID sql.NullInt64
 	_ = tx.QueryRowContext(ctx, `
 SELECT h.new_rank_id
