@@ -159,15 +159,17 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	if in.DocumentData == nil {
 		in.DocumentData = map[string]any{}
 	}
+	hasStoredAgentSignature := false
 	validateFullSubmission := role == helper.RoleRetailAgent || (isCreditReviewer(role) && in.ID <= 0)
 	if validateFullSubmission {
 		validationInput := in
 		if role == helper.RoleRetailAgent && in.ID > 0 {
-			storedDocuments, err := s.repo.GetApplicationDocumentsForMember(ctx, in.ID, targetMemberID)
+			storedDocuments, storedSignature, err := s.repo.GetApplicationRevisionStateForMember(ctx, in.ID, targetMemberID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return nil, err
 			}
 			if err == nil {
+				hasStoredAgentSignature = storedSignature
 				mergedDocuments := make(map[string]any, len(storedDocuments)+len(in.DocumentData))
 				for key, value := range storedDocuments {
 					mergedDocuments[key] = value
@@ -188,7 +190,7 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 		}
 	}
 	if role == helper.RoleRetailAgent {
-		if strings.TrimSpace(in.AgentSignature) == "" {
+		if strings.TrimSpace(in.AgentSignature) == "" && !hasStoredAgentSignature {
 			return nil, errors.New("tanda tangan wajib diisi")
 		}
 		if in.ID > 0 {

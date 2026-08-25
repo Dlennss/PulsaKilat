@@ -605,21 +605,24 @@ WHERE id = $1
 	return &state, nil
 }
 
-func (r *AgentCreditRepository) GetApplicationDocumentsForMember(ctx context.Context, applicationID, memberID int64) (map[string]any, error) {
+func (r *AgentCreditRepository) GetApplicationRevisionStateForMember(ctx context.Context, applicationID, memberID int64) (map[string]any, bool, error) {
 	var raw []byte
+	var hasAgentSignature bool
 	if err := r.db.QueryRowContext(ctx, `
-SELECT COALESCE(document_data, '{}'::jsonb)
+SELECT
+  COALESCE(document_data, '{}'::jsonb),
+  COALESCE(agent_signature_data, '') <> ''
 FROM public.agent_credit_application
 WHERE id = $1 AND member_id = $2
-`, applicationID, memberID).Scan(&raw); err != nil {
-		return nil, err
+`, applicationID, memberID).Scan(&raw, &hasAgentSignature); err != nil {
+		return nil, false, err
 	}
 
 	documents := map[string]any{}
 	if err := json.Unmarshal(raw, &documents); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return documents, nil
+	return documents, hasAgentSignature, nil
 }
 
 func (r *AgentCreditRepository) CompleteApplicationConsent(ctx context.Context, in AgentCreditApplicationInput) (*AgentCreditApplication, error) {

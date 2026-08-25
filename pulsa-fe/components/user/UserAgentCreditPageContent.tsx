@@ -1062,7 +1062,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
           </label>
         </section>
 
-        <section className="rounded-[26px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
+        {!isDocumentRevision ? <section className="rounded-[26px] border border-emerald-950/5 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
           <div className="mb-4 flex items-start gap-3">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
               <PenLine className="h-5 w-5" strokeWidth={2.4} />
@@ -1123,7 +1123,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               }}
             />
           </div>
-        </section>
+        </section> : null}
 
         {error ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-xs font-black text-rose-600">
