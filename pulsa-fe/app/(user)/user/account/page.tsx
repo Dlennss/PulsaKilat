@@ -5,7 +5,6 @@ import {
   BriefcaseBusiness,
   ClipboardList,
   ChevronRight,
-  FileBarChart,
   FileText,
   HelpCircle,
   LockKeyhole,
@@ -74,7 +73,7 @@ export default async function UserAccountPage() {
   const initials = getInitials(displayName, displayEmail);
   const profilePhotoURL = profile?.profile_photo_url || user?.image || "";
   const role = normalizeRole(profile?.role || user?.role);
-  const canManageRetailNetwork = role === "master" || role === "agent" || role === "marketing";
+  const canManageRetailNetwork = role === "master" || role === "agent";
   const canOpenWorkPanel = role !== "user" && role !== "agent" && role !== "marketing";
 
   const personalItems = [
@@ -101,7 +100,6 @@ export default async function UserAccountPage() {
           { href: "/user/account/tambah-agent", label: "Tambah Agent", desc: "Daftarkan agent baru dari lapangan", icon: UserPlus },
           { href: "/user/account/pengajuan-agent", label: "Pengajuan & Dokumen", desc: "Pantau dokumen pengajuan agent", icon: ClipboardList },
           { href: "/user/account/agent-binaan", label: "Agent Binaan", desc: "Lihat saldo dan aktivitas agent", icon: UsersRound },
-          { href: "/user/account/laporan-marketing", label: "Laporan Marketing", desc: "Cetak dan unduh rekap pendampingan", icon: FileBarChart },
         ]
       : []),
     ...(canOpenWorkPanel
@@ -124,24 +122,28 @@ export default async function UserAccountPage() {
           },
         ]
       : []),
-    {
-      href: "/user/account",
-      label: "Keamanan Akun",
-      desc: "PIN, sidik jari, dan perangkat",
-      icon: LockKeyhole,
-    },
-    {
-      href: "/user/account",
-      label: "Notifikasi",
-      desc: "Atur informasi transaksi",
-      icon: Bell,
-    },
-    {
-      href: "/user/account",
-      label: "Pusat Bantuan",
-      desc: "FAQ dan layanan pelanggan",
-      icon: HelpCircle,
-    },
+    ...(role !== "marketing"
+      ? [
+          {
+            href: "/user/account",
+            label: "Keamanan Akun",
+            desc: "PIN, sidik jari, dan perangkat",
+            icon: LockKeyhole,
+          },
+          {
+            href: "/user/account",
+            label: "Notifikasi",
+            desc: "Atur informasi transaksi",
+            icon: Bell,
+          },
+          {
+            href: "/user/account",
+            label: "Pusat Bantuan",
+            desc: "FAQ dan layanan pelanggan",
+            icon: HelpCircle,
+          },
+        ]
+      : []),
     {
       href: "/kebijakan-privasi?from=account",
       label: "Syarat & Kebijakan",
