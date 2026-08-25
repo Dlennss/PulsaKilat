@@ -81,8 +81,8 @@ export default function OperatorAgentTransactionsPage() {
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-200">Monitoring operator</p>
         <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-2xl font-black sm:text-3xl">Transaksi Agent</h1>
-            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-emerald-50/85">Pantau transaksi terakhir seluruh agent, status proses, produk, dan waktu aktivitas dalam satu daftar.</p>
+            <h1 className="text-2xl font-black sm:text-3xl">Transaksi Terakhir Agent</h1>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-emerald-50/85">Pantau satu transaksi paling baru dari setiap agent, termasuk status, produk, nominal, dan waktu aktivitas.</p>
           </div>
           <button type="button" onClick={() => void load()} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-xs font-black hover:bg-white/20" disabled={loading}>
             <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Muat Ulang
@@ -93,8 +93,8 @@ export default function OperatorAgentTransactionsPage() {
       <section className="rounded-3xl border border-emerald-100 bg-white p-4 shadow-[0_12px_32px_rgba(6,78,59,0.06)] sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-lg font-black text-slate-950">Aktivitas Terbaru</h2>
-            <p className="mt-1 text-xs font-semibold text-slate-500">Urutan terbaru berada di bagian paling atas.</p>
+            <h2 className="text-lg font-black text-slate-950">Aktivitas Terakhir per Agent</h2>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Setiap agent hanya ditampilkan satu kali berdasarkan transaksi terbarunya.</p>
           </div>
           <form onSubmit={(event) => { event.preventDefault(); setSearch(draftSearch.trim()); }} className="flex w-full gap-2 lg:max-w-xl">
             <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 focus-within:border-emerald-400">

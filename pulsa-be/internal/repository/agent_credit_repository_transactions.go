@@ -29,40 +29,59 @@ func (r *AgentCreditRepository) ListAgentTransactions(ctx context.Context, statu
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
+WITH latest_agent_order AS (
+  SELECT
+    ao.id,
+    m.id AS member_id,
+    COALESCE(m.nama, '') AS member_nama,
+    COALESCE(m.email, '') AS member_email,
+    ao.invoice_id,
+    COALESCE(ao.produk_sku_snapshot, '') AS produk_sku_snapshot,
+    COALESCE(ao.produk_nama_snapshot, '') AS produk_nama_snapshot,
+    COALESCE(ao.dest, '') AS dest,
+    COALESCE(ao.qty, 0) AS qty,
+    COALESCE(ao.status, '') AS status,
+    COALESCE(ao.harga_final, 0) AS harga_final,
+    COALESCE(ao.dibuat_pada, NOW()) AS dibuat_pada,
+    COALESCE(ao.diubah_pada, ao.dibuat_pada, NOW()) AS diubah_pada,
+    ROW_NUMBER() OVER (PARTITION BY ao.member_id ORDER BY ao.dibuat_pada DESC, ao.id DESC) AS urutan
+  FROM public.app_order ao
+  JOIN public.member m ON m.id = ao.member_id
+  WHERE LOWER(COALESCE(m.role, '')) = 'agent'
+    AND LOWER(COALESCE(ao.buyer_type, '')) = 'user'
+)
 SELECT
-  ao.id,
-  m.id,
-  COALESCE(m.nama, ''),
-  COALESCE(m.email, ''),
-  ao.invoice_id,
-  COALESCE(ao.produk_sku_snapshot, ''),
-  COALESCE(ao.produk_nama_snapshot, ''),
-  COALESCE(ao.dest, ''),
-  COALESCE(ao.qty, 0),
-  COALESCE(ao.status, ''),
-  COALESCE(ao.harga_final, 0),
-  COALESCE(ao.harga_final, 0),
-  COALESCE(ao.dibuat_pada, NOW()),
-  COALESCE(ao.diubah_pada, ao.dibuat_pada, NOW())
-FROM public.app_order ao
-JOIN public.member m ON m.id = ao.member_id
-WHERE LOWER(COALESCE(m.role, '')) = 'agent'
-  AND LOWER(COALESCE(ao.buyer_type, '')) = 'user'
+  id,
+  member_id,
+  member_nama,
+  member_email,
+  invoice_id,
+  produk_sku_snapshot,
+  produk_nama_snapshot,
+  dest,
+  qty,
+  status,
+  harga_final,
+  harga_final,
+  dibuat_pada,
+  diubah_pada
+FROM latest_agent_order
+WHERE urutan = 1
   AND (
     $1 = ''
-    OR ($1 = 'pending' AND LOWER(COALESCE(ao.status, '')) IN ('pending', 'pending_payment', 'paid', 'processing_provider'))
-    OR ($1 <> 'pending' AND LOWER(COALESCE(ao.status, '')) = $1)
+    OR ($1 = 'pending' AND LOWER(status) IN ('pending', 'pending_payment', 'paid', 'processing_provider'))
+    OR ($1 <> 'pending' AND LOWER(status) = $1)
   )
   AND (
     $2 = ''
-    OR m.nama ILIKE '%' || $2 || '%'
-    OR m.email ILIKE '%' || $2 || '%'
-    OR ao.invoice_id ILIKE '%' || $2 || '%'
-    OR ao.produk_sku_snapshot ILIKE '%' || $2 || '%'
-    OR ao.produk_nama_snapshot ILIKE '%' || $2 || '%'
-    OR ao.dest ILIKE '%' || $2 || '%'
+    OR member_nama ILIKE '%' || $2 || '%'
+    OR member_email ILIKE '%' || $2 || '%'
+    OR invoice_id ILIKE '%' || $2 || '%'
+    OR produk_sku_snapshot ILIKE '%' || $2 || '%'
+    OR produk_nama_snapshot ILIKE '%' || $2 || '%'
+    OR dest ILIKE '%' || $2 || '%'
   )
-ORDER BY ao.dibuat_pada DESC, ao.id DESC
+ORDER BY dibuat_pada DESC, id DESC
 LIMIT $3
 `, strings.ToLower(strings.TrimSpace(status)), strings.TrimSpace(search), limit)
 	if err != nil {
