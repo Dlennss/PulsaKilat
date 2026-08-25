@@ -868,7 +868,7 @@ SELECT
   COALESCE(m.nama, '') AS member_name,
   COALESCE(m.email, '') AS member_email,
   COALESCE(m.phone, '') AS member_phone,
-  COALESCE(a.marketing_user_id, 0) AS marketing_id,
+  COALESCE(a.marketing_user_id, m.marketing_id, 0) AS marketing_id,
   COALESCE(a.analyst_user_id, 0) AS analyst_id,
   a.requested_amount,
   a.approved_amount,

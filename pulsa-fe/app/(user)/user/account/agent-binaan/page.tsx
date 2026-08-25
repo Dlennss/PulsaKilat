@@ -1,11 +1,24 @@
 import { getAppServerSession } from "@/lib/server-auth";
-import { getAgentCreditApplications } from "@/lib/api.auth";
-import { AgentCreditRiskPage } from "@/components/dashboard/credit-risk/AgentCreditRiskPage";
+import { redirect } from "next/navigation";
+import { UserBottomNav } from "@/components/user/UserBottomNav";
+import { RetailDownlineManager } from "@/components/user/RetailDownlineManager";
+import type { UserSession } from "@/components/user/types";
 
-type SessionShape = { backendToken?: string };
+type SessionShape = {
+  user?: UserSession;
+  backendToken?: string;
+};
 
 export default async function MarketingAgentsPage() {
   const session = (await getAppServerSession()) as SessionShape | null;
-  const applications = session?.backendToken ? await getAgentCreditApplications(session.backendToken, 50) : [];
-  return <AgentCreditRiskPage applications={applications} mode="marketing" />;
+  if (!session?.backendToken) redirect("/login");
+
+  return (
+    <main className="min-h-screen bg-[#eef8f3] px-3 pb-24 pt-3">
+      <div className="mx-auto w-full max-w-md">
+        <RetailDownlineManager authToken={session.backendToken} role="marketing" allowCreate={false} />
+      </div>
+      <UserBottomNav />
+    </main>
+  );
 }

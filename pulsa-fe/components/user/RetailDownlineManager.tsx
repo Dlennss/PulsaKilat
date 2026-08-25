@@ -14,11 +14,14 @@ type RetailDownline = {
   saldo: number;
   retail_agent_nama?: string | null;
   retail_master_nama?: string | null;
+  marketing_nama?: string | null;
+  marketing_email?: string | null;
 };
 
 type Props = {
   authToken: string;
   role: string;
+  allowCreate?: boolean;
 };
 
 function roleLabel(role: string) {
@@ -38,7 +41,7 @@ function fmtIDR(v: number) {
   return new Intl.NumberFormat("id-ID").format(Number(v || 0));
 }
 
-export function RetailDownlineManager({ authToken, role }: Props) {
+export function RetailDownlineManager({ authToken, role, allowCreate = true }: Props) {
   const [items, setItems] = useState<RetailDownline[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,7 +53,7 @@ export function RetailDownlineManager({ authToken, role }: Props) {
   const [password, setPassword] = useState("");
   const [targetRole, setTargetRole] = useState(role === "marketing" ? "agent" : "user");
 
-  const canCreate = role === "master" || role === "agent" || role === "marketing";
+  const canCreate = allowCreate && (role === "master" || role === "agent" || role === "marketing");
   const activeCount = items.filter((item) => item.aktif).length;
   const agentCount = items.filter((item) => String(item.role || "").toLowerCase() === "agent").length;
   const roleOptions = useMemo(
@@ -205,6 +208,12 @@ export function RetailDownlineManager({ authToken, role }: Props) {
                     {item.retail_agent_nama ? ` • Agent: ${item.retail_agent_nama}` : ""}
                     {item.retail_master_nama ? ` • Master: ${item.retail_master_nama}` : ""}
                   </div>
+                  {item.marketing_nama || item.marketing_email ? (
+                    <div className="mt-2 rounded-xl bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-800">
+                      Marketing pembina: {item.marketing_nama || item.marketing_email}
+                      {item.marketing_nama && item.marketing_email ? <span className="block font-semibold text-emerald-700/75">{item.marketing_email}</span> : null}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="text-right">
                   <div className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${item.aktif ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>

@@ -217,6 +217,9 @@ type RetailDownlineRow struct {
 	RetailAgentNama  *string    `json:"retail_agent_nama,omitempty"`
 	RetailMasterID   *int64     `json:"retail_master_id,omitempty"`
 	RetailMasterNama *string    `json:"retail_master_nama,omitempty"`
+	MarketingID      *int64     `json:"marketing_id,omitempty"`
+	MarketingNama    *string    `json:"marketing_nama,omitempty"`
+	MarketingEmail   *string    `json:"marketing_email,omitempty"`
 	DibuatPada       *time.Time `json:"dibuat_pada,omitempty"`
 }
 

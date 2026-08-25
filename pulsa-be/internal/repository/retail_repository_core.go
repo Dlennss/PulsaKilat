@@ -211,11 +211,13 @@ func (r *RetailRepository) ListDownlines(ctx context.Context, actor *RetailMembe
 	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
 SELECT
   m.id, COALESCE(m.email, ''), COALESCE(m.nama, ''), COALESCE(m.phone, ''), COALESCE(m.role, ''), m.aktif, COALESCE(d.saldo, 0),
-  m.retail_agent_id, COALESCE(ra.nama, ''), m.retail_master_id, COALESCE(rm.nama, ''), m.dibuat_pada
+  m.retail_agent_id, COALESCE(ra.nama, ''), m.retail_master_id, COALESCE(rm.nama, ''),
+  m.marketing_id, COALESCE(marketing.nama, ''), COALESCE(marketing.email, ''), m.dibuat_pada
 FROM public.member m
 LEFT JOIN public.dompet_member d ON d.member_id = m.id
 LEFT JOIN public.member ra ON ra.id = m.retail_agent_id
 LEFT JOIN public.member rm ON rm.id = m.retail_master_id
+LEFT JOIN public.member marketing ON marketing.id = m.marketing_id
 WHERE %s
   AND lower(COALESCE(m.role, '')) IN ('user', 'agent')
 ORDER BY CASE lower(COALESCE(m.role, '')) WHEN 'agent' THEN 0 ELSE 1 END, m.id DESC
@@ -233,11 +235,15 @@ ORDER BY CASE lower(COALESCE(m.role, '')) WHEN 'agent' THEN 0 ELSE 1 END, m.id D
 			retailMasterID   sql.NullInt64
 			retailAgentNama  sql.NullString
 			retailMasterNama sql.NullString
+			marketingID      sql.NullInt64
+			marketingNama    sql.NullString
+			marketingEmail   sql.NullString
 			dibuat           sql.NullTime
 		)
 		if err := rows.Scan(
 			&item.ID, &item.Email, &item.Nama, &item.Phone, &item.Role, &item.Aktif, &item.Saldo,
-			&retailAgentID, &retailAgentNama, &retailMasterID, &retailMasterNama, &dibuat,
+			&retailAgentID, &retailAgentNama, &retailMasterID, &retailMasterNama,
+			&marketingID, &marketingNama, &marketingEmail, &dibuat,
 		); err != nil {
 			return nil, err
 		}
@@ -256,6 +262,18 @@ ORDER BY CASE lower(COALESCE(m.role, '')) WHEN 'agent' THEN 0 ELSE 1 END, m.id D
 		if retailMasterNama.Valid && strings.TrimSpace(retailMasterNama.String) != "" {
 			v := retailMasterNama.String
 			item.RetailMasterNama = &v
+		}
+		if marketingID.Valid {
+			v := marketingID.Int64
+			item.MarketingID = &v
+		}
+		if marketingNama.Valid && strings.TrimSpace(marketingNama.String) != "" {
+			v := marketingNama.String
+			item.MarketingNama = &v
+		}
+		if marketingEmail.Valid && strings.TrimSpace(marketingEmail.String) != "" {
+			v := marketingEmail.String
+			item.MarketingEmail = &v
 		}
 		if dibuat.Valid {
 			v := dibuat.Time
