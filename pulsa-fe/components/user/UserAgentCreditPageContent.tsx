@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -428,6 +429,15 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
     setApplications(initialApplications);
     setLatestApplication(initialApplications[0]);
   }, [initialApplications]);
+
+  useEffect(() => {
+    if (!paymentModalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [paymentModalOpen]);
 
   useEffect(() => {
     const nextPreviewUrls: Record<string, string> = {};
@@ -1218,9 +1228,9 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
         )}
       </div>
 
-      {paymentModalOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/64 px-3 py-4 backdrop-blur-sm sm:px-4 sm:py-6">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-[520px] overflow-y-auto rounded-[26px] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.34)] sm:max-h-[calc(100dvh-3rem)] sm:p-5">
+      {paymentModalOpen ? createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/64 p-4 backdrop-blur-sm sm:p-6">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-[520px] overflow-y-auto overscroll-contain rounded-[26px] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.34)] sm:max-h-[calc(100dvh-3rem)] sm:p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#047857]">Kredit Berputar</p>
@@ -1341,7 +1351,8 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               )}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </form>
   );
