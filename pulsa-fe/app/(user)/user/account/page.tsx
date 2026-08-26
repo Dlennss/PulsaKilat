@@ -125,9 +125,9 @@ export default async function UserAccountPage() {
     ...(role !== "marketing"
       ? [
           {
-            href: "/user/account",
+            href: "/user/account/security",
             label: "Keamanan Akun",
-            desc: "PIN, sidik jari, dan perangkat",
+            desc: "Ganti password akun",
             icon: LockKeyhole,
           },
           {
