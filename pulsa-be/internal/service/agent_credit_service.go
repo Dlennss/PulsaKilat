@@ -11,7 +11,10 @@ import (
 	"pulsa2/internal/repository"
 )
 
-const minimumAgentCreditAmount int64 = 100000
+const (
+	minimumAgentCreditAmount int64 = 500000
+	maximumAgentCreditAmount int64 = 2000000
+)
 
 type AgentCreditService struct {
 	repo *repository.AgentCreditRepository
@@ -154,15 +157,11 @@ func (s *AgentCreditService) SubmitApplication(ctx context.Context, auth helper.
 	if in.RequestedAmount <= 0 {
 		return nil, errors.New("nominal kredit wajib diisi")
 	}
-	limitAmount := int64(500000)
-	if profile, err := s.repo.GetMemberCreditProfile(ctx, targetMemberID); err == nil && profile != nil {
-		limitAmount = profile.LimitAmount
-	}
 	if in.RequestedAmount < minimumAgentCreditAmount {
-		return nil, errors.New("nominal kredit minimal Rp100000")
+		return nil, errors.New("nominal kredit minimal Rp500.000")
 	}
-	if in.RequestedAmount > limitAmount {
-		return nil, fmt.Errorf("nominal kredit maksimal Rp%d", limitAmount)
+	if in.RequestedAmount > maximumAgentCreditAmount {
+		return nil, errors.New("nominal kredit maksimal Rp2.000.000")
 	}
 	if in.DocumentData == nil {
 		in.DocumentData = map[string]any{}
@@ -388,10 +387,7 @@ func (s *AgentCreditService) DecideApplication(ctx context.Context, auth helper.
 	role := helper.NormalizeRole(auth.Role)
 	note := strings.TrimSpace(in.Note)
 	approvedAmount := in.ApprovedAmount
-	limitAmount, err := s.repo.GetApplicationCreditLimit(ctx, in.ID)
-	if err != nil {
-		return nil, err
-	}
+	limitAmount := maximumAgentCreditAmount
 	reviewState, err := s.repo.GetApplicationReviewState(ctx, in.ID)
 	if err != nil {
 		return nil, err

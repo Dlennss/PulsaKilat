@@ -370,7 +370,9 @@ function formatIDR(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Number(value || 0))}`;
 }
 
-const defaultCreditAmount = 500000;
+const minimumCreditAmount = 500000;
+const maximumCreditAmount = 2000000;
+const defaultCreditAmount = minimumCreditAmount;
 
 function hasOperatorDocumentRevision(application?: AgentCreditApplication) {
   if (!application || application.status !== "marketing_review") return false;
@@ -408,6 +410,10 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const [surveyPreviewUrls, setSurveyPreviewUrls] = useState<Record<string, string>>({});
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [requestedAmount, setRequestedAmount] = useState(() => {
+    const storedAmount = Number(initialApplications[0]?.requested_amount || defaultCreditAmount);
+    return Math.min(maximumCreditAmount, Math.max(minimumCreditAmount, storedAmount));
+  });
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [displayMainBalance, setDisplayMainBalance] = useState(mainBalance);
   const router = useRouter();
@@ -444,7 +450,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const creditLevelName = latestApplication?.credit_level_name || "Kilat Start";
   const creditLevelImage = levelBadgeByCode[creditLevelCode] || levelBadgeByCode.start;
   const levelSubtitle = latestApplication?.credit_needs_repair ? "Perbaiki" : creditLevelName.replace("Kilat ", "");
-  const requestedAmount = defaultCreditAmount;
   const surveyKeys = ["ktp", "store", "selfie_ktp", "selfie_marketing"];
   const requiredSurveyKeys = isDocumentRevision ? revisionDocuments : surveyKeys;
   const surveyDocumentsComplete = requiredSurveyKeys.every((key) => Boolean(surveyFiles[key]));
@@ -575,6 +580,14 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
+    if (!Number.isFinite(requestedAmount) || requestedAmount < minimumCreditAmount) {
+      setError("Nominal kredit minimal Rp500.000.");
+      return;
+    }
+    if (requestedAmount > maximumCreditAmount) {
+      setError("Nominal kredit maksimal Rp2.000.000.");
+      return;
+    }
     if (hasOpenApplication && !isDocumentRevision) {
       setError("Pengajuan ini sudah masuk antrean dan sedang menunggu keputusan operator.");
       return;
@@ -950,11 +963,25 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
             <Field name="store_address" label="Alamat Toko" placeholder="Alamat lengkap toko" defaultValue={applicantText("store_address")} textarea className="sm:col-span-2" />
             <div className="rounded-[22px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fdf4,#ffffff)] p-4 sm:col-span-2">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Nominal Kredit Saldo</p>
-              <p className="mt-2 text-2xl font-black text-slate-950">{formatIDR(requestedAmount)}</p>
-              <p className="mt-1 text-[10px] font-semibold text-slate-400">
-                Nominal kredit saldo sudah tetap dan tidak bisa diubah.
-              </p>
-              <input type="hidden" name="requested_amount" value={requestedAmount} />
+              <label className="mt-3 flex h-14 items-center overflow-hidden rounded-2xl border border-emerald-200 bg-white focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
+                <span className="grid h-full shrink-0 place-items-center border-r border-emerald-100 bg-emerald-50 px-4 text-sm font-black text-emerald-700">Rp</span>
+                <input
+                  type="number"
+                  name="requested_amount"
+                  min={minimumCreditAmount}
+                  max={maximumCreditAmount}
+                  step={1}
+                  inputMode="numeric"
+                  value={requestedAmount || ""}
+                  onChange={(event) => setRequestedAmount(Number(event.target.value))}
+                  className="min-w-0 flex-1 bg-transparent px-4 text-base font-black text-slate-950 outline-none"
+                  aria-label="Nominal kredit saldo"
+                />
+              </label>
+              <div className="mt-3 flex items-center justify-between gap-3 text-[10px] font-bold">
+                <span className="text-slate-400">Rp500.000 - Rp2.000.000</span>
+                <span className="text-emerald-700">{formatIDR(requestedAmount)}</span>
+              </div>
             </div>
           </div>
         </section>
