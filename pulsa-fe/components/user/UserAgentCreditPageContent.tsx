@@ -980,7 +980,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                               {new Date(payment.paid_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
                             </p>
                           </div>
-                          <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black text-[#047857]">Dicairkan kembali</span>
                         </div>
                       ))}
                     </div>
