@@ -49,11 +49,13 @@ function parsePaymentNote(payment: AgentCreditPayment) {
   try {
     const parsed = JSON.parse(rawNote) as {
       note?: string;
+      payment_method?: string;
       payment_proof?: AgentCreditPayment["payment_proof"];
     };
     return {
       ...payment,
       note: String(parsed.note || ""),
+      payment_method: String(parsed.payment_method || ""),
       payment_proof: parsed.payment_proof,
     };
   } catch {

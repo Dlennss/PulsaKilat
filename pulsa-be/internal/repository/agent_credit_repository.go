@@ -289,6 +289,7 @@ type AgentCreditPayment struct {
 	DaysLate      int64          `json:"days_late"`
 	Status        string         `json:"status"`
 	Note          string         `json:"note"`
+	PaymentMethod string         `json:"payment_method"`
 	PaymentProof  map[string]any `json:"payment_proof,omitempty"`
 }
 
@@ -1264,17 +1265,18 @@ FOR UPDATE
 	return tx.Commit()
 }
 
-func parseAgentCreditPaymentNote(raw string) (string, map[string]any) {
+func parseAgentCreditPaymentNote(raw string) (string, string, map[string]any) {
 	payload := map[string]any{}
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-		return raw, nil
+		return raw, "", nil
 	}
 	note := raw
 	if value, ok := payload["note"].(string); ok {
 		note = value
 	}
+	paymentMethod, _ := payload["payment_method"].(string)
 	proof, _ := payload["payment_proof"].(map[string]any)
-	return note, proof
+	return note, paymentMethod, proof
 }
 
 func insertAuditLogTx(ctx context.Context, tx *sql.Tx, actorID int64, actorRole, action, entityType string, entityID any, beforeData, afterData map[string]any, reason string) error {
@@ -1352,7 +1354,7 @@ ORDER BY p.paid_at DESC, p.id DESC
 		); err != nil {
 			return err
 		}
-		payment.Note, payment.PaymentProof = parseAgentCreditPaymentNote(rawNote)
+		payment.Note, payment.PaymentMethod, payment.PaymentProof = parseAgentCreditPaymentNote(rawNote)
 		if index, ok := indexByID[payment.ApplicationID]; ok {
 			items[index].Payments = append(items[index].Payments, payment)
 		}

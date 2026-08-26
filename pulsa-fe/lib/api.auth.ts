@@ -63,6 +63,7 @@ export type AgentCreditPayment = {
   days_late: number;
   status: string;
   note?: string;
+  payment_method?: string;
   payment_proof?: {
     name?: string;
     type?: string;

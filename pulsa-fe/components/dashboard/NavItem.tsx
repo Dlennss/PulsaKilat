@@ -75,6 +75,7 @@ const iconByHref = {
   "/dashboard/master/operator": ShieldCheck,
   "/dashboard/master/operator/tambah-marketing": UserPlus,
   "/dashboard/master/operator/kenaikan-limit": ArrowUpCircle,
+  "/dashboard/master/operator/pembayaran-kredit": ReceiptText,
   "/dashboard/master/operator/monitor-pelunasan": WalletCards,
   "/dashboard/master/operator/transaksi-agent": ReceiptText,
   "/dashboard/master/operator/konter-tidak-transaksi": AlertTriangle,
