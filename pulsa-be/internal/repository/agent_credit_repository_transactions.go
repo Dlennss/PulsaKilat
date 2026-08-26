@@ -69,8 +69,8 @@ FROM latest_agent_order
 WHERE urutan = 1
   AND (
     $1 = ''
-    OR ($1 = 'pending' AND LOWER(status) IN ('pending', 'pending_payment', 'paid', 'processing_provider'))
-    OR ($1 <> 'pending' AND LOWER(status) = $1)
+    OR ($1 = 'refunded' AND LOWER(status) IN ('failed', 'refunded'))
+    OR ($1 <> 'refunded' AND LOWER(status) = $1)
   )
   AND (
     $2 = ''

@@ -29,10 +29,8 @@ function statusClass(status: string) {
 function statusLabel(status: string) {
   const value = status.toLowerCase();
   if (value === "success") return "Berhasil";
-  if (value === "failed") return "Gagal";
-  if (value === "refunded") return "Dikembalikan";
-  if (["pending", "pending_payment", "paid", "processing_provider"].includes(value)) return "Diproses";
-  return status || "Diproses";
+  if (value === "failed" || value === "refunded") return "Dana Dikembalikan";
+  return status || "-";
 }
 
 function dateLabel(value: string) {
@@ -105,7 +103,7 @@ export default function OperatorAgentTransactionsPage() {
           </form>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          {[{ value: "", label: "Semua" }, { value: "success", label: "Berhasil" }, { value: "pending", label: "Diproses" }, { value: "failed", label: "Gagal" }].map((filter) => (
+          {[{ value: "", label: "Semua" }, { value: "success", label: "Berhasil" }, { value: "refunded", label: "Dana Dikembalikan" }].map((filter) => (
             <button key={filter.value} type="button" onClick={() => setStatus(filter.value)} className={`rounded-full border px-4 py-2 text-[11px] font-black transition ${status === filter.value ? "border-emerald-700 bg-emerald-700 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700"}`}>
               {filter.label}
             </button>
