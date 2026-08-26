@@ -406,6 +406,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"transfer" | "qris" | "offline">("transfer");
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [paymentProofName, setPaymentProofName] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [surveyFiles, setSurveyFiles] = useState<Record<string, File | null>>({});
   const [surveyPreviewUrls, setSurveyPreviewUrls] = useState<Record<string, string>>({});
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
@@ -416,7 +417,17 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   });
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [displayMainBalance, setDisplayMainBalance] = useState(mainBalance);
+  const paymentRequestRef = useRef("");
   const router = useRouter();
+
+  useEffect(() => {
+    setDisplayMainBalance(mainBalance);
+  }, [mainBalance]);
+
+  useEffect(() => {
+    setApplications(initialApplications);
+    setLatestApplication(initialApplications[0]);
+  }, [initialApplications]);
 
   useEffect(() => {
     const nextPreviewUrls: Record<string, string> = {};
@@ -540,9 +551,18 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const selectedPayment = paymentMethods.find((method) => method.id === selectedPaymentMethod) || paymentMethods[0];
 
   async function handleCreditPaymentConfirmation() {
-    if (!latestApplication || !latestApplication.id || statusPaymentDue <= 0 || paymentSubmitting) return;
+    const amount = Math.floor(Number(paymentAmount));
+    if (!latestApplication || !latestApplication.id || paymentSubmitting) return;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPaymentError("Nominal pelunasan wajib diisi");
+      return;
+    }
+    if (amount > statusPaymentDue) {
+      setPaymentError(`Nominal maksimal ${formatIDR(statusPaymentDue)}`);
+      return;
+    }
     if (!paymentProofFile) {
-      setPaymentError("Bukti transfer wajib diupload");
+      setPaymentError("Bukti pembayaran wajib diupload");
       return;
     }
 
@@ -551,14 +571,18 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
     setPaymentSuccess("");
     try {
       const paymentProof = await readStoredImage(paymentProofFile);
+      if (!paymentRequestRef.current) {
+        paymentRequestRef.current = `KREDIT-BAYAR-${latestApplication.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      }
       const response = await fetch("/api/agent-credit/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           application_id: latestApplication.id,
-          amount: statusPaymentDue,
+          ref_id: paymentRequestRef.current,
+          amount,
           payment_method: selectedPaymentMethod,
-          note: `Pelunasan tagihan kredit agent via ${selectedPayment.title}`,
+          note: `Pelunasan sebagian kredit agent via ${selectedPayment.title}`,
           payment_proof: paymentProof,
         }),
       });
@@ -568,7 +592,10 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
       }
       setPaymentProofFile(null);
       setPaymentProofName("");
-      setPaymentSuccess("Pembayaran terkirim. Tim PulsaKilat akan memverifikasi bukti pelunasan.");
+      setPaymentAmount("");
+      paymentRequestRef.current = "";
+      setDisplayMainBalance((current) => current + amount);
+      setPaymentSuccess(`${formatIDR(amount)} tercatat dan dicairkan kembali ke saldo utama.`);
       router.refresh();
     } catch (err) {
       setPaymentError(err instanceof Error ? err.message : "Konfirmasi pembayaran gagal diproses");
@@ -897,46 +924,65 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               </div>
             </div>
 
-            {false && !statusIsRejected && !statusIsWaiting ? (
+            {statusIsApproved && !isCreditSuspended ? (
               <div className="rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.10)]">
                 <div className="flex items-start gap-3">
                   <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-[#047857]">
                     <FileText className="h-6 w-6" strokeWidth={2.4} />
                   </span>
                   <div className="min-w-0">
-                    <h3 className="text-base font-black text-slate-950">Pelunasan Tagihan Kredit</h3>
+                    <h3 className="text-base font-black text-slate-950">Pelunasan Sebagian</h3>
                     <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-500">
-                      Bayar tagihan kredit secara penuh melalui metode pembayaran yang tersedia.
+                      Bayar sebagian modal yang sudah terpakai. Nominal yang dibayar langsung dicairkan kembali ke saldo utama.
                     </p>
                   </div>
                 </div>
                 <div className="mt-4 rounded-2xl bg-[linear-gradient(135deg,#064e3b,#047857,#16a34a)] px-4 py-3 text-white">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[10px] font-black">Total yang harus dilunasi</span>
-                    <span className="text-lg font-black">{formatIDR(statusPaymentDue)}</span>
+                    <span className="text-[10px] font-black">Kredit berjalan</span>
+                    <span className="text-lg font-black">{formatIDR(statusOutstanding)}</span>
                   </div>
                 </div>
                 <div className="mt-3 rounded-[22px] border border-slate-200 bg-[#fbfffd] p-4">
                   <p className="text-xs font-black text-slate-950">
-                    Pelunasan Tagihan Kredit
+                    Siklus Kredit Tetap Aktif
                   </p>
                   <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-500">
-                    Setelah lunas, pinjaman selesai dan agent dapat mengajukan kredit berikutnya.
+                    Pembayaran tidak menutup kredit dan tidak membuat pengajuan baru.
                   </p>
-                  <p className="mt-3 text-lg font-black text-[#047857]">{formatIDR(statusPaymentDue)}</p>
                   <button
                     type="button"
-                    disabled={statusPaymentDue <= 0}
                     onClick={() => {
                       setPaymentModalOpen(true);
                       setPaymentError("");
                       setPaymentSuccess("");
                     }}
-                    className="mt-3 h-11 w-full rounded-2xl bg-[linear-gradient(135deg,#047857,#16a34a)] text-xs font-black text-white shadow-[0_12px_24px_rgba(4,120,87,0.18)] disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500"
+                    className="mt-3 h-11 w-full rounded-2xl bg-[linear-gradient(135deg,#047857,#16a34a)] text-xs font-black text-white shadow-[0_12px_24px_rgba(4,120,87,0.18)]"
                   >
-                    {statusPaymentDue <= 0 ? "Belum Ada Tagihan" : "Bayar Sekarang"}
+                    Bayar Sebagian
                   </button>
                 </div>
+
+                {latestApplication?.payments?.length ? (
+                  <div className="mt-3 overflow-hidden rounded-[22px] border border-slate-200 bg-white">
+                    <div className="border-b border-slate-100 px-4 py-3">
+                      <p className="text-xs font-black text-slate-950">Riwayat Pelunasan Sebagian</p>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {latestApplication.payments.slice(0, 5).map((payment) => (
+                        <div key={payment.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-slate-800">{formatIDR(payment.amount)}</p>
+                            <p className="mt-1 text-[9px] font-semibold text-slate-400">
+                              {new Date(payment.paid_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black text-[#047857]">Dicairkan kembali</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </section>
@@ -1172,13 +1218,13 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
         )}
       </div>
 
-      {false && paymentModalOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/64 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-[520px] rounded-[26px] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.34)] sm:p-5">
+      {paymentModalOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/64 px-3 py-4 backdrop-blur-sm sm:px-4 sm:py-6">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-[520px] overflow-y-auto rounded-[26px] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.34)] sm:max-h-[calc(100dvh-3rem)] sm:p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#047857]">Pelunasan Kredit</p>
-                <h3 className="mt-1 text-xl font-black leading-6 text-slate-950">Pelunasan Tagihan Kredit</h3>
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#047857]">Kredit Berputar</p>
+                <h3 className="mt-1 text-xl font-black leading-6 text-slate-950">Pelunasan Sebagian</h3>
               </div>
               <button
                 type="button"
@@ -1191,10 +1237,29 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
             </div>
 
             <div className="mt-4 rounded-[22px] bg-[linear-gradient(135deg,#064e3b,#047857,#16a34a)] p-4 text-white shadow-[0_16px_34px_rgba(4,120,87,0.20)]">
-              <p className="text-[10px] font-semibold text-white/80">Total yang harus dibayar</p>
-              <p className="mt-2 text-3xl font-black tracking-tight">{formatIDR(statusPaymentDue)}</p>
-              <p className="mt-2 text-[10px] font-semibold text-white/78">Nominal penuh sesuai pinjaman yang disetujui</p>
+              <p className="text-[10px] font-semibold text-white/80">Saldo utama saat ini</p>
+              <p className="mt-2 text-3xl font-black tracking-tight">{formatIDR(displayMainBalance)}</p>
+              <p className="mt-2 text-[10px] font-semibold text-white/78">Pembayaran akan langsung menambah saldo utama kembali</p>
             </div>
+
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-[10px] font-black uppercase text-slate-500">Nominal pelunasan</span>
+              <input
+                type="number"
+                min={1}
+                max={statusPaymentDue}
+                step={1000}
+                inputMode="numeric"
+                value={paymentAmount}
+                onChange={(event) => {
+                  setPaymentAmount(event.target.value);
+                  setPaymentError("");
+                  paymentRequestRef.current = "";
+                }}
+                placeholder="Contoh: 250000"
+                className="h-12 w-full rounded-[18px] border border-slate-200 bg-white px-4 text-sm font-black text-slate-900 outline-none transition focus:border-[#047857] focus:ring-2 focus:ring-emerald-100"
+              />
+            </label>
 
             <div className="mt-3 space-y-2">
               {paymentMethods.map((method) => {
@@ -1230,7 +1295,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                 <Upload className="h-5 w-5" strokeWidth={2.4} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-black text-slate-800">Bukti transfer wajib</span>
+                <span className="block truncate text-xs font-black text-slate-800">Bukti pembayaran wajib</span>
                 <span className="mt-1 block truncate text-[10px] font-semibold text-slate-400">{paymentProofName || "Unggah foto/screenshot bukti pembayaran"}</span>
               </span>
               <input
@@ -1259,18 +1324,18 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
             <button
               type="button"
-              disabled={paymentSubmitting || statusPaymentDue <= 0}
+              disabled={paymentSubmitting || Number(paymentAmount) <= 0}
               onClick={handleCreditPaymentConfirmation}
               className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-[linear-gradient(135deg,#047857,#16a34a,#84cc16)] text-xs font-black text-white shadow-[0_14px_28px_rgba(4,120,87,0.18)] transition disabled:opacity-60"
             >
               {paymentSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.6} />
-                  Memproses Pembayaran
+                  Memproses Pelunasan
                 </>
               ) : (
                 <>
-                  Konfirmasi Pembayaran
+                  Konfirmasi Pelunasan
                   <ArrowRight className="h-4 w-4" strokeWidth={2.6} />
                 </>
               )}

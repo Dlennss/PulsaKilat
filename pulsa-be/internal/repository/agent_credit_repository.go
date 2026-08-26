@@ -53,6 +53,7 @@ type AgentCreditApplicationInput struct {
 type AgentCreditPaymentInput struct {
 	ApplicationID int64
 	MemberID      int64
+	RefID         string
 	Amount        int64
 	Note          string
 	PaymentMethod string
@@ -1862,40 +1863,90 @@ func (r *AgentCreditRepository) PayInstallment(ctx context.Context, in AgentCred
 	}
 	defer tx.Rollback()
 
-	var loanID, memberID, outstanding int64
+	var loanID, memberID, principal, outstanding int64
 	var dueDate time.Time
 	err = tx.QueryRowContext(ctx, `
 SELECT
   l.id,
   l.member_id,
+  l.principal_amount,
   l.outstanding_amount,
   l.due_date
 FROM public.agent_credit_loan l
 WHERE l.application_id = $1 AND l.status IN ('active', 'overdue')
 FOR UPDATE
-`, in.ApplicationID).Scan(&loanID, &memberID, &outstanding, &dueDate)
+`, in.ApplicationID).Scan(&loanID, &memberID, &principal, &outstanding, &dueDate)
 	if err != nil {
 		return err
 	}
 	if in.MemberID > 0 && in.MemberID != memberID {
 		return sql.ErrNoRows
 	}
+	var existingMemberID int64
+	err = tx.QueryRowContext(ctx, `
+SELECT member_id
+FROM public.agent_credit_payment
+WHERE ref_id = $1
+`, in.RefID).Scan(&existingMemberID)
+	if err == nil {
+		if existingMemberID != memberID {
+			return fmt.Errorf("referensi pembayaran sudah digunakan")
+		}
+		return tx.Commit()
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.dompet_member (member_id, saldo)
+VALUES ($1, 0)
+ON CONFLICT (member_id) DO NOTHING
+`, memberID); err != nil {
+		return err
+	}
+	var mainBefore int64
+	if err := tx.QueryRowContext(ctx, `
+SELECT saldo
+FROM public.dompet_member
+WHERE member_id = $1
+FOR UPDATE
+`, memberID).Scan(&mainBefore); err != nil {
+		return err
+	}
+
+	var balanceBeforeCredit int64
+	if err := tx.QueryRowContext(ctx, `
+SELECT COALESCE((
+  SELECT saldo_sebelum
+  FROM public.mutasi_dompet
+  WHERE member_id = $1
+    AND ref_id = $2
+    AND alasan = 'AGENT_CREDIT_APPROVED'
+  ORDER BY id ASC
+  LIMIT 1
+), 0)
+`, memberID, fmt.Sprintf("KREDIT-%d", in.ApplicationID)).Scan(&balanceBeforeCredit); err != nil {
+		return err
+	}
+	maximumMainBalance := balanceBeforeCredit + principal
+	refillCapacity := maximumMainBalance - mainBefore
+	if refillCapacity <= 0 {
+		return fmt.Errorf("saldo utama masih penuh, belum ada modal yang perlu dilunasi")
+	}
 	amount := in.Amount
+	if amount > refillCapacity {
+		return fmt.Errorf("pelunasan melebihi modal terpakai: maksimal Rp%d", refillCapacity)
+	}
 	if amount > outstanding {
-		amount = outstanding
-	}
-	if amount <= 0 {
-		return sql.ErrNoRows
-	}
-	if amount < outstanding {
-		return fmt.Errorf("pembayaran kredit wajib lunas: tagihan=%d pembayaran=%d", outstanding, amount)
+		return fmt.Errorf("pelunasan melebihi kewajiban berjalan: maksimal Rp%d", outstanding)
 	}
 	daysLate := 0
 	now := time.Now()
 	if now.After(dueDate) {
 		daysLate = int(now.Sub(dueDate).Hours() / 24)
 	}
-	paymentStatus := "on_time"
+	paymentStatus := "partial"
 	if daysLate > 0 {
 		paymentStatus = "late"
 	}
@@ -1914,31 +1965,53 @@ FOR UPDATE
 
 	_, err = tx.ExecContext(ctx, `
 INSERT INTO public.agent_credit_payment
-  (loan_id, member_id, amount, due_date, days_late, status, note)
+  (loan_id, member_id, ref_id, amount, due_date, days_late, status, note)
 VALUES
-  ($1, $2, $3, $4, $5, $6, $7)
-`, loanID, memberID, amount, dueDate, daysLate, paymentStatus, paymentNote)
+  ($1, $2, $3, $4, $5, $6, $7, $8)
+`, loanID, memberID, in.RefID, amount, dueDate, daysLate, paymentStatus, paymentNote)
 	if err != nil {
 		return err
 	}
+
+	mainAfter := mainBefore + amount
 	_, err = tx.ExecContext(ctx, `
 UPDATE public.agent_credit_loan
 SET
-  outstanding_amount = GREATEST(outstanding_amount - $2, 0),
-  available_amount = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN 0 ELSE available_amount END,
-  status = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN 'paid' ELSE status END,
-  paid_at = CASE WHEN GREATEST(outstanding_amount - $2, 0) = 0 THEN now() ELSE paid_at END,
+  outstanding_amount = GREATEST(outstanding_amount - $2, 0) + $2,
+  available_amount = 0,
+  status = 'active',
+  paid_at = NULL,
   updated_at = now()
 WHERE id = $1
 `, loanID, amount)
 	if err != nil {
 		return err
 	}
-	if err := insertAuditLogTx(ctx, tx, in.MemberID, "agent", "agent_credit_paid", "agent_credit_loan", loanID, map[string]any{
+	if _, err := tx.ExecContext(ctx, `
+UPDATE public.dompet_member
+SET saldo = $2, diperbarui_pada = now()
+WHERE member_id = $1
+`, memberID, mainAfter); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+INSERT INTO public.mutasi_dompet
+  (member_id, ref_id, arah, jumlah, alasan, catatan, saldo_sebelum, saldo_sesudah, dibuat_pada)
+VALUES
+  ($1, $2, 'CREDIT', $3, 'AGENT_CREDIT_REVOLVING_REDRAW',
+   'Pelunasan sebagian dicairkan kembali ke saldo utama', $4, $5, now())
+`, memberID, in.RefID, amount, mainBefore, mainAfter); err != nil {
+		return err
+	}
+	if err := insertAuditLogTx(ctx, tx, memberID, "agent", "agent_credit_partial_payment_redraw", "agent_credit_loan", loanID, map[string]any{
 		"outstanding_amount": outstanding,
+		"main_balance":       mainBefore,
 	}, map[string]any{
-		"paid_amount": amount,
-		"status":      "paid",
+		"paid_amount":        amount,
+		"outstanding_amount": outstanding,
+		"main_balance":       mainAfter,
+		"status":             "active",
+		"ref_id":             in.RefID,
 	}, in.Note); err != nil {
 		return err
 	}

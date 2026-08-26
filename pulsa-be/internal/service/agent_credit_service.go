@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"pulsa2/internal/helper"
 	"pulsa2/internal/repository"
@@ -49,6 +50,7 @@ type AgentCreditDecisionInput struct {
 type AgentCreditPaymentInput struct {
 	ApplicationID int64          `json:"application_id"`
 	MemberID      int64          `json:"member_id"`
+	RefID         string         `json:"ref_id"`
 	Amount        int64          `json:"amount"`
 	Note          string         `json:"note"`
 	PaymentMethod string         `json:"payment_method"`
@@ -632,37 +634,35 @@ func normalizeRiskLevel(value string) string {
 }
 
 func (s *AgentCreditService) PayInstallment(ctx context.Context, auth helper.AuthInfo, in AgentCreditPaymentInput) error {
-	// Active partnerships do not use recurring installments. Settlement is an
-	// operator-controlled action when the agent ends the partnership.
-	return errors.New("pembayaran kredit belum diperlukan selama agent masih aktif menjadi mitra")
-
-	/*
-		role := helper.NormalizeRole(auth.Role)
-		if role != helper.RoleRetailAgent && role != helper.RoleUser {
-			return errors.New("user only")
-		}
-		if in.ApplicationID <= 0 {
-			return errors.New("pengajuan tidak valid")
-		}
-		if in.Amount <= 0 {
-			return errors.New("nominal pembayaran wajib diisi")
-		}
-		if strings.TrimSpace(in.PaymentMethod) == "" {
-			in.PaymentMethod = "transfer"
-		}
-		proofURL, _ := in.PaymentProof["data_url"].(string)
-		if !strings.HasPrefix(strings.TrimSpace(proofURL), "data:image/") {
-			return errors.New("bukti transfer wajib diupload")
-		}
-		return s.repo.PayInstallment(ctx, repository.AgentCreditPaymentInput{
-			ApplicationID: in.ApplicationID,
-			MemberID:      auth.MemberID,
-			Amount:        in.Amount,
-			Note:          strings.TrimSpace(in.Note),
-			PaymentMethod: strings.TrimSpace(in.PaymentMethod),
-			PaymentProof:  in.PaymentProof,
-		})
-	*/
+	if helper.NormalizeRole(auth.Role) != helper.RoleRetailAgent {
+		return errors.New("agent only")
+	}
+	if in.ApplicationID <= 0 {
+		return errors.New("pengajuan tidak valid")
+	}
+	if in.Amount <= 0 {
+		return errors.New("nominal pelunasan wajib diisi")
+	}
+	if strings.TrimSpace(in.PaymentMethod) == "" {
+		in.PaymentMethod = "transfer"
+	}
+	proofURL, _ := in.PaymentProof["data_url"].(string)
+	if !strings.HasPrefix(strings.TrimSpace(proofURL), "data:image/") {
+		return errors.New("bukti pembayaran wajib diupload")
+	}
+	refID := strings.TrimSpace(in.RefID)
+	if refID == "" {
+		refID = fmt.Sprintf("KREDIT-BAYAR-%d-%d", auth.MemberID, time.Now().UnixNano())
+	}
+	return s.repo.PayInstallment(ctx, repository.AgentCreditPaymentInput{
+		ApplicationID: in.ApplicationID,
+		MemberID:      auth.MemberID,
+		RefID:         refID,
+		Amount:        in.Amount,
+		Note:          strings.TrimSpace(in.Note),
+		PaymentMethod: strings.TrimSpace(in.PaymentMethod),
+		PaymentProof:  in.PaymentProof,
+	})
 }
 
 func (s *AgentCreditService) TransferToMainBalance(ctx context.Context, auth helper.AuthInfo, in AgentCreditTransferInput) (*repository.AgentCreditTransferResult, error) {
