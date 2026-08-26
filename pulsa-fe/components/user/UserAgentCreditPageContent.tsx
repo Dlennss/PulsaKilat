@@ -15,7 +15,6 @@ import {
   Clock3,
   FileText,
   FileWarning,
-  HandCoins,
   Home,
   Landmark,
   Loader2,
@@ -404,7 +403,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"transfer" | "qris" | "offline">("transfer");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"transfer" | "qris">("transfer");
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [paymentProofName, setPaymentProofName] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -550,12 +549,6 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
       title: "QRIS / Barcode",
       desc: "Nominal otomatis sesuai pelunasan",
       icon: QrCode,
-    },
-    {
-      id: "offline" as const,
-      title: "Penagihan Offline",
-      desc: "Marketing datang dan menerima pelunasan langsung",
-      icon: HandCoins,
     },
   ];
   const selectedPayment = paymentMethods.find((method) => method.id === selectedPaymentMethod) || paymentMethods[0];
