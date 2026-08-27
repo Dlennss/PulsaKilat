@@ -29,7 +29,7 @@ func (r *AgentCreditRepository) ListAgentTransactions(ctx context.Context, statu
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
-WITH latest_agent_order AS (
+WITH agent_activity AS (
   SELECT
     ao.id,
     m.id AS member_id,
@@ -43,12 +43,40 @@ WITH latest_agent_order AS (
     COALESCE(ao.status, '') AS status,
     COALESCE(ao.harga_final, 0) AS harga_final,
     COALESCE(ao.dibuat_pada, NOW()) AS dibuat_pada,
-    COALESCE(ao.diubah_pada, ao.dibuat_pada, NOW()) AS diubah_pada,
-    ROW_NUMBER() OVER (PARTITION BY ao.member_id ORDER BY ao.dibuat_pada DESC, ao.id DESC) AS urutan
+    COALESCE(ao.diubah_pada, ao.dibuat_pada, NOW()) AS diubah_pada
   FROM public.app_order ao
   JOIN public.member m ON m.id = ao.member_id
   WHERE LOWER(COALESCE(m.role, '')) = 'agent'
     AND LOWER(COALESCE(ao.buyer_type, '')) = 'user'
+    AND LOWER(COALESCE(ao.status, '')) IN ('success', 'failed', 'refunded')
+  UNION ALL
+  SELECT
+    -rw.id AS id,
+    m.id AS member_id,
+    COALESCE(m.nama, '') AS member_nama,
+    COALESCE(m.email, '') AS member_email,
+    rw.ref_id AS invoice_id,
+    'WITHDRAW' AS produk_sku_snapshot,
+    CONCAT('Penarikan ', COALESCE(NULLIF(rw.bank_name, ''), 'Saldo')) AS produk_nama_snapshot,
+    COALESCE(rw.account_number, '') AS dest,
+    COALESCE(rw.amount, 0) AS qty,
+    CASE LOWER(COALESCE(rw.status, ''))
+      WHEN 'approved' THEN 'success'
+      WHEN 'rejected' THEN 'refunded'
+      ELSE 'processing_provider'
+    END AS status,
+    COALESCE(rw.amount, 0) AS harga_final,
+    COALESCE(rw.created_at, NOW()) AS dibuat_pada,
+    COALESCE(rw.updated_at, rw.created_at, NOW()) AS diubah_pada
+  FROM public.retail_withdraw_request rw
+  JOIN public.member m ON m.id = rw.member_id
+  WHERE LOWER(COALESCE(m.role, '')) = 'agent'
+    AND LOWER(COALESCE(rw.status, '')) IN ('approved', 'rejected')
+), latest_agent_order AS (
+  SELECT
+    agent_activity.*,
+    ROW_NUMBER() OVER (PARTITION BY member_id ORDER BY dibuat_pada DESC, id DESC) AS urutan
+  FROM agent_activity
 )
 SELECT
   id,

@@ -228,6 +228,7 @@ export const analystNavSections: NavSection[] = [
     items: [
       { href: "/dashboard/master/operator", label: "Meja Keputusan" },
       { href: "/dashboard/master/operator/tambah-marketing", label: "Tambah Marketing" },
+      { href: "/dashboard/master/operator/input-data-agent", label: "Input Data Agent" },
       { href: "/dashboard/master/operator/kenaikan-limit", label: "Kenaikan Limit" },
       { href: "/dashboard/master/operator/pembayaran-kredit", label: "Pembayaran Kredit" },
       { href: "/dashboard/master/operator/transaksi-agent", label: "Transaksi Agent" },

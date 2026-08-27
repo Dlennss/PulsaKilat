@@ -240,6 +240,44 @@ type AgentCreditProfile struct {
 	QualifiedPaidCount int64  `json:"qualified_paid_count"`
 }
 
+type AgentCreditManualAgent struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	Marketing string `json:"marketing_name"`
+}
+
+func (r *AgentCreditRepository) ListManualEntryAgents(ctx context.Context, search string, limit int) ([]AgentCreditManualAgent, error) {
+	search = strings.TrimSpace(search)
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	rows, err := r.db.QueryContext(ctx, `
+SELECT m.id, COALESCE(m.nama, ''), COALESCE(m.email, ''), COALESCE(m.phone, ''), COALESCE(marketing.nama, '')
+FROM public.member m
+LEFT JOIN public.member marketing ON marketing.id = m.marketing_id
+WHERE LOWER(COALESCE(m.role, '')) = 'agent'
+  AND COALESCE(m.aktif, TRUE) = TRUE
+  AND ($1 = '' OR m.nama ILIKE '%' || $1 || '%' OR m.email ILIKE '%' || $1 || '%' OR m.phone ILIKE '%' || $1 || '%')
+ORDER BY m.nama ASC, m.id DESC
+LIMIT $2
+`, search, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]AgentCreditManualAgent, 0)
+	for rows.Next() {
+		var item AgentCreditManualAgent
+		if err := rows.Scan(&item.ID, &item.Name, &item.Email, &item.Phone, &item.Marketing); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 type AgentCreditApplication struct {
 	ID                       int64                `json:"id"`
 	MemberID                 int64                `json:"member_id"`

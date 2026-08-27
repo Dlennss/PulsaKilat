@@ -75,6 +75,88 @@ type AgentCreditLoanStatusInput struct {
 	Reason        string `json:"reason"`
 }
 
+type AgentCreditManualInput struct {
+	MemberID        int64          `json:"member_id"`
+	RequestedAmount int64          `json:"requested_amount"`
+	Action          string         `json:"action"`
+	Note            string         `json:"note"`
+	ApplicantData   map[string]any `json:"applicant_data"`
+}
+
+type AgentCreditManualResult struct {
+	Item          *repository.AgentCreditApplication `json:"item"`
+	Approved      bool                               `json:"approved"`
+	ApprovalError string                             `json:"approval_error,omitempty"`
+}
+
+func canManageManualCredit(role string) bool {
+	normalized := helper.NormalizeRole(role)
+	return normalized == helper.RoleAdmin || normalized == helper.RoleStaff || normalized == helper.RoleRetailAnalyst
+}
+
+func (s *AgentCreditService) ListManualEntryAgents(ctx context.Context, auth helper.AuthInfo, search string, limit int) ([]repository.AgentCreditManualAgent, error) {
+	if !canManageManualCredit(auth.Role) {
+		return nil, errors.New("input data agent hanya dapat dilakukan operator")
+	}
+	return s.repo.ListManualEntryAgents(ctx, search, limit)
+}
+
+func (s *AgentCreditService) CreateManualApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditManualInput) (*AgentCreditManualResult, error) {
+	if !canManageManualCredit(auth.Role) {
+		return nil, errors.New("input data agent hanya dapat dilakukan operator")
+	}
+	if in.MemberID <= 0 {
+		return nil, errors.New("akun agent wajib dipilih")
+	}
+	if in.RequestedAmount < minimumAgentCreditAmount || in.RequestedAmount > maximumAgentCreditAmount {
+		return nil, errors.New("nominal kredit harus antara Rp500.000 dan Rp2.000.000")
+	}
+	if openID, err := s.repo.FindOpenEarlyApplicationID(ctx, in.MemberID); err != nil {
+		return nil, err
+	} else if openID > 0 {
+		return nil, fmt.Errorf("agent masih memiliki pengajuan aktif KRD-%08d", openID)
+	}
+	if err := s.repo.EnsureAgentCanSubmitNextApplication(ctx, in.MemberID); err != nil {
+		return nil, err
+	}
+	if in.ApplicantData == nil {
+		in.ApplicantData = map[string]any{}
+	}
+	in.ApplicantData["entry_source"] = "operator_manual"
+	in.ApplicantData["entry_source_label"] = "Input Operator"
+	in.ApplicantData["manual_entry"] = true
+	in.ApplicantData["manual_entry_operator_id"] = auth.MemberID
+	in.ApplicantData["manual_entry_at"] = time.Now().UTC().Format(time.RFC3339)
+	in.ApplicantData["system_validation_status"] = "operator_verified"
+
+	item, err := s.repo.CreateApplication(ctx, repository.AgentCreditApplicationInput{
+		MemberID:        in.MemberID,
+		RequestedAmount: in.RequestedAmount,
+		ApplicantData:   in.ApplicantData,
+		DocumentData:    map[string]any{},
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := &AgentCreditManualResult{Item: item}
+	if strings.EqualFold(strings.TrimSpace(in.Action), "approve") {
+		approved, approvalErr := s.DecideApplication(ctx, auth, AgentCreditDecisionInput{
+			ID:             item.ID,
+			Decision:       "approve",
+			ApprovedAmount: in.RequestedAmount,
+			Note:           fallbackNote(strings.TrimSpace(in.Note), "Data manual operator diverifikasi dan disetujui."),
+			RiskLevel:      "low",
+		})
+		if approvalErr != nil {
+			result.ApprovalError = approvalErr.Error()
+			return result, nil
+		}
+		result.Item = approved
+		result.Approved = true
+	}
+	return result, nil
+}
+
 func (s *AgentCreditService) ListTeamActivity(ctx context.Context, auth helper.AuthInfo, actorRole string, limit int) ([]repository.AgentCreditTeamActivity, error) {
 	if helper.NormalizeRole(auth.Role) != helper.RoleAdmin {
 		return nil, errors.New("super admin only")

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -90,6 +91,58 @@ func (h *AgentCreditController) MasterApplications(w http.ResponseWriter, r *htt
 		return
 	}
 	helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
+}
+
+func (h *AgentCreditController) ManualApplications(w http.ResponseWriter, r *http.Request) {
+	auth, ok := helper.GetAuth(r.Context())
+	if !ok {
+		helper.WriteJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "unauthorized"})
+		return
+	}
+	if r.Method == http.MethodGet {
+		items, err := h.svc.ListManualEntryAgents(r.Context(), auth, strings.TrimSpace(r.URL.Query().Get("q")), helper.QueryInt(r, "limit", 100))
+		if err != nil {
+			helper.WriteJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
+		return
+	}
+	if r.Method != http.MethodPost {
+		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
+		return
+	}
+	var in service.AgentCreditManualInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"})
+		return
+	}
+	result, err := h.svc.CreateManualApplication(r.Context(), auth, in)
+	if err != nil {
+		helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	status := http.StatusOK
+	if result.ApprovalError != "" {
+		status = http.StatusAccepted
+	}
+	response := map[string]any{
+		"ok":        result.ApprovalError == "",
+		"item":      result.Item,
+		"approved":  result.Approved,
+		"credit_id": fmt.Sprintf("KRD-%08d", result.Item.ID),
+		"source":    "operator_manual",
+		"status":    result.Item.Status,
+		"saved":     true,
+		"message":   "Data agent berhasil disimpan",
+	}
+	if result.ApprovalError != "" {
+		response["error"] = "data tersimpan sebagai pending, tetapi persetujuan gagal: " + result.ApprovalError
+	}
+	if result.Approved {
+		response["message"] = "Data agent berhasil disimpan dan kredit disetujui"
+	}
+	helper.WriteJSON(w, status, response)
 }
 
 func (h *AgentCreditController) MasterDecision(w http.ResponseWriter, r *http.Request) {
