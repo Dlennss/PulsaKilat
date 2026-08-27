@@ -395,6 +395,10 @@ func retailPulsa24JamLooksSuccess(values ...string) bool {
 	upper := strings.ToUpper(strings.Join(values, " "))
 	return strings.Contains(upper, "SUKSES") ||
 		strings.Contains(upper, "SUCCESS") ||
+		strings.Contains(upper, `"OK":TRUE`) ||
+		strings.Contains(upper, `"SUCCESS":TRUE`) ||
+		strings.Contains(upper, `"STATUS":2`) ||
+		strings.Contains(upper, `"STATUS":"2"`) ||
 		strings.Contains(upper, `"STATUS":"SUCCESS"`) ||
 		strings.Contains(upper, `"RC":"00"`)
 }
@@ -411,6 +415,8 @@ func retailPulsa24JamLooksRejected(values ...string) bool {
 	return strings.Contains(upper, "GAGAL") ||
 		strings.Contains(upper, "FAILED") ||
 		strings.Contains(upper, "DITOLAK") ||
+		strings.Contains(upper, `"STATUS":3`) ||
+		strings.Contains(upper, `"STATUS":"3"`) ||
 		strings.Contains(upper, `"OK":FALSE`) ||
 		strings.Contains(upper, `"SUCCESS":FALSE`) ||
 		strings.Contains(upper, `"STATUS":"FAILED"`)

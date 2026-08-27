@@ -48,6 +48,15 @@ function statusInfo(status: string) {
   }
 }
 
+function safeRejectReason(reason?: string) {
+  const value = String(reason || "").trim();
+  if (!value) return "Transaksi tidak dapat diproses. Saldo telah dikembalikan.";
+  if (value.startsWith("{") || value.startsWith("[") || value.length > 180) {
+    return "Transaksi tidak dapat diproses. Saldo telah dikembalikan.";
+  }
+  return value;
+}
+
 export function RetailWithdrawClient({ authToken }: Props) {
   const [mainBalance, setMainBalance] = useState(0);
   const [items, setItems] = useState<WithdrawRow[]>([]);
@@ -247,7 +256,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
                     <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${status.className}`}>{status.label}</span>
                   </div>
                   <p className="mt-2 truncate text-[10px] font-semibold text-slate-400">{item.ref_id} · {item.account_number}</p>
-                  {item.reject_reason ? <p className="mt-1 text-[10px] font-semibold text-rose-600">{item.reject_reason}</p> : null}
+                  {item.reject_reason ? <p className="mt-1 text-[10px] font-semibold text-rose-600">{safeRejectReason(item.reject_reason)}</p> : null}
                 </div>
               </div>
             );

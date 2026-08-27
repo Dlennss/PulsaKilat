@@ -47,3 +47,18 @@ func TestRetailWithdrawOpenWalletRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestRetailPulsa24JamNestedMemberStatus(t *testing.T) {
+	successBody := `{"ok":true,"transaksi_member":{"ref_id":"RWD-1","status":2}}`
+	if !retailPulsa24JamLooksSuccess(successBody) {
+		t.Fatal("nested transaksi_member status 2 must be treated as successful")
+	}
+	if retailPulsa24JamLooksRejected(successBody) {
+		t.Fatal("nested transaksi_member status 2 must not be treated as rejected")
+	}
+
+	rejectedBody := `{"ok":true,"transaksi_member":{"ref_id":"RWD-2","status":3}}`
+	if !retailPulsa24JamLooksRejected(rejectedBody) {
+		t.Fatal("nested transaksi_member status 3 must be treated as rejected")
+	}
+}
