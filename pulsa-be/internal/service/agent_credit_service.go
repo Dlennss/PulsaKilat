@@ -123,7 +123,7 @@ func (s *AgentCreditService) CreateManualApplication(ctx context.Context, auth h
 		in.ApplicantData = map[string]any{}
 	}
 	in.ApplicantData["entry_source"] = "operator_manual"
-	in.ApplicantData["entry_source_label"] = "Input Operator"
+	in.ApplicantData["entry_source_label"] = "Migrasi Data Operator"
 	in.ApplicantData["manual_entry"] = true
 	in.ApplicantData["manual_entry_operator_id"] = auth.MemberID
 	in.ApplicantData["manual_entry_at"] = time.Now().UTC().Format(time.RFC3339)

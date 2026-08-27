@@ -144,8 +144,8 @@ export default function OperatorManualAgentEntryPage() {
       <div className="mx-auto w-full max-w-6xl">
         <header className="overflow-hidden rounded-[24px] bg-[linear-gradient(125deg,#064e3b,#0b8a57_60%,#5bc72f)] px-5 py-6 text-white shadow-[0_18px_45px_rgba(6,95,70,0.18)] sm:px-8 sm:py-8">
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-lime-100">Operator Kredit</p>
-          <h1 className="mt-2 text-2xl font-black sm:text-4xl">Input Data Agent</h1>
-          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-emerald-50">Masukkan satu data agent dari catatan atau Excel. Setiap penyimpanan menjadi satu riwayat kredit yang dapat dilacak.</p>
+          <h1 className="mt-2 text-2xl font-black sm:text-4xl">Migrasi Data Agent</h1>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-emerald-50">Pindahkan data agent lama dari catatan atau Excel ke PulsaKilat satu per satu. Setiap data tersimpan sebagai riwayat kredit yang dapat dilacak.</p>
         </header>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[0.82fr_1.18fr]">
@@ -172,7 +172,7 @@ export default function OperatorManualAgentEntryPage() {
           </section>
 
           <form className="rounded-[20px] border border-emerald-100 bg-white p-4 shadow-sm sm:p-6" onSubmit={(event) => { event.preventDefault(); void submit("pending"); }}>
-            <div className="flex items-center gap-3 border-b border-emerald-100 pb-4"><span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><ClipboardPenLine className="h-5 w-5" /></span><div><h2 className="font-black">2. Lengkapi Data</h2><p className="text-xs font-semibold text-slate-500">Salin data satu per satu dari sumber Anda.</p></div></div>
+            <div className="flex items-center gap-3 border-b border-emerald-100 pb-4"><span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><ClipboardPenLine className="h-5 w-5" /></span><div><h2 className="font-black">2. Lengkapi Data Migrasi</h2><p className="text-xs font-semibold text-slate-500">Salin data lama satu per satu dari sumber Anda.</p></div></div>
             {selectedAgent ? <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Agent Dipilih</p><p className="mt-1 font-black text-slate-950">{selectedAgent.name} <span className="font-semibold text-slate-500">({selectedAgent.email})</span></p></div> : null}
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Field label="Nama toko" value={form.storeName} onChange={(value) => update("storeName", value)} placeholder="Nama konter atau usaha" />
