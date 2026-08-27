@@ -446,47 +446,6 @@ func (s *RetailService) refreshWithdrawStatuses(ctx context.Context, items []rep
 	}
 	for index := range items {
 		item := &items[index]
-		if item.Status == "pending" {
-			selection, err := s.resolveWithdrawProduct(ctx, item.BankName, item.Amount)
-			if err != nil || item.RefID == "" || item.AccountNumber == "" {
-				continue
-			}
-			response, payErr := s.p24Client.Pay(ctx, provider.PayRequest{
-				Command: "PAY",
-				Product: selection.SKU,
-				Dest:    item.AccountNumber,
-				Qty:     selection.Qty,
-				RefID:   item.RefID,
-			})
-			if payErr != nil || response == nil || response.HTTPStatus < 200 || response.HTTPStatus >= 300 {
-				continue
-			}
-			message := strings.TrimSpace(response.Message)
-			note := fmt.Sprintf("dikirim ke Pulsa24Jam product=%s qty=%d dest=%s", selection.SKU, selection.Qty, item.AccountNumber)
-			if message != "" {
-				note += " | " + message
-			}
-			if retailPulsa24JamLooksRejected(response.Body, message) {
-				reason := message
-				if reason == "" {
-					reason = "penarikan otomatis gagal"
-				}
-				if s.repo.RejectWithdrawRequest(ctx, item.ID, item.MemberID, reason) == nil {
-					item.Status = "rejected"
-					item.RejectReason = reason
-				}
-				continue
-			}
-			status := "processing_provider"
-			if retailPulsa24JamLooksSuccess(response.Body, message) {
-				status = "approved"
-			}
-			if s.repo.UpdateWithdrawRequestProviderStatus(ctx, item.RefID, status, note) == nil {
-				item.Status = status
-				item.Note = note
-			}
-			continue
-		}
 		if item.Status != "processing_provider" {
 			continue
 		}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   CheckCircle2,
@@ -58,6 +58,7 @@ function safeRejectReason(reason?: string) {
 }
 
 export function RetailWithdrawClient({ authToken }: Props) {
+  const submitLockRef = useRef(false);
   const [mainBalance, setMainBalance] = useState(0);
   const [items, setItems] = useState<WithdrawRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,6 +133,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (submitLockRef.current) return;
     setError("");
     setSuccess("");
     if (amountValue <= 0) {
@@ -147,6 +149,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
       return;
     }
 
+    submitLockRef.current = true;
     setSaving(true);
     try {
       const response = await fetch("/api/me/retail/withdraw-requests", {
@@ -185,6 +188,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Pengajuan penarikan gagal.");
     } finally {
+      submitLockRef.current = false;
       setSaving(false);
     }
   }
