@@ -400,6 +400,10 @@ function getPaymentStatusLabel(status: string, daysLate?: number) {
   return "Tepat waktu";
 }
 
+function formatCreditID(applicationID: number) {
+  return `KRD-${String(applicationID).padStart(8, "0")}`;
+}
+
 function buildReportRows(items: AgentCreditApplication[]) {
   return items.map((item) => {
     const agentName = getApplicantText(item, "agent_name", item.member_name || "Agent");
@@ -412,7 +416,7 @@ function buildReportRows(items: AgentCreditApplication[]) {
     const available = Number(item.credit_available_amount || 0);
     const paid = Number(item.paid_amount || 0);
     return {
-      "ID Pengajuan": `KSA-${String(item.id).padStart(8, "0")}`,
+      "ID Kredit": formatCreditID(item.id),
       "Tanggal Keputusan": formatDateTime(item.updated_at),
       "Nama Agent": agentName,
       "Nama Toko": storeName,
@@ -618,7 +622,7 @@ export function MasterAgentCreditApplicationList({
     autoTable(doc, {
       startY: 128,
       head: [[
-        "ID",
+        "ID Kredit",
         "Tanggal",
         "Agent",
         "Toko",
@@ -632,7 +636,7 @@ export function MasterAgentCreditApplicationList({
         "Catatan",
       ]],
       body: reportRows.map((row) => [
-        row["ID Pengajuan"],
+        row["ID Kredit"],
         row["Tanggal Keputusan"],
         row["Nama Agent"],
         row["Nama Toko"],
@@ -667,7 +671,7 @@ export function MasterAgentCreditApplicationList({
     ];
     const tableRows = reportRows.map((row) => `
       <tr>
-        <td>${escapeHTML(row["ID Pengajuan"])}</td>
+        <td>${escapeHTML(row["ID Kredit"])}</td>
         <td>${escapeHTML(row["Tanggal Keputusan"])}</td>
         <td>${escapeHTML(row["Nama Agent"])}</td>
         <td>${escapeHTML(row["Nama Toko"])}</td>
@@ -905,6 +909,7 @@ export function MasterAgentCreditApplicationList({
                         {!useCompactTable ? <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${getDisplayStatusClass(item)}`}>{getDisplayStatus(item)}</span> : null}
                       </div>
                       <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{storeName}</p>
+                      <p className="mt-1 truncate text-[10px] font-black tracking-[0.08em] text-emerald-700">ID KREDIT {formatCreditID(item.id)}</p>
                       <p className="mt-1 truncate text-[11px] font-bold text-slate-400">WA {wa} · NIK {nik}</p>
                     </div>
                   </div>
@@ -990,6 +995,10 @@ export function MasterAgentCreditApplicationList({
                       </div>
                     ) : null}
                     <div className="grid min-w-0 gap-3 text-[11px] font-semibold text-slate-500 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                        <p className="font-black text-slate-950">ID Kredit</p>
+                        <p className="mt-1 break-words font-black leading-5 text-emerald-700">{formatCreditID(item.id)}</p>
+                      </div>
                       <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                         <p className="font-black text-slate-950">Status Pinjaman</p>
                         <p className="mt-1 break-words leading-5">{getDisplayStatus(item)}</p>

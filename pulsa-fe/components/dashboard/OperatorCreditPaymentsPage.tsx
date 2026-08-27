@@ -8,6 +8,7 @@ import type { AgentCreditApplication, AgentCreditPayment } from "@/lib/api.auth"
 type PaymentRow = AgentCreditPayment & {
   agentName: string;
   agentEmail: string;
+  creditID: string;
 };
 
 function formatIDR(value: number) {
@@ -38,13 +39,14 @@ export function OperatorCreditPaymentsPage({ applications }: { applications: Age
     const applicantName = application.applicant_data?.nama_lengkap;
     const agentName = application.agent_name || application.member_name || (typeof applicantName === "string" ? applicantName : "") || "Agent PulsaKilat";
     const agentEmail = application.agent_email || application.member_email || "-";
-    return (application.payments || []).map((payment) => ({ ...payment, agentName, agentEmail }));
+    const creditID = `KRD-${String(application.id).padStart(8, "0")}`;
+    return (application.payments || []).map((payment) => ({ ...payment, agentName, agentEmail, creditID }));
   }).sort((a, b) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime()), [applications]);
 
   const filteredRows = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) return rows;
-    return rows.filter((row) => [row.agentName, row.agentEmail, row.payment_method, row.note, String(row.amount)]
+    return rows.filter((row) => [row.creditID, row.agentName, row.agentEmail, row.payment_method, row.note, String(row.amount)]
       .some((value) => String(value || "").toLowerCase().includes(keyword)));
   }, [query, rows]);
 
@@ -84,7 +86,7 @@ export function OperatorCreditPaymentsPage({ applications }: { applications: Age
             <div><h2 className="text-lg font-black">Riwayat Pembayaran</h2><p className="mt-1 text-[11px] font-semibold text-slate-500">Urutan terbaru ditampilkan paling atas.</p></div>
             <label className="flex h-11 w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 sm:max-w-md">
               <Search className="h-4 w-4 shrink-0 text-emerald-700" />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari agent, email, metode, atau nominal" className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari ID kredit, agent, email, atau nominal" className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none" />
             </label>
           </div>
 
@@ -94,7 +96,7 @@ export function OperatorCreditPaymentsPage({ applications }: { applications: Age
               <tbody className="divide-y divide-slate-100">
                 {filteredRows.map((row) => {
                   const source = proofSource(row);
-                  return <tr key={row.id} className="hover:bg-emerald-50/40"><td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-500">{formatDateTime(row.paid_at)}</td><td className="px-4 py-4"><p className="font-black">{row.agentName}</p><p className="mt-1 text-[10px] font-semibold text-slate-400">{row.agentEmail}</p></td><td className="px-4 py-4 font-black text-emerald-700">{formatIDR(row.amount)}</td><td className="px-4 py-4 font-bold">{methodLabel(row.payment_method)}</td><td className="px-4 py-4"><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-800">Dicairkan kembali</span></td><td className="px-4 py-4 text-right">{source ? <button type="button" onClick={() => setPreview(row)} className="inline-flex h-9 items-center gap-2 rounded-xl bg-emerald-700 px-3 font-black text-white"><Eye className="h-4 w-4" />Lihat</button> : <span className="text-[10px] font-bold text-slate-400">Tidak ada</span>}</td></tr>;
+                  return <tr key={row.id} className="hover:bg-emerald-50/40"><td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-500">{formatDateTime(row.paid_at)}</td><td className="px-4 py-4"><p className="font-black">{row.agentName}</p><p className="mt-1 text-[10px] font-black text-emerald-700">{row.creditID}</p><p className="mt-1 text-[10px] font-semibold text-slate-400">{row.agentEmail}</p></td><td className="px-4 py-4 font-black text-emerald-700">{formatIDR(row.amount)}</td><td className="px-4 py-4 font-bold">{methodLabel(row.payment_method)}</td><td className="px-4 py-4"><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-800">Dicairkan kembali</span></td><td className="px-4 py-4 text-right">{source ? <button type="button" onClick={() => setPreview(row)} className="inline-flex h-9 items-center gap-2 rounded-xl bg-emerald-700 px-3 font-black text-white"><Eye className="h-4 w-4" />Lihat</button> : <span className="text-[10px] font-bold text-slate-400">Tidak ada</span>}</td></tr>;
                 })}
               </tbody>
             </table>
@@ -103,7 +105,7 @@ export function OperatorCreditPaymentsPage({ applications }: { applications: Age
           <div className="divide-y divide-slate-100 md:hidden">
             {filteredRows.map((row) => {
               const source = proofSource(row);
-              return <article key={row.id} className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{row.agentName}</p><p className="mt-1 truncate text-[10px] font-semibold text-slate-400">{row.agentEmail}</p></div><span className="shrink-0 text-sm font-black text-emerald-700">{formatIDR(row.amount)}</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px]"><div className="rounded-xl bg-slate-50 p-2"><p className="font-semibold text-slate-400">Waktu</p><p className="mt-1 font-black">{formatDateTime(row.paid_at)}</p></div><div className="rounded-xl bg-slate-50 p-2"><p className="font-semibold text-slate-400">Metode</p><p className="mt-1 font-black">{methodLabel(row.payment_method)}</p></div></div>{source ? <button type="button" onClick={() => setPreview(row)} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 text-xs font-black text-white"><Eye className="h-4 w-4" />Lihat Bukti</button> : <p className="mt-3 rounded-xl bg-slate-100 px-3 py-2 text-center text-[10px] font-bold text-slate-400">Bukti tidak tersedia</p>}</article>;
+              return <article key={row.id} className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{row.agentName}</p><p className="mt-1 truncate text-[10px] font-black text-emerald-700">{row.creditID}</p><p className="mt-1 truncate text-[10px] font-semibold text-slate-400">{row.agentEmail}</p></div><span className="shrink-0 text-sm font-black text-emerald-700">{formatIDR(row.amount)}</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px]"><div className="rounded-xl bg-slate-50 p-2"><p className="font-semibold text-slate-400">Waktu</p><p className="mt-1 font-black">{formatDateTime(row.paid_at)}</p></div><div className="rounded-xl bg-slate-50 p-2"><p className="font-semibold text-slate-400">Metode</p><p className="mt-1 font-black">{methodLabel(row.payment_method)}</p></div></div>{source ? <button type="button" onClick={() => setPreview(row)} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 text-xs font-black text-white"><Eye className="h-4 w-4" />Lihat Bukti</button> : <p className="mt-3 rounded-xl bg-slate-100 px-3 py-2 text-center text-[10px] font-bold text-slate-400">Bukti tidak tersedia</p>}</article>;
             })}
           </div>
 

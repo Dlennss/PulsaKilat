@@ -511,7 +511,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
   const statusIsWaiting = Boolean(latestApplication && !statusIsApproved && !statusIsRejected);
   const systemValidationPassed = latestApplication?.applicant_data?.system_validation_status === "passed";
   const statusPaymentDue = statusIsPaid ? 0 : statusOutstanding;
-  const statusApplicationCode = latestApplication?.id ? `KSA-${String(latestApplication.id).padStart(8, "0")}` : "KSA-PENDING";
+  const statusApplicationCode = latestApplication?.id ? `KRD-${String(latestApplication.id).padStart(8, "0")}` : "KRD-PENDING";
   const statusHeadline = statusIsRejected
     ? "Pengajuan perlu diperbaiki"
     : statusIsWaiting
@@ -737,6 +737,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
               <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
                 {acceptedApplications} pengajuan diterima
               </p>
+              {latestApplication?.id ? <p className="mt-1 text-[10px] font-black tracking-[0.08em] text-emerald-700">ID KREDIT KRD-{String(latestApplication.id).padStart(8, "0")}</p> : null}
             </div>
             <span className="rounded-full bg-emerald-950 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">
               {levelSubtitle}
@@ -836,6 +837,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-black text-slate-950">{agentName}</p>
                         <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-500">{storeName}</p>
+                        <p className="mt-1 truncate text-[10px] font-black tracking-[0.08em] text-emerald-700">ID KREDIT KRD-{String(item.id).padStart(8, "0")}</p>
                         <p className="mt-1 text-xs font-black text-[#047857]">{formatIDR(Number(item.approved_amount || item.requested_amount || 0))}</p>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-2">
