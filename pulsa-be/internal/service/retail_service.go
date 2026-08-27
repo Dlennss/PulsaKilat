@@ -188,26 +188,19 @@ func (s *RetailService) CreateWithdrawRequest(ctx context.Context, actorID int64
 		return nil, errors.New("data rekening wajib lengkap")
 	}
 
-	// Pulsa24Jam menerima SKU produk, bukan nama e-wallet seperti "gopay".
-	// Validasi SKU dilakukan sebelum saldo kredit ditahan agar saldo agent tidak
-	// berkurang bila nominal tujuan tidak tersedia di katalog provider.
-	providerProduct := ""
-	providerQty := in.Amount
-	if in.SourceType == "credit" {
-		selection, err := s.resolveCreditWithdrawProduct(ctx, in.BankName, in.Amount)
-		if err != nil {
-			return nil, err
-		}
-		providerProduct = selection.SKU
-		providerQty = selection.Qty
+	// Penarikan saldo utama memakai jalur PAY H2H yang sama seperti pembelian
+	// e-wallet. SKU divalidasi sebelum saldo ditahan agar request yang tidak
+	// tersedia di katalog provider tidak membuat saldo agent berkurang.
+	selection, err := s.resolveWithdrawProduct(ctx, in.BankName, in.Amount)
+	if err != nil {
+		return nil, err
 	}
+	providerProduct := selection.SKU
+	providerQty := selection.Qty
 	refID := fmt.Sprintf("RWD-%s-%s", time.Now().Format("20060102150405"), strings.ToUpper(helper.RandHex(4)))
 	item, err := s.repo.CreateWithdrawRequest(ctx, actorID, in.Amount, in.SourceType, in.BankName, in.AccountName, in.AccountNumber, refID, in.Note)
 	if err != nil {
 		return nil, err
-	}
-	if in.SourceType != "credit" {
-		return item, nil
 	}
 	resp, payErr := s.p24Client.Pay(ctx, provider.PayRequest{
 		Command: "PAY",
@@ -264,9 +257,9 @@ type retailWithdrawProviderProduct struct {
 	Qty int64
 }
 
-func (s *RetailService) resolveCreditWithdrawProduct(ctx context.Context, destination string, amount int64) (retailWithdrawProviderProduct, error) {
+func (s *RetailService) resolveWithdrawProduct(ctx context.Context, destination string, amount int64) (retailWithdrawProviderProduct, error) {
 	if s == nil || s.p24Catalog == nil {
-		return retailWithdrawProviderProduct{}, errors.New("katalog Pulsa24Jam untuk penarikan kredit belum aktif")
+		return retailWithdrawProviderProduct{}, errors.New("katalog Pulsa24Jam untuk penarikan belum aktif")
 	}
 	items, err := s.p24Catalog.Products(ctx, "")
 	if err != nil {
@@ -413,19 +406,60 @@ func (s *RetailService) ListOwnWithdrawRequests(ctx context.Context, actorID int
 	if err != nil {
 		return nil, err
 	}
-	return s.refreshCreditWithdrawStatuses(ctx, items), nil
+	return s.refreshWithdrawStatuses(ctx, items), nil
 }
 
-// refreshCreditWithdrawStatuses keeps credit withdrawals on the same automatic
-// H2H path as product purchases. Webhooks remain the primary finalizer, while
+// refreshWithdrawStatuses keeps withdrawals on the same automatic H2H
+// path as product purchases. Webhooks remain the primary finalizer, while
 // STATUS-PAY resolves a transaction when its callback arrives late.
-func (s *RetailService) refreshCreditWithdrawStatuses(ctx context.Context, items []repository.RetailWithdrawRequestRow) []repository.RetailWithdrawRequestRow {
+func (s *RetailService) refreshWithdrawStatuses(ctx context.Context, items []repository.RetailWithdrawRequestRow) []repository.RetailWithdrawRequestRow {
 	if s == nil || s.p24Client == nil {
 		return items
 	}
 	for index := range items {
 		item := &items[index]
-		if item.SourceType != "credit" || item.Status != "processing_provider" {
+		if item.Status == "pending" {
+			selection, err := s.resolveWithdrawProduct(ctx, item.BankName, item.Amount)
+			if err != nil || item.RefID == "" || item.AccountNumber == "" {
+				continue
+			}
+			response, payErr := s.p24Client.Pay(ctx, provider.PayRequest{
+				Command: "PAY",
+				Product: selection.SKU,
+				Dest:    item.AccountNumber,
+				Qty:     selection.Qty,
+				RefID:   item.RefID,
+			})
+			if payErr != nil || response == nil || response.HTTPStatus < 200 || response.HTTPStatus >= 300 {
+				continue
+			}
+			message := strings.TrimSpace(response.Message)
+			note := fmt.Sprintf("dikirim ke Pulsa24Jam product=%s qty=%d dest=%s", selection.SKU, selection.Qty, item.AccountNumber)
+			if message != "" {
+				note += " | " + message
+			}
+			if retailPulsa24JamLooksRejected(response.Body, message) {
+				reason := message
+				if reason == "" {
+					reason = "penarikan otomatis gagal"
+				}
+				if s.repo.RejectWithdrawRequest(ctx, item.ID, item.MemberID, reason) == nil {
+					item.Status = "rejected"
+					item.RejectReason = reason
+				}
+				continue
+			}
+			status := "processing_provider"
+			if retailPulsa24JamLooksSuccess(response.Body, message) {
+				status = "approved"
+			}
+			if s.repo.UpdateWithdrawRequestProviderStatus(ctx, item.RefID, status, note) == nil {
+				item.Status = status
+				item.Note = note
+			}
+			continue
+		}
+		if item.Status != "processing_provider" {
 			continue
 		}
 		if item.UpdatedAt != nil && time.Since(*item.UpdatedAt) < 10*time.Second {

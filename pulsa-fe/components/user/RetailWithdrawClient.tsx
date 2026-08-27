@@ -42,9 +42,9 @@ function statusInfo(status: string) {
     case "rejected":
       return { label: "Ditolak · Dikembalikan", className: "bg-rose-100 text-rose-700" };
     case "processing_provider":
-      return { label: "Terkirim ke Provider", className: "bg-sky-100 text-sky-700" };
+      return { label: "Diproses Otomatis", className: "bg-sky-100 text-sky-700" };
     default:
-      return { label: "Menunggu Operator", className: "bg-amber-100 text-amber-700" };
+      return { label: "Menyiapkan Transaksi", className: "bg-amber-100 text-amber-700" };
   }
 }
 
@@ -162,9 +162,9 @@ export function RetailWithdrawClient({ authToken }: Props) {
       if (providerStatus === "approved") {
         setSuccess(`${fmtIDR(amountValue)} berhasil dikirim ke ${bankName.trim()}.`);
       } else if (providerStatus === "processing_provider") {
-        setSuccess(`${fmtIDR(amountValue)} sudah dikirim otomatis ke ${bankName.trim()}.`);
+        setSuccess(`${fmtIDR(amountValue)} sedang diproses otomatis ke ${bankName.trim()}.`);
       } else {
-        setSuccess(`Penarikan ${fmtIDR(amountValue)} berhasil diajukan.`);
+        setSuccess(`Penarikan ${fmtIDR(amountValue)} sedang disiapkan otomatis.`);
       }
       setAmount("");
       setBankName("");
@@ -223,7 +223,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
             <p className="mt-0.5 text-[11px] font-semibold text-slate-500">Status pencairan terbaru.</p>
             <span className={pendingCount > 0 ? "mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700" : "mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500"}>
               <Clock3 className="h-3.5 w-3.5" />
-              {pendingCount > 0 ? `${pendingCount} transaksi terkirim · ${fmtIDR(pendingAmount)}` : "Tidak ada transaksi aktif"}
+              {pendingCount > 0 ? `${pendingCount} diproses otomatis · ${fmtIDR(pendingAmount)}` : "Tidak ada transaksi aktif"}
             </span>
           </div>
           <button type="button" onClick={openCreate} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-3 text-xs font-black text-white">
@@ -297,7 +297,7 @@ export function RetailWithdrawClient({ authToken }: Props) {
                   {error ? <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">{error}</div> : null}
                   <button type="submit" disabled={saving || sourceBalance <= 0} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 text-xs font-black text-white disabled:bg-slate-300">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
-                    {saving ? "Mengajukan..." : "Ajukan Penarikan"}
+                    {saving ? "Mengirim..." : "Tarik Sekarang"}
                   </button>
                 </div>
               </form>
