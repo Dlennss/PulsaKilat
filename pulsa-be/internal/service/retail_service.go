@@ -280,6 +280,9 @@ func (s *RetailService) resolveWithdrawProduct(ctx context.Context, destination 
 			if sku == "" {
 				continue
 			}
+			if product, qty, ok := retailWithdrawOpenWalletRequest(item, amount); ok {
+				return retailWithdrawProviderProduct{SKU: product, Qty: qty}, nil
+			}
 			group := strings.ToUpper(strings.TrimSpace(item.GroupName))
 			if strings.Contains(group, "DIRECT") {
 				return retailWithdrawProviderProduct{SKU: sku, Qty: 1}, nil
@@ -302,6 +305,25 @@ func (s *RetailService) resolveWithdrawProduct(ctx context.Context, destination 
 		return retailWithdrawProviderProduct{SKU: openAmountFallback, Qty: amount}, nil
 	}
 	return retailWithdrawProviderProduct{}, fmt.Errorf("produk %s nominal %d belum tersedia di Pulsa24Jam", strings.TrimSpace(destination), amount)
+}
+
+// Pulsa24Jam memproses produk fixed DANA dan GoPay reguler melalui command
+// bebas nominal. Ini sama dengan request checkout aplikasi yang sudah stabil:
+// product DANA/GOPAY dan qty berisi nominal rupiah, bukan SKU fixed dengan qty 1.
+func retailWithdrawOpenWalletRequest(item provider.Pulsa24JamProduct, amount int64) (string, int64, bool) {
+	sku := strings.ToUpper(strings.TrimSpace(item.SKU))
+	name := strings.ToUpper(strings.TrimSpace(item.Name))
+	if amount <= 0 {
+		return "", 0, false
+	}
+	switch {
+	case strings.HasPrefix(sku, "UDDND") && strings.Contains(name, "DANA"):
+		return "DANA", amount, true
+	case (strings.HasPrefix(sku, "UDGP") || strings.HasPrefix(sku, "UDGY")) && strings.Contains(name, "GOPAY") && !strings.Contains(name, "DRIVER"):
+		return "GOPAY", amount, true
+	default:
+		return "", 0, false
+	}
 }
 
 func retailWithdrawDestinationKey(raw string) string {
