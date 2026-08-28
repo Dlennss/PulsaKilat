@@ -32,7 +32,8 @@ async function proxy(path: string, method: "GET" | "POST", req?: Request) {
 }
 
 export async function GET(req: Request) {
-  return proxy("/v1/master/agent-credit/applications", "GET", req);
+  const query = new URL(req.url).searchParams.toString();
+  return proxy(`/v1/master/agent-credit/applications${query ? `?${query}` : ""}`, "GET", req);
 }
 
 export async function POST(req: Request) {
