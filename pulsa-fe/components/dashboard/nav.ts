@@ -224,16 +224,25 @@ export const masterNavSections: NavSection[] = [
 
 export const analystNavSections: NavSection[] = [
   {
-    title: "Operator Kredit",
     items: [
-      { href: "/dashboard/master/operator", label: "Meja Keputusan" },
-      { href: "/dashboard/master/operator/tambah-marketing", label: "Tambah Marketing" },
+      { href: "/dashboard/master/operator", label: "Pengajuan Kredit" },
+    ],
+  },
+  {
+    title: "Kelola Agent",
+    items: [
+      { href: "/dashboard/master/operator/tambah-marketing", label: "Akun Marketing" },
       { href: "/dashboard/master/operator/input-data-agent", label: "Migrasi Data Agent" },
-      { href: "/dashboard/master/operator/kenaikan-limit", label: "Kenaikan Limit" },
+      { href: "/dashboard/master/operator/kenaikan-limit", label: "Limit Agent" },
+    ],
+  },
+  {
+    title: "Pemantauan",
+    items: [
       { href: "/dashboard/master/operator/pembayaran-kredit", label: "Pembayaran Kredit" },
-      { href: "/dashboard/master/operator/transaksi-agent", label: "Transaksi Agent" },
-      { href: "/dashboard/master/operator/konter-tidak-transaksi", label: "Konter Tidak Transaksi" },
-      { href: "/dashboard/master/operator/arsip-keputusan", label: "Arsip Keputusan" },
+      { href: "/dashboard/master/operator/transaksi-agent", label: "Aktivitas Agent" },
+      { href: "/dashboard/master/operator/konter-tidak-transaksi", label: "Agent Tidak Aktif" },
+      { href: "/dashboard/master/operator/arsip-keputusan", label: "Riwayat Keputusan" },
     ],
   },
 ];

@@ -97,6 +97,7 @@ export function NavItem({ href, label, onClick, variant = "light" }: Props) {
     "/dashboard/operator",
     "/dashboard/wallet",
     "/dashboard/master",
+    "/dashboard/master/operator",
   ]);
   const active = exactOnlyHrefs.has(hrefPath) ? pathname === hrefPath : pathname === hrefPath || pathname.startsWith(hrefPath + "/");
   const isDark = variant === "dark";
