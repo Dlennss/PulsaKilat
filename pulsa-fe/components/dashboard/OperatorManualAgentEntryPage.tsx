@@ -21,6 +21,12 @@ type StoredImage = {
 
 type DocumentKey = "ktp" | "store" | "selfie_ktp" | "selfie_marketing";
 
+type MigrationSuccess = {
+  title: string;
+  message: string;
+  creditID: string;
+};
+
 const documentFields: Array<{ key: DocumentKey; label: string; description: string }> = [
   { key: "ktp", label: "Foto KTP", description: "KTP agent terlihat jelas" },
   { key: "store", label: "Foto Toko", description: "Tampak depan toko atau usaha" },
@@ -100,6 +106,7 @@ export default function OperatorManualAgentEntryPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [success, setSuccess] = useState<MigrationSuccess | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -199,8 +206,17 @@ export default function OperatorManualAgentEntryPage() {
       });
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; credit_id?: string };
       if (!response.ok || !body.ok) throw new Error(body.error || "Migrasi data gagal disimpan");
+      const creditID = existingMigration ? `KRD-${String(existingMigration.id).padStart(8, "0")}` : body.credit_id || "-";
       setSelectedAgent(null);
-      setNotice(existingMigration ? `Migrasi KRD-${String(existingMigration.id).padStart(8, "0")} berhasil diperbarui.` : `Migrasi ${body.credit_id || "data agent"} berhasil disetujui dan kredit agent telah diaktifkan.`);
+      setSuccess(existingMigration ? {
+        title: "Migrasi Diperbarui",
+        message: `Data dan dokumen ${agentName.trim()} berhasil diperbarui tanpa membuat kredit baru.`,
+        creditID,
+      } : {
+        title: "Migrasi Berhasil",
+        message: `Data ${agentName.trim()} sudah dimigrasikan dan kredit Rp ${new Intl.NumberFormat("id-ID").format(requestedAmount)} telah diaktifkan.`,
+        creditID,
+      });
       await loadData();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Migrasi data gagal disimpan");
@@ -250,6 +266,24 @@ export default function OperatorManualAgentEntryPage() {
             {error ? <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black text-rose-700">{error}</p> : null}
           </div>
           <footer className="shrink-0 border-t border-emerald-100 bg-white p-4 sm:px-6"><button type="button" disabled={saving || Boolean(preparing)} onClick={() => void submit()} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-black text-white disabled:opacity-50">{saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}{saving ? "Mengaktifkan Kredit..." : migrationByMember.has(selectedAgent.id) ? "Simpan Perubahan" : "Simpan & Aktifkan Kredit"}</button></footer>
+        </section>
+      </div> : null}
+
+      {success ? <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setSuccess(null); }}>
+        <section role="alertdialog" aria-modal="true" aria-labelledby="migration-success-title" className="w-full max-w-sm overflow-hidden rounded-[20px] border border-emerald-100 bg-white shadow-[0_30px_90px_rgba(2,44,34,0.35)]">
+          <div className="bg-gradient-to-br from-emerald-800 to-green-500 px-6 py-7 text-center text-white">
+            <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/95 text-emerald-700 shadow-lg"><CheckCircle2 className="h-9 w-9" /></span>
+            <p className="mt-4 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-100">Migrasi Data Agent</p>
+            <h2 id="migration-success-title" className="mt-1 text-2xl font-black">{success.title}</h2>
+          </div>
+          <div className="p-5 text-center sm:p-6">
+            <p className="text-sm font-semibold leading-6 text-slate-600">{success.message}</p>
+            <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">ID Kredit</p>
+              <p className="mt-1 text-base font-black text-emerald-950">{success.creditID}</p>
+            </div>
+            <button type="button" onClick={() => setSuccess(null)} className="mt-5 h-11 w-full rounded-xl bg-emerald-700 px-5 text-sm font-black text-white transition hover:bg-emerald-800">Selesai</button>
+          </div>
         </section>
       </div> : null}
     </main>
