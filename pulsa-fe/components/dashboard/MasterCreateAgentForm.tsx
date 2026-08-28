@@ -46,12 +46,12 @@ function Field({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
-        <Icon className="h-3.5 w-3.5 text-emerald-600" />
+      <span className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">
+        <Icon className="h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2.2} />
         {label}
       </span>
       {children}
-      {helper ? <span className="mt-1.5 block text-[11px] font-semibold leading-4 text-slate-400">{helper}</span> : null}
+      {helper ? <span className="mt-2 block text-[11px] font-medium leading-[1.45] text-slate-500">{helper}</span> : null}
     </label>
   );
 }
@@ -116,25 +116,26 @@ export function MasterCreateAgentForm({ useRetailEndpoint = false }: { useRetail
 
   return (
     <form onSubmit={submit} className="w-full min-w-0">
-      <section className="w-full min-w-0 overflow-hidden rounded-[28px] border border-emerald-100 bg-white p-4 shadow-[0_18px_42px_rgba(6,78,59,0.08)] sm:p-6">
-        <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+      <section className="w-full min-w-0 overflow-hidden rounded-[24px] border border-emerald-100 bg-white p-5 shadow-[0_18px_42px_rgba(6,78,59,0.08)] sm:p-6">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-600">Form Agent</p>
-            <h2 className="mt-1 text-[clamp(1.5rem,5vw,2rem)] font-black leading-tight tracking-normal text-slate-950">Identitas Agent Baru</h2>
-            <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-500">Akun akan dibuat sebagai role agent PulsaKilat.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Form Agent</p>
+            <h2 className="mt-1 text-2xl font-black leading-[1.15] tracking-normal text-slate-950 sm:text-[28px]">Identitas Agent Baru</h2>
+            <p className="mt-2 max-w-xl text-xs font-semibold leading-5 text-slate-500 sm:text-sm">Akun baru langsung aktif sebagai agent PulsaKilat.</p>
           </div>
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 sm:h-14 sm:w-14">
-            <UserPlus className="h-6 w-6" />
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 sm:h-14 sm:w-14">
+            <UserPlus className="h-6 w-6" strokeWidth={2.2} />
           </span>
         </div>
 
-        <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="mt-5 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] gap-x-4 gap-y-5">
           <Field label="Nama Agent" icon={UserRound}>
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Contoh: Agent PulsaKilat 1"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+              autoComplete="name"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:font-semibold placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
             />
           </Field>
           <Field label="Email Login" icon={Mail}>
@@ -143,50 +144,56 @@ export function MasterCreateAgentForm({ useRetailEndpoint = false }: { useRetail
               onChange={(event) => setEmail(event.target.value)}
               placeholder="agent@pulsakilat.local"
               type="email"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+              autoComplete="email"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:font-semibold placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
             />
           </Field>
-          <Field label="Nomor WA" icon={Phone} helper="Opsional, untuk catatan internal master.">
+          <Field label="Nomor WA" icon={Phone} helper="Nomor yang dapat dihubungi oleh marketing dan operator.">
             <input
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               placeholder="08xxxxxxxxxx"
               inputMode="tel"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+              autoComplete="tel"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:font-semibold placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
             />
           </Field>
-          <Field label="Nama Toko" icon={Store} helper="Opsional, nanti agent tetap bisa melengkapi data kredit.">
+          <Field label="Nama Toko" icon={Store} helper="Nama konter akan tersimpan pada profil agent.">
             <input
               value={storeName}
               onChange={(event) => setStoreName(event.target.value)}
               placeholder="Nama konter/toko"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-[#fbfffd] px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+              autoComplete="organization"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-950 outline-none transition placeholder:font-semibold placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
             />
           </Field>
-          <div className="min-w-0 md:col-span-2">
+          <div className="min-w-0 [grid-column:1/-1]">
             <Field label="Password Awal" icon={KeyRound} helper="Berikan password ini ke agent, lalu sarankan diganti setelah login.">
               <div className="flex min-w-0 gap-2">
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="h-12 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-[#fbfffd] px-3 text-sm font-bold text-slate-950 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 sm:px-4"
-              />
-              <button
-                type="button"
-                onClick={() => setPassword(makePassword())}
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 transition hover:bg-emerald-100"
-                aria-label="Buat password baru"
-              >
-                <RefreshCcw className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={copyPassword}
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-slate-50 text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-100"
-                aria-label="Salin password"
-              >
-                <Copy className="h-4 w-4" />
-              </button>
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="new-password"
+                  className="h-12 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-950 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100 sm:px-4"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPassword(makePassword())}
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100"
+                  aria-label="Buat password baru"
+                  title="Buat password baru"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={copyPassword}
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-100"
+                  aria-label="Salin password"
+                  title="Salin password"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
               </div>
             </Field>
           </div>
@@ -201,7 +208,7 @@ export function MasterCreateAgentForm({ useRetailEndpoint = false }: { useRetail
         <button
           type="submit"
           disabled={!canSubmit}
-          className="mt-5 flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(135deg,#052e26,#047857,#84cc16)] text-sm font-black text-white shadow-[0_18px_34px_rgba(5,150,105,0.22)] transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
+          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(4,120,87,0.22)] transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <BadgeCheck className="h-5 w-5" />}
           {loading ? "Membuat Agent..." : "Buat Akun Agent"}
