@@ -89,6 +89,7 @@ cd "$BUILD_DIR"
 go run ./scripts/apply_sql_migration sql/20260808_retail_withdraw_funding_source.sql
 go run ./scripts/apply_sql_migration sql/20260821_add_marketing_agent_relation.sql
 go run ./scripts/apply_sql_migration sql/20260824_agent_credit_flexible_limit.sql
+go run ./scripts/apply_sql_migration sql/20260828_add_member_store_name.sql
 go test ./internal/service ./internal/provider ./internal/helper ./chytron ./loketbayar ./smb ./rajabiller
 go build -buildvcs=false -o "$BUILD_DIR/pulsa-be" .
 

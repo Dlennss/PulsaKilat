@@ -89,6 +89,7 @@ export function MasterCreateAgentForm({ useRetailEndpoint = false }: { useRetail
           email: email.trim(),
           nama: name.trim(),
           phone: phone.trim(),
+          store_name: storeName.trim(),
           password: password.trim(),
           role: "agent",
           retail_agent_commission_rp: 0,

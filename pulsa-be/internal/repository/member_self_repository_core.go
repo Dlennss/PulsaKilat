@@ -17,6 +17,7 @@ type MemberProfile struct {
 	Email          string `json:"email"`
 	Nama           string `json:"nama"`
 	Phone          string `json:"phone"`
+	StoreName      string `json:"store_name"`
 	ProfilePhoto   string `json:"profile_photo_url"`
 	Role           string `json:"role"`
 	Aktif          bool   `json:"aktif"`

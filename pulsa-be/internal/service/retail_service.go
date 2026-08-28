@@ -23,11 +23,12 @@ type RetailService struct {
 }
 
 type RetailRegisterDownlineInput struct {
-	Email    string
-	Nama     string
-	Phone    string
-	Password string
-	Role     string
+	Email     string
+	Nama      string
+	Phone     string
+	StoreName string
+	Password  string
+	Role      string
 }
 
 type RetailWithdrawCreateInput struct {
@@ -77,6 +78,7 @@ func (s *RetailService) RegisterDownline(ctx context.Context, actorID int64, in 
 	in.Email = strings.TrimSpace(strings.ToLower(in.Email))
 	in.Nama = strings.TrimSpace(in.Nama)
 	in.Phone = normalizeMemberPhone(in.Phone)
+	in.StoreName = strings.TrimSpace(in.StoreName)
 	in.Password = strings.TrimSpace(in.Password)
 	in.Role = helper.NormalizeRole(in.Role)
 
@@ -110,6 +112,7 @@ func (s *RetailService) RegisterDownline(ctx context.Context, actorID int64, in 
 		Email:        in.Email,
 		Nama:         in.Nama,
 		Phone:        in.Phone,
+		StoreName:    in.StoreName,
 		PasswordHash: string(passHash),
 		Role:         in.Role,
 		Aktif:        true,

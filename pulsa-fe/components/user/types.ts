@@ -12,6 +12,7 @@ export type UserProfile = {
   email: string;
   nama: string;
   phone?: string;
+  store_name?: string;
   profile_photo_url?: string;
   role?: string;
   aktif: boolean;

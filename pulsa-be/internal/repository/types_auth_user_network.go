@@ -57,6 +57,7 @@ type UserCreateInput struct {
 	Email                    string
 	Nama                     string
 	Phone                    string
+	StoreName                string
 	PasswordHash             string
 	PinHash                  string
 	Role                     string
@@ -222,6 +223,7 @@ type RetailDownlineRow struct {
 	Email            string     `json:"email"`
 	Nama             string     `json:"nama"`
 	Phone            string     `json:"phone"`
+	StoreName        string     `json:"store_name"`
 	Role             string     `json:"role"`
 	Aktif            bool       `json:"aktif"`
 	Saldo            int64      `json:"saldo"`

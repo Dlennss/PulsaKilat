@@ -245,6 +245,7 @@ type AgentCreditManualAgent struct {
 	Name           string `json:"name"`
 	Email          string `json:"email"`
 	Phone          string `json:"phone"`
+	StoreName      string `json:"store_name"`
 	MarketingID    int64  `json:"marketing_id"`
 	Marketing      string `json:"marketing_name"`
 	MarketingEmail string `json:"marketing_email"`
@@ -256,7 +257,7 @@ func (r *AgentCreditRepository) ListManualEntryAgents(ctx context.Context, searc
 		limit = 100
 	}
 	rows, err := r.db.QueryContext(ctx, `
-SELECT m.id, COALESCE(m.nama, ''), COALESCE(m.email, ''), COALESCE(m.phone, ''),
+SELECT m.id, COALESCE(m.nama, ''), COALESCE(m.email, ''), COALESCE(m.phone, ''), COALESCE(m.store_name, ''),
        COALESCE(m.marketing_id, 0), COALESCE(marketing.nama, ''), COALESCE(marketing.email, '')
 FROM public.member m
 LEFT JOIN public.member marketing ON marketing.id = m.marketing_id
@@ -273,7 +274,7 @@ LIMIT $2
 	items := make([]AgentCreditManualAgent, 0)
 	for rows.Next() {
 		var item AgentCreditManualAgent
-		if err := rows.Scan(&item.ID, &item.Name, &item.Email, &item.Phone, &item.MarketingID, &item.Marketing, &item.MarketingEmail); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.Email, &item.Phone, &item.StoreName, &item.MarketingID, &item.Marketing, &item.MarketingEmail); err != nil {
 			return nil, err
 		}
 		items = append(items, item)

@@ -34,6 +34,7 @@ type UserAgentCreditPageContentProps = {
   name: string;
   email: string;
   phone: string;
+  storeName?: string;
   mainBalance?: number;
   initialApplications?: AgentCreditApplication[];
 };
@@ -391,7 +392,7 @@ const levelBadgeByCode: Record<string, string> = {
   elite: "/agent-levels/kilat-elite-badge.png",
 };
 
-export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0, initialApplications = [] }: UserAgentCreditPageContentProps) {
+export function UserAgentCreditPageContent({ name, email, phone, storeName = "", mainBalance = 0, initialApplications = [] }: UserAgentCreditPageContentProps) {
   const [agreed, setAgreed] = useState(false);
   const [signatureReady, setSignatureReady] = useState(false);
   const [signatureData, setSignatureData] = useState("");
@@ -1005,7 +1006,7 @@ export function UserAgentCreditPageContent({ name, email, phone, mainBalance = 0
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field name="agent_name" label="Nama Agent" placeholder="Nama agent" defaultValue={applicantText("agent_name", name)} />
-            <Field name="store_name" label="Nama Toko" placeholder="Nama toko/usaha" defaultValue={applicantText("store_name")} />
+            <Field name="store_name" label="Nama Toko" placeholder="Nama toko/usaha" defaultValue={applicantText("store_name", storeName)} />
             <Field name="nik" label="NIK" placeholder="16 digit NIK" defaultValue={applicantText("nik")} />
             <Field name="whatsapp" label="Nomor WA" placeholder="08xxxxxxxxxx" defaultValue={applicantText("whatsapp", phone !== "-" ? phone : "")} />
             <Field name="email" label="Email" placeholder="email@domain.com" defaultValue={applicantText("email", email !== "-" ? email : "")} />

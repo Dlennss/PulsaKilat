@@ -35,22 +35,24 @@ func (h *RetailController) Downlines(w http.ResponseWriter, r *http.Request) {
 		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": rows})
 	case http.MethodPost:
 		var req struct {
-			Email    string `json:"email"`
-			Nama     string `json:"nama"`
-			Phone    string `json:"phone"`
-			Password string `json:"password"`
-			Role     string `json:"role"`
+			Email     string `json:"email"`
+			Nama      string `json:"nama"`
+			Phone     string `json:"phone"`
+			StoreName string `json:"store_name"`
+			Password  string `json:"password"`
+			Role      string `json:"role"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError("invalid json"))
 			return
 		}
 		id, err := h.svc.RegisterDownline(r.Context(), a.MemberID, service.RetailRegisterDownlineInput{
-			Email:    req.Email,
-			Nama:     req.Nama,
-			Phone:    req.Phone,
-			Password: req.Password,
-			Role:     req.Role,
+			Email:     req.Email,
+			Nama:      req.Nama,
+			Phone:     req.Phone,
+			StoreName: req.StoreName,
+			Password:  req.Password,
+			Role:      req.Role,
 		})
 		if err != nil {
 			helper.WriteJSON(w, http.StatusBadRequest, commondto.MapError(err.Error()))

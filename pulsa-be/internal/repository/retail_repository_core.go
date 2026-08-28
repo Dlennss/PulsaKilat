@@ -133,15 +133,15 @@ LIMIT 1
 	var memberID int64
 	err = tx.QueryRowContext(ctx, `
 INSERT INTO public.member (
-  email, nama, phone, password_hash, role, aktif,
+  email, nama, phone, store_name, password_hash, role, aktif,
   retail_agent_commission_rp, retail_master_commission_rp,
   h2h_agent_commission_rp, h2h_master_commission_rp,
   retail_agent_id, retail_master_id, h2h_agent_member_id, h2h_master_member_id, marketing_id
 )
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 RETURNING id
 `,
-		in.Email, retailNullString(in.Nama), retailNullString(in.Phone), in.PasswordHash, in.Role, in.Aktif,
+		in.Email, retailNullString(in.Nama), retailNullString(in.Phone), retailNullString(in.StoreName), in.PasswordHash, in.Role, in.Aktif,
 		in.RetailAgentCommissionRp, in.RetailMasterCommissionRp,
 		in.H2HAgentCommissionRp, in.H2HMasterCommissionRp,
 		retailNullableInt64(in.RetailAgentID), retailNullableInt64(in.RetailMasterID),
@@ -186,7 +186,7 @@ func (r *RetailRepository) ListDownlines(ctx context.Context, actor *RetailMembe
 
 	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
 SELECT
-  m.id, COALESCE(m.email, ''), COALESCE(m.nama, ''), COALESCE(m.phone, ''), COALESCE(m.role, ''), m.aktif, COALESCE(d.saldo, 0),
+  m.id, COALESCE(m.email, ''), COALESCE(m.nama, ''), COALESCE(m.phone, ''), COALESCE(m.store_name, ''), COALESCE(m.role, ''), m.aktif, COALESCE(d.saldo, 0),
   m.retail_agent_id, COALESCE(ra.nama, ''), m.retail_master_id, COALESCE(rm.nama, ''),
   m.marketing_id, COALESCE(marketing.nama, ''), COALESCE(marketing.email, ''), m.dibuat_pada
 FROM public.member m
@@ -217,7 +217,7 @@ ORDER BY CASE lower(COALESCE(m.role, '')) WHEN 'agent' THEN 0 ELSE 1 END, m.id D
 			dibuat           sql.NullTime
 		)
 		if err := rows.Scan(
-			&item.ID, &item.Email, &item.Nama, &item.Phone, &item.Role, &item.Aktif, &item.Saldo,
+			&item.ID, &item.Email, &item.Nama, &item.Phone, &item.StoreName, &item.Role, &item.Aktif, &item.Saldo,
 			&retailAgentID, &retailAgentNama, &retailMasterID, &retailMasterNama,
 			&marketingID, &marketingNama, &marketingEmail, &dibuat,
 		); err != nil {

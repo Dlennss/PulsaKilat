@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.member (
   id BIGSERIAL PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   nama TEXT,
+  store_name TEXT NOT NULL DEFAULT '',
   profile_photo_url TEXT NOT NULL DEFAULT '',
   password_hash TEXT,
   pin_hash TEXT,

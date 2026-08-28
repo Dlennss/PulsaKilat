@@ -35,6 +35,7 @@ export default async function UserSaldoKreditAgentPage() {
         name={name}
         email={email}
         phone={phone}
+        storeName={profile?.store_name || ""}
         mainBalance={Number(profile?.saldo || 0)}
         initialApplications={applications}
       />
