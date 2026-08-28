@@ -189,26 +189,3 @@ WHERE id = $1
 	}
 	return nil
 }
-
-func (r *UserRepository) SetAgentMarketing(ctx context.Context, agentID, marketingID int64) error {
-	res, err := r.db.ExecContext(ctx, `
-UPDATE public.member AS agent
-SET marketing_id = $2
-WHERE agent.id = $1
-  AND lower(COALESCE(agent.role, '')) = 'agent'
-  AND EXISTS (
-    SELECT 1 FROM public.member marketing
-    WHERE marketing.id = $2
-      AND lower(COALESCE(marketing.role, '')) = 'marketing'
-      AND marketing.aktif = true
-  )
-`, agentID, marketingID)
-	if err != nil {
-		return err
-	}
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
-		return sql.ErrNoRows
-	}
-	return nil
-}

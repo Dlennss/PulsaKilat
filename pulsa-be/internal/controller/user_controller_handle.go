@@ -197,20 +197,18 @@ func (h *UserController) Handle(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserController) CreateMarketing(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		accounts, agents, err := h.svc.ListMarketingManagement(r.Context())
+		accounts, err := h.svc.ListMarketingManagement(r.Context())
 		if err != nil {
 			helper.WriteJSON(w, http.StatusInternalServerError, commondto.MapError(err.Error()))
 			return
 		}
-		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "accounts": accounts, "agents": agents})
+		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "accounts": accounts})
 		return
 	}
 	if r.Method == http.MethodPatch {
 		var req struct {
 			Action      string `json:"action"`
 			ID          int64  `json:"id"`
-			AgentID     int64  `json:"agent_id"`
-			MarketingID int64  `json:"marketing_id"`
 			Nama        string `json:"nama"`
 			Phone       string `json:"phone"`
 			NewPassword string `json:"new_password"`
@@ -228,8 +226,6 @@ func (h *UserController) CreateMarketing(w http.ResponseWriter, r *http.Request)
 				aktif = *req.Aktif
 			}
 			err = h.svc.UpdateMarketingAccount(r.Context(), req.ID, req.Nama, req.Phone, req.NewPassword, aktif)
-		case "reassign_agent":
-			err = h.svc.ReassignMarketingAgent(r.Context(), req.AgentID, req.MarketingID)
 		default:
 			err = errors.New("aksi tidak dikenali")
 		}

@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, ArrowRightLeft, CircleCheck, Mail, Pencil, Phone, RefreshCw, Search, ShieldCheck, UserPlus, UsersRound, UserX } from "lucide-react";
+import { Activity, CircleCheck, Mail, Pencil, Phone, RefreshCw, Search, ShieldCheck, UserPlus, UsersRound, UserX } from "lucide-react";
 import RegisterMemberModal from "@/components/dashboard/RegisterMemberModal";
 import { AppModal } from "@/components/ui/app-modal";
 import { alertSuccess, alertWarning } from "@/components/ui/alerts";
 
 type MarketingAccount = { id: number; nama: string; email: string; phone: string; aktif: boolean; agent_count: number; active_agent_count: number; last_agent_transaction_at?: string; dibuat_pada?: string };
-type MarketingAgent = { id: number; nama: string; email: string; phone: string; aktif: boolean; marketing_id?: number; last_transaction_at?: string };
-type ManagementResponse = { ok?: boolean; accounts?: MarketingAccount[]; agents?: MarketingAgent[]; error?: string };
+type ManagementResponse = { ok?: boolean; accounts?: MarketingAccount[]; error?: string };
 type StatusFilter = "all" | "active" | "inactive";
 
 function authHeader(): Record<string, string> {
@@ -20,7 +19,6 @@ export default function OperatorTambahMarketingPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<MarketingAccount | null>(null);
   const [accounts, setAccounts] = useState<MarketingAccount[]>([]);
-  const [agents, setAgents] = useState<MarketingAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -34,7 +32,6 @@ export default function OperatorTambahMarketingPage() {
       const body = (await response.json().catch(() => ({}))) as ManagementResponse;
       if (!response.ok || !body.ok) throw new Error(body.error || "Akun marketing tidak dapat dimuat");
       setAccounts(Array.isArray(body.accounts) ? body.accounts : []);
-      setAgents(Array.isArray(body.agents) ? body.agents : []);
       setSelected((current) => current ? (body.accounts || []).find((item) => item.id === current.id) || null : null);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Akun marketing tidak dapat dimuat");
@@ -86,20 +83,18 @@ export default function OperatorTambahMarketingPage() {
         </section>
       </div>
       <RegisterMemberModal open={createOpen} onClose={() => setCreateOpen(false)} fixedRole="marketing" title="Tambah Marketing" subtitle="Buat akun marketing PulsaKilat untuk memantau agent binaan." theme="retail" createEndpoint="/api/operator/marketing/create" onSuccess={loadAccounts} />
-      <ManageMarketingModal account={selected} accounts={accounts} agents={agents.filter((agent) => agent.marketing_id === selected?.id)} onClose={() => setSelected(null)} onSaved={loadAccounts} />
+      <ManageMarketingModal account={selected} onClose={() => setSelected(null)} onSaved={loadAccounts} />
     </main>
   );
 }
 
-function ManageMarketingModal({ account, accounts, agents, onClose, onSaved }: { account: MarketingAccount | null; accounts: MarketingAccount[]; agents: MarketingAgent[]; onClose: () => void; onSaved: () => Promise<void> }) {
-  const [nama, setNama] = useState(""); const [phone, setPhone] = useState(""); const [password, setPassword] = useState(""); const [active, setActive] = useState(true); const [moving, setMoving] = useState<number | null>(null); const [targets, setTargets] = useState<Record<number, number>>({}); const [saving, setSaving] = useState(false);
-  useEffect(() => { if (account) { setNama(account.nama || ""); setPhone(account.phone || ""); setPassword(""); setActive(account.aktif); setTargets({}); } }, [account]);
+function ManageMarketingModal({ account, onClose, onSaved }: { account: MarketingAccount | null; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [nama, setNama] = useState(""); const [phone, setPhone] = useState(""); const [password, setPassword] = useState(""); const [active, setActive] = useState(true); const [saving, setSaving] = useState(false);
+  useEffect(() => { if (account) { setNama(account.nama || ""); setPhone(account.phone || ""); setPassword(""); setActive(account.aktif); } }, [account]);
   async function patch(payload: Record<string, unknown>) { const response = await fetch("/api/operator/marketing/create", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeader() }, body: JSON.stringify(payload) }); const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string }; if (!response.ok || !body.ok) throw new Error(body.error || "Perubahan tidak dapat disimpan"); }
   async function saveAccount() { if (!account) return; if (!nama.trim() || !phone.trim()) return alertWarning("Nama dan nomor telepon marketing wajib diisi."); if (password && password.length < 8) return alertWarning("Password baru minimal 8 karakter."); setSaving(true); try { await patch({ action: "update_account", id: account.id, nama: nama.trim(), phone: phone.trim(), new_password: password, aktif: active }); await onSaved(); await alertSuccess("Akun marketing berhasil diperbarui."); } catch (err) { await alertWarning(err instanceof Error ? err.message : "Perubahan tidak dapat disimpan"); } finally { setSaving(false); } }
-  async function moveAgent(agent: MarketingAgent) { const marketingID = targets[agent.id]; if (!marketingID) return alertWarning("Pilih marketing tujuan terlebih dahulu."); setMoving(agent.id); try { await patch({ action: "reassign_agent", agent_id: agent.id, marketing_id: marketingID }); await onSaved(); await alertSuccess(`${agent.nama || agent.email} berhasil dipindahkan.`); } catch (err) { await alertWarning(err instanceof Error ? err.message : "Agent tidak dapat dipindahkan"); } finally { setMoving(null); } }
   return <AppModal open={Boolean(account)} onClose={onClose} title="Kelola Akun Marketing" subtitle={account ? `${account.nama || "Marketing"} · ${account.email}` : ""} theme="retail" maxWidthClassName="max-w-3xl" footer={<div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button onClick={onClose} className="h-11 rounded-lg border border-slate-200 px-5 text-sm font-black">Tutup</button><button onClick={() => void saveAccount()} disabled={saving} className="h-11 rounded-lg bg-emerald-800 px-5 text-sm font-black text-white disabled:opacity-60">{saving ? "Menyimpan..." : "Simpan Perubahan"}</button></div>}>
     <div className="grid gap-4 sm:grid-cols-2"><Field label="Nama Marketing" value={nama} onChange={setNama} /><Field label="Nomor Telepon" value={phone} onChange={setPhone} type="tel" /><Field label="Password Baru" value={password} onChange={setPassword} type="password" placeholder="Kosongkan jika tidak diubah" /><label className="grid gap-2"><span className="text-xs font-black text-slate-700">Status Akun</span><select value={active ? "active" : "inactive"} onChange={(event) => setActive(event.target.value === "active")} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold outline-none"><option value="active">Aktif</option><option value="inactive">Nonaktif</option></select></label></div>
-    <section className="mt-6 border-t border-slate-200 pt-5"><div className="flex items-center justify-between gap-3"><div><h3 className="text-base font-black">Agent Binaan</h3><p className="mt-1 text-xs font-semibold text-slate-500">Pindahkan agent bila pembina lapangannya berubah.</p></div><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">{agents.length} agent</span></div><div className="mt-3 grid gap-2">{agents.map((agent) => <div key={agent.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{agent.nama || "Agent"}</p><p className="mt-1 truncate text-[11px] font-semibold text-slate-500">{agent.email} · {agent.phone || "Nomor belum tersedia"}</p><p className="mt-1 text-[10px] font-bold text-emerald-700">Transaksi terakhir: {formatDateTime(agent.last_transaction_at)}</p></div><div className="flex min-w-0 gap-2"><select value={targets[agent.id] || ""} onChange={(event) => setTargets((current) => ({ ...current, [agent.id]: Number(event.target.value) }))} className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold sm:w-44"><option value="">Pilih marketing tujuan</option>{accounts.filter((item) => item.aktif && item.id !== account?.id).map((item) => <option key={item.id} value={item.id}>{item.nama || item.email}</option>)}</select><button onClick={() => void moveAgent(agent)} disabled={moving === agent.id} title="Pindahkan agent" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-800 text-white disabled:opacity-60"><ArrowRightLeft className="h-4 w-4" /></button></div></div></div>)}{agents.length === 0 ? <div className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-center text-xs font-semibold text-slate-400">Belum ada agent binaan pada akun ini.</div> : null}</div></section>
   </AppModal>;
 }
 

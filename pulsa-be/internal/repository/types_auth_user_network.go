@@ -102,16 +102,6 @@ type MarketingAccountRow struct {
 	DibuatPada             *time.Time `json:"dibuat_pada,omitempty"`
 }
 
-type MarketingAgentRow struct {
-	ID                int64      `json:"id"`
-	Email             string     `json:"email"`
-	Nama              string     `json:"nama"`
-	Phone             string     `json:"phone"`
-	Aktif             bool       `json:"aktif"`
-	MarketingID       *int64     `json:"marketing_id,omitempty"`
-	LastTransactionAt *time.Time `json:"last_transaction_at,omitempty"`
-}
-
 type HierarchyAssignPreviewTarget struct {
 	MemberID        int64  `json:"member_id"`
 	Email           string `json:"email"`
