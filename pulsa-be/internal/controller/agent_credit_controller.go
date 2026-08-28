@@ -108,6 +108,19 @@ func (h *AgentCreditController) ManualApplications(w http.ResponseWriter, r *htt
 		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "items": items})
 		return
 	}
+	if r.Method == http.MethodPut {
+		var in service.AgentCreditManualInput
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid json"})
+			return
+		}
+		if err := h.svc.UpdateManualApplication(r.Context(), auth, in); err != nil {
+			helper.WriteJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		helper.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Data migrasi berhasil diperbarui"})
+		return
+	}
 	if r.Method != http.MethodPost {
 		helper.WriteJSON(w, http.StatusMethodNotAllowed, map[string]any{"ok": false, "error": "method not allowed"})
 		return

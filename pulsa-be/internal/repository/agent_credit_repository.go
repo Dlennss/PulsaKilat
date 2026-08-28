@@ -278,6 +278,36 @@ LIMIT $2
 	return items, rows.Err()
 }
 
+func (r *AgentCreditRepository) UpdateManualApplication(ctx context.Context, applicationID, memberID, requestedAmount int64, applicantData, documentData map[string]any) error {
+	applicantJSON, err := json.Marshal(applicantData)
+	if err != nil {
+		return err
+	}
+	documentJSON, err := json.Marshal(documentData)
+	if err != nil {
+		return err
+	}
+	result, err := r.db.ExecContext(ctx, `
+UPDATE public.agent_credit_application
+SET requested_amount = $3,
+    applicant_data = COALESCE(applicant_data, '{}'::jsonb) || $4::jsonb,
+    document_data = COALESCE(document_data, '{}'::jsonb) || $5::jsonb,
+    updated_at = now()
+WHERE id = $1 AND member_id = $2
+`, applicationID, memberID, requestedAmount, string(applicantJSON), string(documentJSON))
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 type AgentCreditApplication struct {
 	ID                       int64                `json:"id"`
 	MemberID                 int64                `json:"member_id"`

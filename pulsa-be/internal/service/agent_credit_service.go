@@ -76,12 +76,39 @@ type AgentCreditLoanStatusInput struct {
 }
 
 type AgentCreditManualInput struct {
+	ApplicationID   int64          `json:"application_id"`
 	MemberID        int64          `json:"member_id"`
 	RequestedAmount int64          `json:"requested_amount"`
 	Action          string         `json:"action"`
 	Note            string         `json:"note"`
 	ApplicantData   map[string]any `json:"applicant_data"`
 	DocumentData    map[string]any `json:"document_data"`
+}
+
+func (s *AgentCreditService) UpdateManualApplication(ctx context.Context, auth helper.AuthInfo, in AgentCreditManualInput) error {
+	if !canManageManualCredit(auth.Role) {
+		return errors.New("input data agent hanya dapat dilakukan operator")
+	}
+	if in.ApplicationID <= 0 || in.MemberID <= 0 {
+		return errors.New("data migrasi tidak valid")
+	}
+	if in.RequestedAmount < minimumAgentCreditAmount || in.RequestedAmount > maximumAgentCreditAmount {
+		return errors.New("nominal kredit harus antara Rp500.000 dan Rp2.000.000")
+	}
+	if err := validateAgentCreditDocuments(in.DocumentData); err != nil {
+		return fmt.Errorf("dokumen migrasi: %w", err)
+	}
+	if in.ApplicantData == nil {
+		in.ApplicantData = map[string]any{}
+	}
+	in.ApplicantData["entry_source"] = "operator_manual"
+	in.ApplicantData["entry_source_label"] = "Migrasi Data Operator"
+	in.ApplicantData["manual_entry"] = true
+	in.ApplicantData["manual_entry_operator_id"] = auth.MemberID
+	in.ApplicantData["manual_entry_updated_at"] = time.Now().UTC().Format(time.RFC3339)
+	in.ApplicantData["system_validation_status"] = "operator_verified"
+	stampAgentCreditDocumentValidation(in.ApplicantData)
+	return s.repo.UpdateManualApplication(ctx, in.ApplicationID, in.MemberID, in.RequestedAmount, in.ApplicantData, in.DocumentData)
 }
 
 type AgentCreditManualResult struct {

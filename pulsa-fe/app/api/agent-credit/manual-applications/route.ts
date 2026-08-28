@@ -35,3 +35,18 @@ export async function POST(req: Request) {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+export async function PUT(req: Request) {
+  const token = await getBackendAuthorization(req);
+  if (!token) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  const res = await fetch(`${apiBase()}/v1/master/agent-credit/manual-applications`, {
+    method: "PUT",
+    headers: { Authorization: token, "Content-Type": "application/json" },
+    body: await req.text(),
+    cache: "no-store",
+  });
+  return new NextResponse(await res.text(), {
+    status: res.status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
