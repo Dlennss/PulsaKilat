@@ -437,6 +437,78 @@ RETURNING id, member_id, requested_amount, approved_amount, status, applicant_da
 	return &item, nil
 }
 
+// CreateManualApplication serializes migrations per agent and refuses to
+// create another credit record when the agent already has one. The advisory
+// lock closes the double-click/concurrent-request window before disbursement.
+func (r *AgentCreditRepository) CreateManualApplication(ctx context.Context, in AgentCreditApplicationInput) (*AgentCreditApplication, error) {
+	applicantJSON, err := json.Marshal(in.ApplicantData)
+	if err != nil {
+		return nil, err
+	}
+	documentJSON, err := json.Marshal(in.DocumentData)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	const migrationLockNamespace int64 = 824010000000000
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, migrationLockNamespace+in.MemberID); err != nil {
+		return nil, err
+	}
+	var existingID int64
+	err = tx.QueryRowContext(ctx, `
+SELECT id
+FROM public.agent_credit_application
+WHERE member_id = $1
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`, in.MemberID).Scan(&existingID)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+	if existingID > 0 {
+		return nil, fmt.Errorf("agent sudah memiliki data kredit KRD-%08d; gunakan Edit Migrasi", existingID)
+	}
+
+	var item AgentCreditApplication
+	var applicantRaw, documentRaw []byte
+	err = tx.QueryRowContext(ctx, `
+INSERT INTO public.agent_credit_application
+  (member_id, marketing_user_id, requested_amount, status, applicant_data, document_data, agent_signature_data, agent_signature_at)
+VALUES
+  ($1, NULLIF($2, 0), $3, 'submitted', $4::jsonb, $5::jsonb, NULLIF($6, ''), CASE WHEN NULLIF($6, '') IS NULL THEN NULL ELSE now() END)
+RETURNING id, member_id, requested_amount, approved_amount, status, applicant_data, document_data,
+  COALESCE(agent_signature_data, ''), agent_signature_at, marketing_note, created_at, updated_at
+`, in.MemberID, in.MarketingID, in.RequestedAmount, string(applicantJSON), string(documentJSON), in.AgentSignature).Scan(
+		&item.ID,
+		&item.MemberID,
+		&item.RequestedAmount,
+		&item.ApprovedAmount,
+		&item.Status,
+		&applicantRaw,
+		&documentRaw,
+		&item.AgentSignatureData,
+		&item.AgentSignatureAt,
+		&item.MarketingNote,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(applicantRaw, &item.ApplicantData)
+	_ = json.Unmarshal(documentRaw, &item.DocumentData)
+	item.HasAgentSignature = item.AgentSignatureData != ""
+	return &item, nil
+}
+
 func (r *AgentCreditRepository) ListActiveRanks(ctx context.Context) ([]AgentCreditRank, error) {
 	rows, err := r.db.QueryContext(ctx, `
 SELECT id, code, name, COALESCE(description, ''), limit_amount, sort_order

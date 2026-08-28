@@ -164,7 +164,7 @@ func (s *AgentCreditService) CreateManualApplication(ctx context.Context, auth h
 	in.ApplicantData["system_validation_status"] = "operator_verified"
 	stampAgentCreditDocumentValidation(in.ApplicantData)
 
-	item, err := s.repo.CreateApplication(ctx, repository.AgentCreditApplicationInput{
+	item, err := s.repo.CreateManualApplication(ctx, repository.AgentCreditApplicationInput{
 		MemberID:        in.MemberID,
 		RequestedAmount: in.RequestedAmount,
 		ApplicantData:   in.ApplicantData,
