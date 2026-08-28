@@ -188,7 +188,7 @@ export default function OperatorManualAgentEntryPage() {
           application_id: existingMigration?.id,
           member_id: selectedAgent.id,
           requested_amount: requestedAmount,
-          action: "pending",
+          action: "approve",
           applicant_data: {
             agent_name: agentName.trim(),
             email: selectedAgent.email,
@@ -200,7 +200,7 @@ export default function OperatorManualAgentEntryPage() {
       const body = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; credit_id?: string };
       if (!response.ok || !body.ok) throw new Error(body.error || "Migrasi data gagal disimpan");
       setSelectedAgent(null);
-      setNotice(existingMigration ? `Migrasi KRD-${String(existingMigration.id).padStart(8, "0")} berhasil diperbarui.` : `Migrasi ${body.credit_id || "data agent"} berhasil disimpan dan masuk ke Pengajuan Kredit.`);
+      setNotice(existingMigration ? `Migrasi KRD-${String(existingMigration.id).padStart(8, "0")} berhasil diperbarui.` : `Migrasi ${body.credit_id || "data agent"} berhasil disetujui dan kredit agent telah diaktifkan.`);
       await loadData();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Migrasi data gagal disimpan");
@@ -212,7 +212,7 @@ export default function OperatorManualAgentEntryPage() {
   return (
     <main className="min-h-screen bg-[#eef7f2] p-3 text-[#082f28] sm:p-6 lg:p-8">
       <section className="mx-auto w-full max-w-6xl overflow-hidden rounded-[20px] border border-emerald-100 bg-white shadow-[0_16px_40px_rgba(6,78,59,0.08)]">
-        <header className="border-b border-emerald-100 p-4 sm:p-6"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Operator Kredit</p><h1 className="mt-1 text-2xl font-black text-slate-950">Migrasi Data Agent</h1><p className="mt-1 text-xs font-semibold text-slate-500">Pilih akun agent, lalu lengkapi dokumen lama melalui kolom aksi.</p></header>
+        <header className="border-b border-emerald-100 p-4 sm:p-6"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Operator Kredit</p><h1 className="mt-1 text-2xl font-black text-slate-950">Migrasi Data Agent</h1><p className="mt-1 text-xs font-semibold text-slate-500">Pilih akun dan lengkapi dokumen lama. Data migrasi baru langsung disetujui sebagai kredit aktif.</p></header>
         <div className="p-4 sm:p-6">
           {notice ? <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800"><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Tutup"><X className="h-4 w-4" /></button></div> : null}
           <label className="flex h-11 max-w-lg items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 focus-within:border-emerald-500 focus-within:bg-white"><Search className="h-4 w-4 text-emerald-700" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, email, nomor HP, atau marketing" className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400" /></label>
@@ -249,7 +249,7 @@ export default function OperatorManualAgentEntryPage() {
             <div className="mt-5 grid gap-3 sm:grid-cols-2">{documentFields.map((field) => { const image = documents[field.key]; return <label key={field.key} className={`group relative overflow-hidden rounded-2xl border ${image ? "border-emerald-400 bg-emerald-50" : "border-dashed border-emerald-300 bg-white"}`}><input type="file" accept="image/*" className="sr-only" disabled={Boolean(preparing) || saving} onChange={(event) => { void selectImage(field.key, event.target.files?.[0]); event.currentTarget.value = ""; }} />{image ? <div className="relative aspect-[16/9] bg-slate-100"><img src={image.data_url} alt={field.label} className="h-full w-full object-contain" /><span className="absolute right-2 top-2 rounded-full bg-emerald-700 px-2 py-1 text-[9px] font-black text-white">Tersimpan</span></div> : <div className="grid aspect-[16/9] place-items-center bg-emerald-50/50"><span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm">{preparing === field.key ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}</span></div>}<div className="flex items-center gap-3 p-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><FileImage className="h-4 w-4" /></span><div><p className="text-xs font-black text-slate-950">{field.label}</p><p className="mt-0.5 text-[10px] font-semibold text-slate-500">{image ? "Ketuk untuk mengganti foto" : field.description}</p></div></div></label>; })}</div>
             {error ? <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black text-rose-700">{error}</p> : null}
           </div>
-          <footer className="shrink-0 border-t border-emerald-100 bg-white p-4 sm:px-6"><button type="button" disabled={saving || Boolean(preparing)} onClick={() => void submit()} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-black text-white disabled:opacity-50">{saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}{saving ? "Menyimpan Migrasi..." : migrationByMember.has(selectedAgent.id) ? "Simpan Perubahan" : "Simpan Migrasi Data"}</button></footer>
+          <footer className="shrink-0 border-t border-emerald-100 bg-white p-4 sm:px-6"><button type="button" disabled={saving || Boolean(preparing)} onClick={() => void submit()} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-black text-white disabled:opacity-50">{saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}{saving ? "Mengaktifkan Kredit..." : migrationByMember.has(selectedAgent.id) ? "Simpan Perubahan" : "Simpan & Aktifkan Kredit"}</button></footer>
         </section>
       </div> : null}
     </main>
