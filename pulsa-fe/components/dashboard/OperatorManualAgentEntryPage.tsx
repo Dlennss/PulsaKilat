@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CheckCircle2, FileImage, Loader2, Search, Upload, X } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, FileImage, Loader2, Search, Upload, UsersRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AgentCreditApplication } from "@/lib/api.auth";
 
@@ -9,8 +9,20 @@ type AgentOption = {
   name: string;
   email: string;
   phone: string;
+  marketing_id: number;
   marketing_name: string;
+  marketing_email: string;
 };
+
+type MarketingGroup = {
+  key: string;
+  id: number;
+  name: string;
+  email: string;
+  agents: AgentOption[];
+};
+
+type MarketingDirectory = { id: number; nama: string; email: string };
 
 type StoredImage = {
   name: string;
@@ -33,6 +45,11 @@ const documentFields: Array<{ key: DocumentKey; label: string; description: stri
   { key: "selfie_ktp", label: "Dokumen Formulir", description: "Formulir data agent terbaca" },
   { key: "selfie_marketing", label: "Selfie Bersama Marketing", description: "Agent dan marketing terlihat jelas" },
 ];
+
+function authHeader(): Record<string, string> {
+  const token = typeof window === "undefined" ? "" : localStorage.getItem("auth_token") || "";
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 function formatDate(value?: string) {
   if (!value) return "-";
@@ -94,8 +111,10 @@ async function prepareImage(file: File): Promise<StoredImage> {
 
 export default function OperatorManualAgentEntryPage() {
   const [agents, setAgents] = useState<AgentOption[]>([]);
+  const [marketingAccounts, setMarketingAccounts] = useState<MarketingDirectory[]>([]);
   const [applications, setApplications] = useState<AgentCreditApplication[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedMarketingKey, setSelectedMarketingKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<AgentOption | null>(null);
   const [agentName, setAgentName] = useState("");
@@ -111,16 +130,20 @@ export default function OperatorManualAgentEntryPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [agentResponse, applicationResponse] = await Promise.all([
+      const [agentResponse, applicationResponse, marketingResponse] = await Promise.all([
         fetch("/api/agent-credit/manual-applications?limit=200", { cache: "no-store" }),
         fetch("/api/agent-credit/applications?limit=200", { cache: "no-store" }),
+        fetch("/api/operator/marketing/create", { headers: authHeader(), cache: "no-store" }),
       ]);
       const agentBody = (await agentResponse.json().catch(() => ({}))) as { ok?: boolean; items?: AgentOption[]; error?: string };
       const applicationBody = (await applicationResponse.json().catch(() => ({}))) as { ok?: boolean; items?: AgentCreditApplication[]; error?: string };
+      const marketingBody = (await marketingResponse.json().catch(() => ({}))) as { ok?: boolean; accounts?: MarketingDirectory[]; error?: string };
       if (!agentResponse.ok || !agentBody.ok) throw new Error(agentBody.error || "Akun agent tidak dapat dimuat");
       if (!applicationResponse.ok || !applicationBody.ok) throw new Error(applicationBody.error || "Status migrasi tidak dapat dimuat");
+      if (!marketingResponse.ok || !marketingBody.ok) throw new Error(marketingBody.error || "Akun marketing tidak dapat dimuat");
       setAgents(Array.isArray(agentBody.items) ? agentBody.items : []);
       setApplications(Array.isArray(applicationBody.items) ? applicationBody.items : []);
+      setMarketingAccounts(Array.isArray(marketingBody.accounts) ? marketingBody.accounts : []);
     } catch (loadError) {
       setNotice(loadError instanceof Error ? loadError.message : "Data agent tidak dapat dimuat");
     } finally {
@@ -142,11 +165,43 @@ export default function OperatorManualAgentEntryPage() {
     return map;
   }, [applications]);
 
-  const visibleAgents = useMemo(() => {
+  const marketingGroups = useMemo(() => {
+    const groups = new Map<string, MarketingGroup>();
+    for (const marketing of marketingAccounts) {
+      groups.set(`marketing-${marketing.id}`, {
+        key: `marketing-${marketing.id}`,
+        id: marketing.id,
+        name: marketing.nama || "Marketing",
+        email: marketing.email || "-",
+        agents: [],
+      });
+    }
+    for (const agent of agents) {
+      const key = agent.marketing_id > 0 ? `marketing-${agent.marketing_id}` : "unassigned";
+      const current = groups.get(key) || {
+        key,
+        id: agent.marketing_id || 0,
+        name: agent.marketing_name || "Belum Terhubung Marketing",
+        email: agent.marketing_email || "Agent belum memiliki marketing pembina",
+        agents: [],
+      };
+      current.agents.push(agent);
+      groups.set(key, current);
+    }
+    return Array.from(groups.values()).sort((left, right) => {
+      if (left.id === 0) return 1;
+      if (right.id === 0) return -1;
+      return left.name.localeCompare(right.name, "id");
+    });
+  }, [agents, marketingAccounts]);
+
+  const visibleMarketingGroups = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return agents;
-    return agents.filter((agent) => [agent.name, agent.email, agent.phone, agent.marketing_name].some((value) => String(value || "").toLowerCase().includes(query)));
-  }, [agents, search]);
+    if (!query) return marketingGroups;
+    return marketingGroups.filter((group) => [group.name, group.email].some((value) => value.toLowerCase().includes(query)));
+  }, [marketingGroups, search]);
+
+  const selectedMarketing = marketingGroups.find((group) => group.key === selectedMarketingKey) || null;
 
   function openMigration(agent: AgentOption, migration?: AgentCreditApplication) {
     setSelectedAgent(agent);
@@ -228,22 +283,22 @@ export default function OperatorManualAgentEntryPage() {
   return (
     <main className="min-h-screen bg-[#eef7f2] p-3 text-[#082f28] sm:p-6 lg:p-8">
       <section className="mx-auto w-full max-w-6xl overflow-hidden rounded-[20px] border border-emerald-100 bg-white shadow-[0_16px_40px_rgba(6,78,59,0.08)]">
-        <header className="border-b border-emerald-100 p-4 sm:p-6"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Operator Kredit</p><h1 className="mt-1 text-2xl font-black text-slate-950">Migrasi Data Agent</h1><p className="mt-1 text-xs font-semibold text-slate-500">Pilih akun dan lengkapi dokumen lama. Data migrasi baru langsung disetujui sebagai kredit aktif.</p></header>
+        <header className="border-b border-emerald-100 p-4 sm:p-6"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Operator Kredit</p><h1 className="mt-1 text-2xl font-black text-slate-950">Migrasi Data Agent</h1><p className="mt-1 text-xs font-semibold text-slate-500">Pilih marketing terlebih dahulu, lalu buka daftar agent binaannya untuk melakukan migrasi.</p></header>
         <div className="p-4 sm:p-6">
           {notice ? <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800"><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Tutup"><X className="h-4 w-4" /></button></div> : null}
-          <label className="flex h-11 max-w-lg items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 focus-within:border-emerald-500 focus-within:bg-white"><Search className="h-4 w-4 text-emerald-700" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, email, nomor HP, atau marketing" className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400" /></label>
+          {selectedMarketing ? <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><UsersRound className="h-5 w-5" /></span><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Agent Binaan</p><h2 className="truncate text-lg font-black text-slate-950">{selectedMarketing.name}</h2><p className="truncate text-xs font-semibold text-slate-500">{selectedMarketing.email}</p></div></div><button type="button" onClick={() => setSelectedMarketingKey("")} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-xs font-black text-emerald-800"><ArrowLeft className="h-4 w-4" /> Kembali ke Marketing</button></div> : <label className="flex h-11 max-w-lg items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 focus-within:border-emerald-500 focus-within:bg-white"><Search className="h-4 w-4 text-emerald-700" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama atau email marketing" className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400" /></label>}
         </div>
         <div className="overflow-x-auto border-t border-emerald-100">
-          <table className="w-full min-w-[760px] text-left text-xs">
-            <thead className="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-900"><tr><th className="px-5 py-3">Akun Agent</th><th className="px-4 py-3">Nomor Telepon</th><th className="px-4 py-3">Marketing</th><th className="px-4 py-3">Status Migrasi</th><th className="px-5 py-3 text-right">Aksi</th></tr></thead>
+          {!selectedMarketing ? <table className="w-full min-w-[680px] text-left text-xs">
+            <thead className="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-900"><tr><th className="px-5 py-3">Akun Marketing</th><th className="px-4 py-3">Jumlah Agent</th><th className="px-4 py-3">Sudah Migrasi</th><th className="px-4 py-3">Belum Migrasi</th><th className="px-5 py-3 text-right">Aksi</th></tr></thead>
             <tbody>
-              {visibleAgents.map((agent) => { const migration = migrationByMember.get(agent.id); return <tr key={agent.id} className="border-t border-slate-100 hover:bg-emerald-50/40"><td className="px-5 py-4"><p className="font-black text-slate-950">{agent.name || "Agent"}</p><p className="mt-1 text-[10px] font-semibold text-slate-400">{agent.email} · ID #{agent.id}</p></td><td className="px-4 py-4 font-semibold text-slate-600">{recordText(migration?.applicant_data, "whatsapp") || migration?.member_phone || agent.phone || "-"}</td><td className="px-4 py-4 font-semibold text-slate-600">{agent.marketing_name || "Belum terhubung"}</td><td className="px-4 py-4">{migration ? <div><span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-800">Sudah dimigrasikan</span><p className="mt-1 text-[10px] font-semibold text-slate-500">{statusLabel(migration.status)} · KRD-{String(migration.id).padStart(8, "0")} · {formatDate(migration.created_at)}</p></div> : <span className="text-xs font-bold text-slate-400">Belum dimigrasikan</span>}</td><td className="px-5 py-4 text-right"><button type="button" onClick={() => openMigration(agent, migration)} className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-black text-white hover:bg-emerald-800"><Upload className="h-4 w-4" />{migration ? "Edit Migrasi" : "Migrasi Data"}</button></td></tr>; })}
-              {!loading && visibleAgents.length === 0 ? <tr><td colSpan={5} className="px-5 py-16 text-center font-bold text-slate-400">Akun agent tidak ditemukan.</td></tr> : null}
-              {loading ? <tr><td colSpan={5} className="px-5 py-16 text-center"><span className="inline-flex items-center gap-2 text-sm font-bold text-slate-400"><Loader2 className="h-5 w-5 animate-spin" />Memuat akun agent...</span></td></tr> : null}
+              {visibleMarketingGroups.map((group) => { const migrated = group.agents.filter((agent) => migrationByMember.has(agent.id)).length; return <tr key={group.key} className="border-t border-slate-100 hover:bg-emerald-50/40"><td className="px-5 py-4"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 font-black text-emerald-800">{group.id > 0 ? group.name.slice(0, 1).toUpperCase() : "-"}</span><div><p className="font-black text-slate-950">{group.name}</p><p className="mt-1 text-[10px] font-semibold text-slate-400">{group.email}{group.id > 0 ? ` · ID #${group.id}` : ""}</p></div></div></td><td className="px-4 py-4 font-black text-slate-700">{group.agents.length} agent</td><td className="px-4 py-4"><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-800">{migrated} agent</span></td><td className="px-4 py-4"><span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black text-amber-800">{group.agents.length - migrated} agent</span></td><td className="px-5 py-4 text-right"><button type="button" onClick={() => setSelectedMarketingKey(group.key)} className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-black text-white hover:bg-emerald-800"><UsersRound className="h-4 w-4" /> Lihat Agent</button></td></tr>; })}
+              {!loading && visibleMarketingGroups.length === 0 ? <tr><td colSpan={5} className="px-5 py-16 text-center font-bold text-slate-400">Akun marketing tidak ditemukan.</td></tr> : null}
+              {loading ? <tr><td colSpan={5} className="px-5 py-16 text-center"><span className="inline-flex items-center gap-2 text-sm font-bold text-slate-400"><Loader2 className="h-5 w-5 animate-spin" />Memuat akun marketing...</span></td></tr> : null}
             </tbody>
-          </table>
+          </table> : <table className="w-full min-w-[720px] text-left text-xs"><thead className="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-900"><tr><th className="px-5 py-3">Akun Agent</th><th className="px-4 py-3">Nomor Telepon</th><th className="px-4 py-3">Status Migrasi</th><th className="px-5 py-3 text-right">Aksi</th></tr></thead><tbody>{selectedMarketing.agents.map((agent) => { const migration = migrationByMember.get(agent.id); return <tr key={agent.id} className="border-t border-slate-100 hover:bg-emerald-50/40"><td className="px-5 py-4"><p className="font-black text-slate-950">{agent.name || "Agent"}</p><p className="mt-1 text-[10px] font-semibold text-slate-400">{agent.email} · ID #{agent.id}</p></td><td className="px-4 py-4 font-semibold text-slate-600">{recordText(migration?.applicant_data, "whatsapp") || migration?.member_phone || agent.phone || "-"}</td><td className="px-4 py-4">{migration ? <div><span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-800">Sudah dimigrasikan</span><p className="mt-1 text-[10px] font-semibold text-slate-500">{statusLabel(migration.status)} · KRD-{String(migration.id).padStart(8, "0")} · {formatDate(migration.created_at)}</p></div> : <span className="text-xs font-bold text-slate-400">Belum dimigrasikan</span>}</td><td className="px-5 py-4 text-right"><button type="button" onClick={() => openMigration(agent, migration)} className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-xs font-black text-white hover:bg-emerald-800"><Upload className="h-4 w-4" />{migration ? "Edit Migrasi" : "Migrasi Data"}</button></td></tr>; })}</tbody></table>}
         </div>
-        <footer className="border-t border-emerald-100 px-5 py-3 text-[11px] font-bold text-slate-500">{visibleAgents.length} akun agent</footer>
+        <footer className="border-t border-emerald-100 px-5 py-3 text-[11px] font-bold text-slate-500">{selectedMarketing ? `${selectedMarketing.agents.length} agent binaan` : `${visibleMarketingGroups.length} akun marketing`}</footer>
       </section>
 
       {selectedAgent ? <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-2 backdrop-blur-sm sm:p-5" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setSelectedAgent(null); }}>
