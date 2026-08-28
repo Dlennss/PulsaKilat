@@ -161,6 +161,62 @@ func (s *UserService) Delete(ctx context.Context, id int64) error {
 	return err
 }
 
+func (s *UserService) ListMarketingManagement(ctx context.Context) ([]repository.MarketingAccountRow, []repository.MarketingAgentRow, error) {
+	accounts, err := s.repo.ListMarketingAccounts(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	agents, err := s.repo.ListMarketingAgents(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	return accounts, agents, nil
+}
+
+func (s *UserService) UpdateMarketingAccount(ctx context.Context, id int64, nama, phone, newPassword string, aktif bool) error {
+	row, err := s.repo.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if row == nil || helper.NormalizeRole(row.Role) != helper.RoleRetailMarketing {
+		return errors.New("akun marketing tidak ditemukan")
+	}
+	if strings.TrimSpace(nama) == "" {
+		return errors.New("nama marketing wajib diisi")
+	}
+	if normalizeMemberPhone(phone) == "" {
+		return errors.New("nomor telepon marketing wajib diisi")
+	}
+	if !aktif {
+		accounts, listErr := s.repo.ListMarketingAccounts(ctx)
+		if listErr != nil {
+			return listErr
+		}
+		for _, account := range accounts {
+			if account.ID == id && account.AgentCount > 0 {
+				return errors.New("pindahkan seluruh agent binaan sebelum menonaktifkan akun marketing")
+			}
+		}
+	}
+	return s.Update(ctx, repository.UserUpdateInput{
+		ID: id, Email: row.Email, Nama: nama, Phone: phone,
+		Role: helper.RoleRetailMarketing, Aktif: aktif,
+	}, newPassword, "")
+}
+
+func (s *UserService) ReassignMarketingAgent(ctx context.Context, agentID, marketingID int64) error {
+	if agentID <= 0 || marketingID <= 0 {
+		return errors.New("agent dan marketing wajib dipilih")
+	}
+	if err := s.repo.SetAgentMarketing(ctx, agentID, marketingID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("agent atau akun marketing aktif tidak ditemukan")
+		}
+		return err
+	}
+	return nil
+}
+
 func (s *UserService) SetFee(ctx context.Context, userID int64, feeRp int64) error {
 	if userID <= 0 {
 		return errors.New("user_id invalid")

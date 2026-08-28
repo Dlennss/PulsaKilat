@@ -154,3 +154,96 @@ LIMIT 1`
 	}
 	return &row, nil
 }
+
+func (r *UserRepository) ListMarketingAccounts(ctx context.Context) ([]MarketingAccountRow, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT
+  marketing.id,
+  COALESCE(marketing.email, ''),
+  COALESCE(marketing.nama, ''),
+  COALESCE(marketing.phone, ''),
+  marketing.aktif,
+  COUNT(agent.id),
+  COUNT(agent.id) FILTER (WHERE agent.aktif),
+  MAX(trx.last_transaction_at),
+  marketing.dibuat_pada
+FROM public.member marketing
+LEFT JOIN public.member agent
+  ON agent.marketing_id = marketing.id
+ AND lower(COALESCE(agent.role, '')) = 'agent'
+LEFT JOIN LATERAL (
+  SELECT MAX(tm.diperbarui_pada) AS last_transaction_at
+  FROM public.transaksi_member tm
+  WHERE tm.member_id = agent.id
+    AND lower(COALESCE(tm.status, '')) = 'success'
+) trx ON true
+WHERE lower(COALESCE(marketing.role, '')) = 'marketing'
+GROUP BY marketing.id, marketing.email, marketing.nama, marketing.phone, marketing.aktif, marketing.dibuat_pada
+ORDER BY marketing.aktif DESC, lower(COALESCE(marketing.nama, '')), marketing.id
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]MarketingAccountRow, 0)
+	for rows.Next() {
+		var item MarketingAccountRow
+		var lastTransaction, created sql.NullTime
+		if err := rows.Scan(&item.ID, &item.Email, &item.Nama, &item.Phone, &item.Aktif, &item.AgentCount, &item.ActiveAgentCount, &lastTransaction, &created); err != nil {
+			return nil, err
+		}
+		if lastTransaction.Valid {
+			value := lastTransaction.Time
+			item.LastAgentTransactionAt = &value
+		}
+		if created.Valid {
+			value := created.Time
+			item.DibuatPada = &value
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+func (r *UserRepository) ListMarketingAgents(ctx context.Context) ([]MarketingAgentRow, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT
+  agent.id,
+  COALESCE(agent.email, ''),
+  COALESCE(agent.nama, ''),
+  COALESCE(agent.phone, ''),
+  agent.aktif,
+  agent.marketing_id,
+  MAX(tm.diperbarui_pada) FILTER (WHERE lower(COALESCE(tm.status, '')) = 'success')
+FROM public.member agent
+LEFT JOIN public.transaksi_member tm ON tm.member_id = agent.id
+WHERE lower(COALESCE(agent.role, '')) = 'agent'
+GROUP BY agent.id, agent.email, agent.nama, agent.phone, agent.aktif, agent.marketing_id
+ORDER BY lower(COALESCE(agent.nama, '')), agent.id
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]MarketingAgentRow, 0)
+	for rows.Next() {
+		var item MarketingAgentRow
+		var marketingID sql.NullInt64
+		var lastTransaction sql.NullTime
+		if err := rows.Scan(&item.ID, &item.Email, &item.Nama, &item.Phone, &item.Aktif, &marketingID, &lastTransaction); err != nil {
+			return nil, err
+		}
+		if marketingID.Valid {
+			value := marketingID.Int64
+			item.MarketingID = &value
+		}
+		if lastTransaction.Valid {
+			value := lastTransaction.Time
+			item.LastTransactionAt = &value
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}

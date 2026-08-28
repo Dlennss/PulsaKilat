@@ -90,6 +90,28 @@ type UserUpdateInput struct {
 	PinHash                  *string
 }
 
+type MarketingAccountRow struct {
+	ID                     int64      `json:"id"`
+	Email                  string     `json:"email"`
+	Nama                   string     `json:"nama"`
+	Phone                  string     `json:"phone"`
+	Aktif                  bool       `json:"aktif"`
+	AgentCount             int64      `json:"agent_count"`
+	ActiveAgentCount       int64      `json:"active_agent_count"`
+	LastAgentTransactionAt *time.Time `json:"last_agent_transaction_at,omitempty"`
+	DibuatPada             *time.Time `json:"dibuat_pada,omitempty"`
+}
+
+type MarketingAgentRow struct {
+	ID                int64      `json:"id"`
+	Email             string     `json:"email"`
+	Nama              string     `json:"nama"`
+	Phone             string     `json:"phone"`
+	Aktif             bool       `json:"aktif"`
+	MarketingID       *int64     `json:"marketing_id,omitempty"`
+	LastTransactionAt *time.Time `json:"last_transaction_at,omitempty"`
+}
+
 type HierarchyAssignPreviewTarget struct {
 	MemberID        int64  `json:"member_id"`
 	Email           string `json:"email"`
