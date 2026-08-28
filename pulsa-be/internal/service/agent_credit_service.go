@@ -81,6 +81,7 @@ type AgentCreditManualInput struct {
 	Action          string         `json:"action"`
 	Note            string         `json:"note"`
 	ApplicantData   map[string]any `json:"applicant_data"`
+	DocumentData    map[string]any `json:"document_data"`
 }
 
 type AgentCreditManualResult struct {
@@ -108,8 +109,14 @@ func (s *AgentCreditService) CreateManualApplication(ctx context.Context, auth h
 	if in.MemberID <= 0 {
 		return nil, errors.New("akun agent wajib dipilih")
 	}
+	if in.RequestedAmount == 0 {
+		in.RequestedAmount = minimumAgentCreditAmount
+	}
 	if in.RequestedAmount < minimumAgentCreditAmount || in.RequestedAmount > maximumAgentCreditAmount {
 		return nil, errors.New("nominal kredit harus antara Rp500.000 dan Rp2.000.000")
+	}
+	if err := validateAgentCreditDocuments(in.DocumentData); err != nil {
+		return nil, fmt.Errorf("dokumen migrasi: %w", err)
 	}
 	if openID, err := s.repo.FindOpenEarlyApplicationID(ctx, in.MemberID); err != nil {
 		return nil, err
@@ -128,12 +135,13 @@ func (s *AgentCreditService) CreateManualApplication(ctx context.Context, auth h
 	in.ApplicantData["manual_entry_operator_id"] = auth.MemberID
 	in.ApplicantData["manual_entry_at"] = time.Now().UTC().Format(time.RFC3339)
 	in.ApplicantData["system_validation_status"] = "operator_verified"
+	stampAgentCreditDocumentValidation(in.ApplicantData)
 
 	item, err := s.repo.CreateApplication(ctx, repository.AgentCreditApplicationInput{
 		MemberID:        in.MemberID,
 		RequestedAmount: in.RequestedAmount,
 		ApplicantData:   in.ApplicantData,
-		DocumentData:    map[string]any{},
+		DocumentData:    in.DocumentData,
 	})
 	if err != nil {
 		return nil, err
