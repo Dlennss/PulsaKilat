@@ -295,10 +295,10 @@ func Load() Config {
 		RajabillerMerchantID: getEnv("RAJABILLER_MERCHANT_ID", ""),
 		RajabillerTimeout:    rjto,
 
-		Pulsa24JamBaseURL:       mustEnv("PULSA24JAM_BASE_URL"),
+		Pulsa24JamBaseURL:       getEnv("PULSA24JAM_BASE_URL", ""),
 		Pulsa24JamMemberID:      getEnvAny("", "PULSA24JAM_MEMBERID", "PULSA24JAM_MEMBER_ID"),
-		Pulsa24JamAPIKey:        mustEnv("PULSA24JAM_API_KEY"),
-		Pulsa24JamPIN:           mustEnv("PULSA24JAM_PIN"),
+		Pulsa24JamAPIKey:        getEnv("PULSA24JAM_API_KEY", ""),
+		Pulsa24JamPIN:           getEnv("PULSA24JAM_PIN", ""),
 		Pulsa24JamPassword:      getEnv("PULSA24JAM_PASSWORD", ""),
 		Pulsa24JamSecret:        getEnv("PULSA24JAM_SECRET", ""),
 		Pulsa24JamCallbackToken: getEnv("PULSA24JAM_CALLBACK_TOKEN", ""),

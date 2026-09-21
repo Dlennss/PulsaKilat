@@ -84,12 +84,14 @@ func (s *AppOrderService) Create(ctx context.Context, in repository.AppOrderCrea
 	}
 
 	hargaDasar := pricingRow.Harga
-	if liveProduct.AppBasePrice != nil {
-		hargaDasar = *liveProduct.AppBasePrice
-	} else if liveProduct.Price != nil {
-		hargaDasar = *liveProduct.Price
-	} else if liveProduct.AdditionalFee != nil {
-		hargaDasar = *liveProduct.AdditionalFee
+	if liveProduct != nil {
+		if liveProduct.AppBasePrice != nil {
+			hargaDasar = *liveProduct.AppBasePrice
+		} else if liveProduct.Price != nil {
+			hargaDasar = *liveProduct.Price
+		} else if liveProduct.AdditionalFee != nil {
+			hargaDasar = *liveProduct.AdditionalFee
+		}
 	}
 	isCheckProduct := isAppCheckProduct(produk)
 	billingAmount, err := s.resolveBillingAmountFromSourceCheck(ctx, produk, buyerType, memberID, in)

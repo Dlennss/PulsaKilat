@@ -3,9 +3,15 @@
 BEGIN;
 
 ALTER TABLE public.produk_provider_map
+  ADD COLUMN IF NOT EXISTS special_code TEXT;
+ALTER TABLE public.produk_provider_map
+  ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'normal';
+ALTER TABLE public.produk_provider_map
   ADD COLUMN IF NOT EXISTS minimal_nominal BIGINT NULL;
 ALTER TABLE public.produk_provider_map
   ADD COLUMN IF NOT EXISTS maksimal_nominal BIGINT NULL;
+ALTER TABLE public.produk_provider_map
+  ADD COLUMN IF NOT EXISTS fee_rp BIGINT NOT NULL DEFAULT 0;
 
 DO $$
 BEGIN
