@@ -123,6 +123,36 @@ func resolvePulsa24JamAppRequest(providerProductCode string, order *repository.A
 	return genericCode, amount
 }
 
+func pulsa24JamAppOrderRefID(order *repository.AppOrderRow) string {
+	if order != nil && order.ID > 0 {
+		return "PKA" + strings.ToUpper(strconv.FormatInt(order.ID, 36))
+	}
+
+	invoice := ""
+	if order != nil {
+		invoice = order.InvoiceID
+	}
+	invoice = strings.Map(func(r rune) rune {
+		switch {
+		case r >= '0' && r <= '9':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r
+		case r >= 'a' && r <= 'z':
+			return r - ('a' - 'A')
+		default:
+			return -1
+		}
+	}, invoice)
+	if invoice == "" {
+		return "PKA"
+	}
+	if len(invoice) > 17 {
+		invoice = invoice[len(invoice)-17:]
+	}
+	return "PKA" + invoice
+}
+
 func appOrderProviderLooksLikeAccepted(provider, body string) bool {
 	switch strings.TrimSpace(strings.ToLower(provider)) {
 	case "pulsa24jam":

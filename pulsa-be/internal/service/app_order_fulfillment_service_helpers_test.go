@@ -87,3 +87,26 @@ func TestResolvePulsa24JamAppRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestPulsa24JamAppOrderRefIDFitsH2HRLimit(t *testing.T) {
+	got := pulsa24JamAppOrderRefID(&repository.AppOrderRow{
+		ID:        81,
+		InvoiceID: "INV-20260921170504-F95D2B50",
+	})
+	if got != "PKA29" {
+		t.Fatalf("refid = %q, want %q", got, "PKA29")
+	}
+	if len(got) > 20 {
+		t.Fatalf("refid length = %d, want <= 20", len(got))
+	}
+}
+
+func TestPulsa24JamAppOrderRefIDFallbackFitsH2HRLimit(t *testing.T) {
+	got := pulsa24JamAppOrderRefID(&repository.AppOrderRow{InvoiceID: "INV-20260921170504-F95D2B50"})
+	if len(got) > 20 {
+		t.Fatalf("refid length = %d, want <= 20: %s", len(got), got)
+	}
+	if got[:3] != "PKA" {
+		t.Fatalf("refid = %q, want PKA prefix", got)
+	}
+}

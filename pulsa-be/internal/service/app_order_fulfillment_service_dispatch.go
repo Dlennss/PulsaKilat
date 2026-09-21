@@ -39,7 +39,11 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 		case "failed":
 			// Sudah failed — boleh re-dispatch, tapi cek dulu via refid
 			// apakah ada attempt lain yang masih pending/success
-			if byRef, refErr := s.providerTrxRepo.GetByRefID(ctx, order.InvoiceID, existing.Provider); refErr == nil && byRef != nil {
+			refID := strings.TrimSpace(existing.RefID)
+			if refID == "" {
+				refID = order.InvoiceID
+			}
+			if byRef, refErr := s.providerTrxRepo.GetByRefID(ctx, refID, existing.Provider); refErr == nil && byRef != nil {
 				if byRef.Status == "success" || byRef.Status == "pending" {
 					return nil
 				}
@@ -83,20 +87,25 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 	if provider == providerpkg.Pulsa24JamProviderName {
 		providerProductCode, providerQty = resolvePulsa24JamAppRequest(providerProductCode, order)
 	}
+	providerRefID := order.InvoiceID
+	if provider == providerpkg.Pulsa24JamProviderName {
+		providerRefID = pulsa24JamAppOrderRefID(order)
+	}
 
 	reqPayload := map[string]any{
 		"provider": provider,
 		"product":  providerProductCode,
 		"qty":      providerQty,
 		"dest":     order.Dest,
-		"refid":    order.InvoiceID,
+		"refid":    providerRefID,
+		"invoice":  order.InvoiceID,
 	}
 	reqJSON, _ := json.Marshal(reqPayload)
 
 	createIn := repository.AppOrderProviderTrxCreateInput{
 		AppOrderID: order.ID,
 		Provider:   provider,
-		RefID:      order.InvoiceID,
+		RefID:      providerRefID,
 		Status:     "pending",
 		RawRequest: string(reqJSON),
 	}
@@ -241,7 +250,7 @@ func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, p
 			Product: providerProductCode,
 			Dest:    order.Dest,
 			Qty:     providerQty,
-			RefID:   order.InvoiceID,
+			RefID:   pulsa24JamAppOrderRefID(order),
 		})
 		callErr = nextErr
 		if resp != nil {
