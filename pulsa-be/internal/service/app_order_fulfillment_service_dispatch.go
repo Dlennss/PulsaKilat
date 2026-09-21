@@ -242,6 +242,51 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 		return fmt.Errorf("respons %s tidak dikenali: %s", provider, msg)
 	}
 
+	providerState := helper.ProviderResponseStateOf(provider, helper.ExtractProviderStatusCodeFor(provider, body), body)
+	if providerState == helper.ProviderResponseSuccess {
+		harga := price
+		if harga <= 0 {
+			harga = order.Nominal
+		}
+		if harga <= 0 {
+			harga = order.HargaDasar
+		}
+		kodeRespon := helper.ExtractProviderStatusCodeFor(provider, body)
+		if strings.TrimSpace(kodeRespon) == "" {
+			kodeRespon = "00"
+		}
+		if err := s.providerTrxRepo.UpdateResult(ctx, repository.AppOrderProviderTrxUpdateInput{
+			ID:            row.ID,
+			HargaProvider: &harga,
+			Status:        "success",
+			KodeRespon:    kodeRespon,
+			Pesan:         strings.TrimSpace(body),
+			SN:            strings.TrimSpace(sn),
+			RawCallback:   string(rawRespJSON),
+		}); err != nil {
+			return err
+		}
+		if harga > 0 {
+			appProviderID := row.ID
+			if _, _, err := s.callbackRepo.ApplyProviderWalletTx(ctx, repository.CallbackProviderWalletTxIn{
+				Provider:              provider,
+				RefID:                 providerRefID,
+				Arah:                  "debit",
+				Jumlah:                harga,
+				Alasan:                "APP_TRX_SUCCESS_COST",
+				Catatan:               "auto debit by immediate provider success",
+				AppOrderProviderTrxID: &appProviderID,
+			}); err != nil {
+				helper.AppendProviderServiceLog("provider_wallet.log", "provider wallet debit immediate app success failed provider=%s refid=%s app_provider_id=%d err=%v", provider, providerRefID, row.ID, err)
+			}
+		}
+		if err := s.orderRepo.UpdateStatusByID(ctx, order.ID, "success"); err != nil {
+			return err
+		}
+		helper.AppendProviderServiceLog("provider_callback_service.log", "app_order_fulfillment immediate success invoice=%s provider=%s app_order_id=%d provider_trx_id=%d refid=%s", order.InvoiceID, provider, order.ID, row.ID, providerRefID)
+		return nil
+	}
+
 	harga := price
 	if err := s.providerTrxRepo.UpdateResult(ctx, repository.AppOrderProviderTrxUpdateInput{
 		ID:            row.ID,
