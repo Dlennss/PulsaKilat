@@ -24,6 +24,7 @@ type statusPayProviderRows struct {
 	gm            *model.JavapayTrxRow
 	sm            *model.JavapayTrxRow
 	lb            *model.JavapayTrxRow
+	p24           *model.JavapayTrxRow
 	allAttempts   []*model.JavapayTrxRow
 	providerState []providerState
 	hasAny        bool
@@ -74,6 +75,10 @@ func (h *MemberTrxService) loadStatusPayProviderRows(ctx context.Context, refID 
 	if err != nil {
 		return nil, err
 	}
+	p24, err := h.JPRepo.GetLatestByRefIDProvider(ctx, refID, "pulsa24jam")
+	if err != nil {
+		return nil, err
+	}
 	allAttempts, err := h.JPRepo.ListByRefID(ctx, refID)
 	if err != nil {
 		return nil, err
@@ -91,10 +96,12 @@ func (h *MemberTrxService) loadStatusPayProviderRows(ctx context.Context, refID 
 		gm:          gm,
 		sm:          sm,
 		lb:          lb,
+		p24:         p24,
 		allAttempts: allAttempts,
-		hasAny:      jp != nil || ys != nil || tl != nil || mk != nil || sg != nil || mn != nil || tr != nil || aj != nil || gm != nil || sm != nil || lb != nil,
+		hasAny:      jp != nil || ys != nil || tl != nil || mk != nil || sg != nil || mn != nil || tr != nil || aj != nil || gm != nil || sm != nil || lb != nil || p24 != nil,
 	}
 	rows.providerState = []providerState{
+		{name: "pulsa24jam", row: p24},
 		{name: "javapay", row: jp},
 		{name: "yuscom", row: ys},
 		{name: "talentapay", row: tl},
@@ -111,10 +118,13 @@ func (h *MemberTrxService) loadStatusPayProviderRows(ctx context.Context, refID 
 }
 
 func (h *MemberTrxService) handleStatusPayWithoutJavapayRow(ctx context.Context, trx *repository.TrxMemberFull, rows *statusPayProviderRows, _ map[string]bool) *serviceResponse {
-	if rows.ys != nil || rows.tl != nil || rows.mk != nil || rows.sg != nil || rows.mn != nil || rows.tr != nil || rows.aj != nil || rows.gm != nil || rows.sm != nil || rows.lb != nil {
+	if rows.p24 != nil || rows.ys != nil || rows.tl != nil || rows.mk != nil || rows.sg != nil || rows.mn != nil || rows.tr != nil || rows.aj != nil || rows.gm != nil || rows.sm != nil || rows.lb != nil {
 		waitProvider := "yuscom"
 		waitReason := "wait_yuscom_callback"
-		if rows.tl != nil {
+		if rows.p24 != nil {
+			waitProvider = "pulsa24jam"
+			waitReason = "wait_pulsa24jam_callback"
+		} else if rows.tl != nil {
 			waitProvider = "talentapay"
 			waitReason = "wait_talentapay_callback"
 		} else if rows.mk != nil {

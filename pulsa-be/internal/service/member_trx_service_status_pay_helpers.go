@@ -30,7 +30,7 @@ func detectAdminManualFinalStatus(currentStatus string, ket string) (string, str
 	return "", "", false
 }
 
-func (h *MemberTrxService) buildAlreadyFinalStatusPayResponse(ctx context.Context, trx *repository.TrxMemberFull, existJP, existYS, existTL, existMK, existSG, existMN, existTR, existAJ, existGM, existSM, existLB *model.JavapayTrxRow) *serviceResponse {
+func (h *MemberTrxService) buildAlreadyFinalStatusPayResponse(ctx context.Context, trx *repository.TrxMemberFull, existP24, existJP, existYS, existTL, existMK, existSG, existMN, existTR, existAJ, existGM, existSM, existLB *model.JavapayTrxRow) *serviceResponse {
 	finalStatus := strings.TrimSpace(strings.ToLower(trx.Status))
 	ket := ""
 	providerRef := ""
@@ -38,6 +38,8 @@ func (h *MemberTrxService) buildAlreadyFinalStatusPayResponse(ctx context.Contex
 	price := int64(0)
 
 	switch {
+	case existP24 != nil:
+		ket, providerRef, sn, price = providerRowWebhookInfo("pulsa24jam", existP24, finalStatus)
 	case existJP != nil:
 		msg := ""
 		if existJP.Pesan != nil {
@@ -84,5 +86,5 @@ func (h *MemberTrxService) buildAlreadyFinalStatusPayResponse(ctx context.Contex
 	}
 
 	st, _, whErr := h.sendFinalWebhook(ctx, trx, finalStatus, ket, providerRef, sn, price)
-	return &serviceResponse{Body: trxmemberdto.MapAlreadyFinalResponse(trx.RefID, trx.Status, existJP != nil || existYS != nil || existTL != nil || existMK != nil || existSG != nil || existMN != nil || existTR != nil || existAJ != nil || existGM != nil || existSM != nil || existLB != nil, mapCallbackDelivery(st, whErr))}
+	return &serviceResponse{Body: trxmemberdto.MapAlreadyFinalResponse(trx.RefID, trx.Status, existP24 != nil || existJP != nil || existYS != nil || existTL != nil || existMK != nil || existSG != nil || existMN != nil || existTR != nil || existAJ != nil || existGM != nil || existSM != nil || existLB != nil, mapCallbackDelivery(st, whErr))}
 }

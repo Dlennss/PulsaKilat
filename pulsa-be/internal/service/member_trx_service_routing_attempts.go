@@ -158,6 +158,10 @@ func (h *MemberTrxService) buildProviderAttempts(
 
 	for _, candidate := range candidates {
 		p := strings.ToLower(strings.TrimSpace(candidate.Provider))
+		if p != "pulsa24jam" {
+			h.logf("ROUTING skip candidate provider=%s refid=%s kode=%s alasan=only_pulsa24jam_enabled", p, in.RefID, candidate.KodeProvider)
+			continue
+		}
 		need, fee, src := h.computeProviderNeed(ctx, p, in.Product, billingNominal, candidate.ProdukProviderMapID, candidate.KodeProvider)
 		if withWalletCheck && h.ProviderWallet != nil {
 			bal := h.providerAvailableBalance(ctx, p)
@@ -179,8 +183,5 @@ func (h *MemberTrxService) buildProviderAttempts(
 		})
 	}
 
-	if isBank {
-		attempts = expandBankProviderAttempts(attempts, true)
-	}
 	return attempts
 }

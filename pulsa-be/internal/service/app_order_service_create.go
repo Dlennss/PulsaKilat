@@ -47,6 +47,9 @@ func (s *AppOrderService) Create(ctx context.Context, in repository.AppOrderCrea
 	if !pricingRow.Aktif {
 		return nil, fmt.Errorf("produk tidak aktif")
 	}
+	if !strings.EqualFold(strings.TrimSpace(pricingRow.Provider), "pulsa24jam") {
+		return nil, fmt.Errorf("produk retail wajib memakai provider Pulsa24Jam")
+	}
 	providerCode := strings.TrimSpace(pricingRow.YuscomSKU)
 	if providerCode == "" {
 		providerCode = strings.TrimSpace(produk.SKU)

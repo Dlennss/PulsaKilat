@@ -15200,6 +15200,11 @@ UPDATE public.produk_provider_map
 SET aktif = false, diubah_pada = now()
 WHERE aktif = true;
 
+UPDATE public.produk
+SET aktif = false, diubah_pada = now()
+WHERE aktif = true
+  AND sku NOT IN (SELECT sku FROM p24_h2hr_seed_unique);
+
 INSERT INTO public.kategori (nama, aktif, dibuat_pada, diubah_pada)
 SELECT DISTINCT ON (LOWER(TRIM(category_name))) category_name, true, now(), now()
 FROM p24_h2hr_seed_unique

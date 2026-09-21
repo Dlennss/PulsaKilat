@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"pulsa2/internal/helper"
-	"pulsa2/internal/helper/providersn"
 	providerpkg "pulsa2/internal/provider"
 	"pulsa2/internal/repository"
 )
@@ -59,8 +58,10 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 	}
 
 	provider := strings.TrimSpace(strings.ToLower(pricingRow.Provider))
-	if provider == "" {
-		provider = "yuscom"
+	if provider != providerpkg.Pulsa24JamProviderName {
+		msg := fmt.Sprintf("provider retail tidak valid untuk %s: %s", order.InvoiceID, provider)
+		_ = s.handleFailedOrder(ctx, order, 0, msg, "gagal memilih provider")
+		return fmt.Errorf("%s", msg)
 	}
 
 	var nominalForMap int64
@@ -230,17 +231,6 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 
 func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, provider, providerProductCode string, providerQty int64, order *repository.AppOrderRow) (hs int, body string, price int64, sn string, callErr error) {
 	switch provider {
-	case "gemilang":
-		if s.gmClient == nil {
-			return 0, "", 0, "", fmt.Errorf("gemilang client belum tersedia")
-		}
-		acc, nextHS, nextBody, nextErr := s.gmClient.TrxNoSign(ctx, providerProductCode, order.Qty, order.Dest, order.InvoiceID)
-		hs, body, callErr = nextHS, nextBody, nextErr
-		price = acc.Price
-		_, sn = providersn.ParseGemilangSNRefFromMsg(body)
-		if strings.TrimSpace(sn) == "" {
-			sn = strings.TrimSpace(acc.Ticket)
-		}
 	case "pulsa24jam":
 		client := s.providerClients["pulsa24jam"]
 		if client == nil {
@@ -264,16 +254,7 @@ func (s *AppOrderFulfillmentService) callAppOrderProvider(ctx context.Context, p
 			}
 		}
 	default:
-		if s.ysClient == nil {
-			return 0, "", 0, "", fmt.Errorf("yuscom client belum tersedia")
-		}
-		acc, nextHS, nextBody, nextErr := s.ysClient.TrxNoSign(ctx, providerProductCode, order.Qty, order.Dest, order.InvoiceID)
-		hs, body, callErr = nextHS, nextBody, nextErr
-		price = acc.Price
-		_, sn = providersn.ParseYuscomSNRefFromMsg(body)
-		if strings.TrimSpace(sn) == "" {
-			sn = strings.TrimSpace(acc.Ticket)
-		}
+		return 0, "", 0, "", fmt.Errorf("provider retail wajib pulsa24jam, got %s", provider)
 	}
 	return
 }

@@ -123,7 +123,7 @@ func (h *MemberTrxService) handleStatusPayBranch(ctx context.Context, auth *repo
 	}
 	if strings.EqualFold(strings.TrimSpace(trx.Status), "success") || strings.EqualFold(strings.TrimSpace(trx.Status), "failed") {
 		h.logf("STATUS-PAY hormati member final lebih dulu refid=%s trx_id=%d status=%s", trx.RefID, trx.ID, trx.Status)
-		return h.buildAlreadyFinalStatusPayResponse(ctx, trx, rows.jp, rows.ys, rows.tl, rows.mk, rows.sg, rows.mn, rows.tr, rows.aj, rows.gm, rows.sm, rows.lb), true
+		return h.buildAlreadyFinalStatusPayResponse(ctx, trx, rows.p24, rows.jp, rows.ys, rows.tl, rows.mk, rows.sg, rows.mn, rows.tr, rows.aj, rows.gm, rows.sm, rows.lb), true
 	}
 
 	successProvider, successRow, rc, msg, price, noreff := pickLatestProviderSuccess(providerStates)
@@ -220,7 +220,7 @@ func (h *MemberTrxService) handleStatusPayBranch(ctx context.Context, auth *repo
 	failedProvider, failedRow, retryableFailed, failedRC, failedMsg, failedPrice, failedNoRef := pickLatestProviderFailure(providerStates)
 	if failedRow != nil {
 		if strings.EqualFold(strings.TrimSpace(trx.Status), "failed") || strings.EqualFold(strings.TrimSpace(trx.Status), "success") {
-			return h.buildAlreadyFinalStatusPayResponse(ctx, trx, rows.jp, rows.ys, rows.tl, rows.mk, rows.sg, rows.mn, rows.tr, rows.aj, rows.gm, rows.sm, rows.lb), true
+			return h.buildAlreadyFinalStatusPayResponse(ctx, trx, rows.p24, rows.jp, rows.ys, rows.tl, rows.mk, rows.sg, rows.mn, rows.tr, rows.aj, rows.gm, rows.sm, rows.lb), true
 		}
 		if retryableFailed {
 			if ok, reason := h.allExistingRouteAttemptsFinalFailed(ctx, trx.ID, trx.RefID); ok {
@@ -250,7 +250,7 @@ func (h *MemberTrxService) handleStatusPayBranch(ctx context.Context, auth *repo
 	}
 
 	if trx.Status == "success" || trx.Status == "failed" {
-		return h.buildAlreadyFinalStatusPayResponse(ctx, trx, rows.jp, rows.ys, rows.tl, rows.mk, rows.sg, rows.mn, rows.tr, rows.aj, rows.gm, rows.sm, rows.lb), true
+		return h.buildAlreadyFinalStatusPayResponse(ctx, trx, rows.p24, rows.jp, rows.ys, rows.tl, rows.mk, rows.sg, rows.mn, rows.tr, rows.aj, rows.gm, rows.sm, rows.lb), true
 	}
 
 	if isTalentaProductCode(trx.KodeProduk) {

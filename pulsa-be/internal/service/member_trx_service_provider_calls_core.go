@@ -52,6 +52,9 @@ func (h *MemberTrxService) callProviderOnlyWithDest(
 	if reason == "" {
 		reason = "random_routing"
 	}
+	if !strings.EqualFold(strings.TrimSpace(attempt.Name), provider.Pulsa24JamProviderName) {
+		return attempt.Name, 0, fmt.Errorf("provider H2H wajib pulsa24jam, got %s", attempt.Name)
+	}
 	requestDest := strings.TrimSpace(destOverride)
 	if requestDest == "" {
 		requestDest = strings.TrimSpace(in.Dest)
