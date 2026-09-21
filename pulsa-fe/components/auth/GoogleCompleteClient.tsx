@@ -50,10 +50,10 @@ function toDashboardByRole(role?: string | null, fallbackNext?: string) {
   if (r === "admin" || r === "staff") return "/dashboard/admin";
   if (r === "analis" || r === "analyst") return "/dashboard/master/operator";
   if (r === "master" || r === "marketing") return "/dashboard/master";
-  if (r === "user" || r === "agent") return "/user";
+  if (r === "user" || r === "member" || r === "agent" || r === "agent_member" || r === "master_member") return "/user";
   if (r === "operator_trx") return "/dashboard/operator";
   if (r === "operator_wallet") return "/dashboard/wallet";
-  return "/dashboard/member";
+  return "/user";
 }
 
 export default function GoogleCompleteClient() {
