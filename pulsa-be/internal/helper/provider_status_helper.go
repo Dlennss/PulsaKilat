@@ -1,6 +1,8 @@
 package helper
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"pulsa2/minions"
@@ -42,6 +44,94 @@ func looksLikeSMBFailureAfterPriorSuccess(upper string) bool {
 		strings.Contains(upper, "REFUND") ||
 		strings.Contains(upper, "SALDO DIKEMBALIKAN") ||
 		strings.Contains(upper, "DIKEMBALIKAN")
+}
+
+func pulsa24JamJSONField(body, key string) string {
+	body = strings.TrimSpace(body)
+	if body == "" || !strings.HasPrefix(body, "{") {
+		return ""
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		return ""
+	}
+	for k, v := range payload {
+		if strings.EqualFold(strings.TrimSpace(k), key) {
+			return strings.TrimSpace(fmt.Sprint(v))
+		}
+	}
+	return ""
+}
+
+func pulsa24JamResponseState(rc, msg string) ProviderResponseState {
+	rc = strings.ToUpper(strings.TrimSpace(rc))
+	msg = strings.TrimSpace(msg)
+	upper := strings.ToUpper(msg)
+
+	jsonStatus := strings.ToUpper(pulsa24JamJSONField(msg, "status"))
+	jsonRC := strings.ToUpper(firstNonEmptyHelper(pulsa24JamJSONField(msg, "rc"), pulsa24JamJSONField(msg, "code")))
+	jsonOK := strings.ToLower(pulsa24JamJSONField(msg, "ok"))
+	jsonSuccess := strings.ToLower(pulsa24JamJSONField(msg, "success"))
+	jsonMessage := strings.ToUpper(firstNonEmptyHelper(
+		pulsa24JamJSONField(msg, "message"),
+		pulsa24JamJSONField(msg, "msg"),
+		pulsa24JamJSONField(msg, "keterangan"),
+	))
+
+	statusValue := firstNonEmptyHelper(jsonStatus, rc, jsonRC)
+	messageValue := firstNonEmptyHelper(jsonMessage, upper)
+
+	switch statusValue {
+	case "2", "20", "00", "SUCCESS", "SUKSES":
+		return ProviderResponseSuccess
+	case "3", "52", "FAILED", "FAIL", "GAGAL", "ERROR":
+		return ProviderResponseFailed
+	case "1", "68", "0068", "PENDING", "PROCESS", "PROCESSING":
+		return ProviderResponsePending
+	}
+
+	if jsonSuccess == "true" {
+		return ProviderResponseSuccess
+	}
+	if jsonSuccess == "false" || jsonOK == "false" {
+		return ProviderResponseFailed
+	}
+
+	switch {
+	case strings.Contains(messageValue, "REFID TERLALU PANJANG") ||
+		strings.Contains(messageValue, "NOMOR TUJUAN SALAH") ||
+		strings.Contains(messageValue, "SALDO TIDAK CUKUP") ||
+		strings.Contains(messageValue, "PRODUK TIDAK DITEMUKAN") ||
+		strings.Contains(messageValue, "PRODUK KEHABISAN STOK") ||
+		strings.Contains(messageValue, "GAGAL") ||
+		strings.Contains(messageValue, "FAILED"):
+		return ProviderResponseFailed
+	case strings.Contains(messageValue, "SEDANG DIPROSES") ||
+		strings.Contains(messageValue, "AKAN DIPROSES") ||
+		strings.Contains(messageValue, "MENUNGGU") ||
+		strings.Contains(messageValue, "PENDING"):
+		return ProviderResponsePending
+	case strings.Contains(messageValue, "TRANSAKSI BERHASIL") ||
+		strings.Contains(messageValue, "SUKSES") ||
+		strings.Contains(messageValue, "SUCCESS"):
+		return ProviderResponseSuccess
+	}
+
+	// Pulsa24Jam/H2HR can return ok:true for an accepted request, not a final
+	// delivery result. Keep it pending until status/SN/callback gives final proof.
+	if jsonOK == "true" {
+		return ProviderResponsePending
+	}
+	return ProviderResponsePending
+}
+
+func firstNonEmptyHelper(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 // ProviderResponseStateOf menentukan status transaksi berdasarkan PESAN,
@@ -187,14 +277,7 @@ func ProviderResponseStateOf(provider, rc, msg string) ProviderResponseState {
 			return ProviderResponseFailed
 		}
 	case "pulsa24jam":
-		switch {
-		case upper == "SUCCESS" || upper == "SUKSES" || strings.Contains(upper, "TRANSAKSI BERHASIL") || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "SUCCESS")) || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "SUKSES")) || strings.Contains(upper, `"OK":TRUE`) || strings.Contains(upper, `"OK": TRUE`):
-			return ProviderResponseSuccess
-		case upper == "FAILED" || upper == "FAIL" || upper == "GAGAL" || strings.Contains(upper, "NOMOR TUJUAN SALAH") || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "FAILED")) || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "GAGAL")) || strings.Contains(upper, `"OK":FALSE`) || strings.Contains(upper, `"OK": FALSE`):
-			return ProviderResponseFailed
-		case upper == "PENDING" || (strings.Contains(upper, `"STATUS"`) && strings.Contains(upper, "PENDING")) || strings.Contains(upper, "SEDANG DIPROSES"):
-			return ProviderResponsePending
-		}
+		return pulsa24JamResponseState(rc, msg)
 	default:
 		switch {
 		case strings.Contains(upper, "ER_") || strings.Contains(upper, "SQLSTATE") || strings.Contains(upper, "SQLMESSAGE") || strings.Contains(upper, "DATA TOO LONG"):

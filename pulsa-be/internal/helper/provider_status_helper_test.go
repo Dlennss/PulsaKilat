@@ -112,3 +112,40 @@ func TestProviderResponseStateOfRajabiller(t *testing.T) {
 		})
 	}
 }
+
+func TestProviderResponseStateOfPulsa24Jam(t *testing.T) {
+	tests := []struct {
+		name string
+		rc   string
+		msg  string
+		want ProviderResponseState
+	}{
+		{
+			name: "ok true accepted is pending",
+			msg:  `{"ok":true,"refid":"PKA29","status":1,"message":"Transaksi sedang diproses"}`,
+			want: ProviderResponsePending,
+		},
+		{
+			name: "ok true without final status is pending",
+			msg:  `{"ok":true,"refid":"PKA29","message":"request diterima"}`,
+			want: ProviderResponsePending,
+		},
+		{
+			name: "status two is success",
+			msg:  `{"ok":true,"refid":"PKA29","status":2,"sn":"1234567890","message":"SUKSES"}`,
+			want: ProviderResponseSuccess,
+		},
+		{
+			name: "status three is failed",
+			msg:  `{"ok":true,"refid":"PKA29","status":3,"message":"Nomor tujuan salah"}`,
+			want: ProviderResponseFailed,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ProviderResponseStateOf("pulsa24jam", tt.rc, tt.msg); got != tt.want {
+				t.Fatalf("unexpected state: got=%q want=%q", got, tt.want)
+			}
+		})
+	}
+}

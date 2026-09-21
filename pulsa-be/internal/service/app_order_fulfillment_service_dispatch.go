@@ -34,7 +34,10 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 	existing, err := s.providerTrxRepo.GetLatestByAppOrderID(ctx, order.ID)
 	if err == nil && existing != nil {
 		switch existing.Status {
-		case "pending", "success":
+		case "pending":
+			_ = s.orderRepo.UpdateStatusByID(ctx, order.ID, "processing_provider")
+			return nil
+		case "success":
 			return nil
 		case "failed":
 			// Sudah failed — boleh re-dispatch, tapi cek dulu via refid
@@ -113,7 +116,7 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 		return err
 	}
 
-	row, err := s.providerTrxRepo.GetByRefID(ctx, order.InvoiceID, provider)
+	row, err := s.providerTrxRepo.GetByRefID(ctx, providerRefID, provider)
 	if err != nil {
 		return err
 	}
