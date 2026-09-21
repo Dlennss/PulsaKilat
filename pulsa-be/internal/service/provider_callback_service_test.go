@@ -87,6 +87,37 @@ func TestBuildDirectMemberWebhookPayloadIncludesExplicitNominals(t *testing.T) {
 	}
 }
 
+func TestPulsa24JamFinalStatusUsesNumericCallbackStatus(t *testing.T) {
+	tests := []struct {
+		name string
+		data pulsa24JamCallbackData
+		want string
+	}{
+		{
+			name: "status two success",
+			data: pulsa24JamCallbackData{status: "2", rc: "00", msg: "SUKSES"},
+			want: "success",
+		},
+		{
+			name: "status three failed",
+			data: pulsa24JamCallbackData{status: "3", rc: "55", msg: "Provider timeout"},
+			want: "failed",
+		},
+		{
+			name: "status one pending",
+			data: pulsa24JamCallbackData{status: "1", msg: "Sedang diproses"},
+			want: "pending",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := pulsa24JamFinalStatus(tt.data); got != tt.want {
+				t.Fatalf("pulsa24JamFinalStatus() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestFallbackProviderClassifierUsesTargetProviderRules(t *testing.T) {
 	yuscomAccepted := "status=1&message=R#123 T#99 DANA.08123 akan diproses @17:30"
 	talentaAccepted := "status=1&message=TALENTATRONIK : trx Hari ini R#123 TDBN.08123 akan diproses @ 23/03 17.30"

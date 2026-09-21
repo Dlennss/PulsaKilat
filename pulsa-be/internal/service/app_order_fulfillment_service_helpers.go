@@ -52,9 +52,24 @@ func appOrderProviderLooksLikeSystemIssue(provider, body string) bool {
 	switch strings.TrimSpace(strings.ToLower(provider)) {
 	case "pulsa24jam":
 		upper := strings.ToUpper(strings.TrimSpace(body))
-		return strings.Contains(upper, "TIMEOUT") || strings.Contains(upper, "SYSTEM ERROR") || strings.Contains(upper, "MAINTENANCE")
+		return strings.Contains(upper, "SYSTEM ERROR") || strings.Contains(upper, "MAINTENANCE")
 	default:
 		return true
+	}
+}
+
+func appOrderProviderLooksLikePending(provider, body string) bool {
+	switch strings.TrimSpace(strings.ToLower(provider)) {
+	case "pulsa24jam":
+		upper := strings.ToUpper(strings.TrimSpace(body))
+		return strings.Contains(upper, "TIMEOUT") ||
+			strings.Contains(upper, "SEDANG DIPROSES") ||
+			strings.Contains(upper, "AKAN DIPROSES") ||
+			strings.Contains(upper, "PENDING") ||
+			strings.Contains(upper, `"STATUS":1`) ||
+			strings.Contains(upper, `"STATUS":"1"`)
+	default:
+		return false
 	}
 }
 
@@ -160,8 +175,13 @@ func appOrderProviderLooksLikeAccepted(provider, body string) bool {
 		return strings.Contains(upper, "SUKSES") ||
 			strings.Contains(upper, "SUCCESS") ||
 			strings.Contains(upper, "PENDING") ||
+			strings.Contains(upper, "TIMEOUT") ||
+			strings.Contains(upper, "SEDANG DIPROSES") ||
+			strings.Contains(upper, "AKAN DIPROSES") ||
 			strings.Contains(upper, `"OK":TRUE`) ||
 			strings.Contains(upper, `"SUCCESS":TRUE`) ||
+			strings.Contains(upper, `"STATUS":1`) ||
+			strings.Contains(upper, `"STATUS":"1"`) ||
 			strings.Contains(upper, `"RC":"00"`)
 	default:
 		return false

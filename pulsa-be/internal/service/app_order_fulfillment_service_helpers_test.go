@@ -38,6 +38,19 @@ func TestAppOrderProviderImmediateRejectPulsa24Jam(t *testing.T) {
 	}
 }
 
+func TestAppOrderProviderTimeoutPulsa24JamStaysPending(t *testing.T) {
+	body := `{"ok":true,"refid":"PKA2B","status":1,"message":"Provider timeout"}`
+	if appOrderProviderLooksLikeSystemIssue("pulsa24jam", body) {
+		t.Fatal("pulsa24jam timeout must not be treated as system failure for app orders")
+	}
+	if !appOrderProviderLooksLikePending("pulsa24jam", body) {
+		t.Fatal("pulsa24jam timeout should stay pending for status-pay/callback reconciliation")
+	}
+	if !appOrderProviderLooksLikeAccepted("pulsa24jam", body) {
+		t.Fatal("pulsa24jam timeout should be accepted as pending")
+	}
+}
+
 func TestAppOrderProviderProductUnavailable(t *testing.T) {
 	if !appOrderProviderProductUnavailable("pulsa24jam", `{"message":"Produk kehabisan stok","status":3}`) {
 		t.Fatal("out-of-stock response should quarantine the product")

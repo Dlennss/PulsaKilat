@@ -140,6 +140,25 @@ func (s *AppOrderFulfillmentService) DispatchPaidOrder(ctx context.Context, orde
 		if msg == "" && callErr != nil {
 			msg = callErr.Error()
 		}
+		if appOrderProviderLooksLikePending(provider, msg) {
+			harga := price
+			if err := s.providerTrxRepo.UpdateResult(ctx, repository.AppOrderProviderTrxUpdateInput{
+				ID:            row.ID,
+				HargaProvider: &harga,
+				Status:        "pending",
+				KodeRespon:    fmt.Sprintf("%d", hs),
+				Pesan:         msg,
+				SN:            strings.TrimSpace(sn),
+				RawCallback:   string(rawRespJSON),
+			}); err != nil {
+				return err
+			}
+			if err := s.orderRepo.UpdateStatusByID(ctx, order.ID, "processing_provider"); err != nil {
+				return err
+			}
+			helper.AppendProviderServiceLog("provider_callback_service.log", "app_order_fulfillment pending after uncertain provider response invoice=%s provider=%s app_order_id=%d provider_trx_id=%d msg=%s", order.InvoiceID, provider, order.ID, row.ID, msg)
+			return nil
+		}
 		_ = s.providerTrxRepo.UpdateResult(ctx, repository.AppOrderProviderTrxUpdateInput{
 			ID:          row.ID,
 			Status:      "failed",

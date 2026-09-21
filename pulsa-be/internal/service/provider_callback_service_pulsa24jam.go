@@ -338,7 +338,15 @@ func parsePulsa24JamCallback(raw string, q url.Values, payload map[string]any) p
 }
 
 func pulsa24JamFinalStatus(data pulsa24JamCallbackData) string {
-	state := helper.ProviderResponseStateOf("pulsa24jam", data.rc, firstText(data.status, data.msg))
+	switch strings.ToLower(strings.TrimSpace(data.status)) {
+	case "2", "20", "00", "success", "sukses":
+		return "success"
+	case "3", "52", "55", "failed", "fail", "gagal", "error":
+		return "failed"
+	case "1", "68", "0068", "pending", "process", "processing":
+		return "pending"
+	}
+	state := helper.ProviderResponseStateOf("pulsa24jam", data.rc, firstText(data.msg, data.status))
 	switch state {
 	case helper.ProviderResponseSuccess:
 		return "success"
