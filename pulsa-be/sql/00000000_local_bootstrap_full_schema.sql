@@ -141,7 +141,8 @@ CREATE TABLE IF NOT EXISTS public.produk_provider_map (
   maksimal_nominal BIGINT,
   fee_rp BIGINT NOT NULL DEFAULT 0,
   dibuat_pada TIMESTAMPTZ NOT NULL DEFAULT now(),
-  diubah_pada TIMESTAMPTZ NOT NULL DEFAULT now()
+  diubah_pada TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(produk_id, provider, kode_provider)
 );
 
 CREATE TABLE IF NOT EXISTS public.kategori_fee_app (

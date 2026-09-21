@@ -23,6 +23,16 @@ SELECT
   diubah_pada
 FROM public.kategori k
 WHERE aktif = true
+  AND EXISTS (
+    SELECT 1
+    FROM public.produk p
+    JOIN public.produk_app_pricing app
+      ON app.produk_id = p.id
+     AND app.aktif = true
+     AND LOWER(TRIM(app.provider)) = 'pulsa24jam'
+    WHERE p.kategori_id = k.id
+      AND p.aktif = true
+  )
 ORDER BY id ASC
 `)
 	if err != nil {

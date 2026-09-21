@@ -55,6 +55,11 @@ const BRAND_LOGOS: Record<string, BrandLogoMeta> = {
     alt: "Logo XL",
     sourcePage: "local:/public/images/providers/logo_xl.png",
   },
+  "xl axiata": {
+    src: "/images/providers/logo_xl.png",
+    alt: "Logo XL Axiata",
+    sourcePage: "local:/public/images/providers/logo_xl.png",
+  },
   "link aja": {
     src: "/images/ewallet/logo_linkaja.png",
     alt: "Logo LinkAja",
@@ -109,6 +114,91 @@ const BRAND_LOGOS: Record<string, BrandLogoMeta> = {
     src: "/images/providers/logo_smartfren.webp",
     alt: "Logo Smartfren",
     sourcePage: "local:/public/images/providers/logo_smartfren.webp",
+  },
+  pln: {
+    src: "/images/pln/logo_pln.png",
+    alt: "Logo PLN",
+    sourcePage: "local:/public/images/pln/logo_pln.png",
+  },
+  pdam: {
+    src: "/images/pdam/logo_pdam.png",
+    alt: "Logo PDAM",
+    sourcePage: "local:/public/images/pdam/logo_pdam.png",
+  },
+  "bpjs kesehatan": {
+    src: "/images/bpjs/icon_bpjs_kesehatan.png",
+    alt: "Logo BPJS Kesehatan",
+    sourcePage: "local:/public/images/bpjs/icon_bpjs_kesehatan.png",
+  },
+  "bpjs ketenagakerjaan": {
+    src: "/images/bpjs/icon_bpjs_ketenagakerjaan.png",
+    alt: "Logo BPJS Ketenagakerjaan",
+    sourcePage: "local:/public/images/bpjs/icon_bpjs_ketenagakerjaan.png",
+  },
+  bca: {
+    src: "/images/banks/bca.jpeg",
+    alt: "Logo BCA",
+    sourcePage: "local:/public/images/banks/bca.jpeg",
+  },
+  bni: {
+    src: "/images/banks/bni.jpg",
+    alt: "Logo BNI",
+    sourcePage: "local:/public/images/banks/bni.jpg",
+  },
+  bri: {
+    src: "/images/banks/bri.jpg",
+    alt: "Logo BRI",
+    sourcePage: "local:/public/images/banks/bri.jpg",
+  },
+  bsi: {
+    src: "/images/banks/bsi.jpg",
+    alt: "Logo BSI",
+    sourcePage: "local:/public/images/banks/bsi.jpg",
+  },
+  mandiri: {
+    src: "/images/banks/mandiri.jpeg",
+    alt: "Logo Bank Mandiri",
+    sourcePage: "local:/public/images/banks/mandiri.jpeg",
+  },
+  "bank mandiri": {
+    src: "/images/banks/mandiri.jpeg",
+    alt: "Logo Bank Mandiri",
+    sourcePage: "local:/public/images/banks/mandiri.jpeg",
+  },
+  danamon: {
+    src: "/images/banks/danamon.png",
+    alt: "Logo Bank Danamon",
+    sourcePage: "local:/public/images/banks/danamon.png",
+  },
+  permata: {
+    src: "/images/banks/permatabank.jpeg",
+    alt: "Logo PermataBank",
+    sourcePage: "local:/public/images/banks/permatabank.jpeg",
+  },
+  "bank permata": {
+    src: "/images/banks/permatabank.jpeg",
+    alt: "Logo PermataBank",
+    sourcePage: "local:/public/images/banks/permatabank.jpeg",
+  },
+  seabank: {
+    src: "/images/banks/seabank.jpeg",
+    alt: "Logo SeaBank",
+    sourcePage: "local:/public/images/banks/seabank.jpeg",
+  },
+  "sea bank": {
+    src: "/images/banks/seabank.jpeg",
+    alt: "Logo SeaBank",
+    sourcePage: "local:/public/images/banks/seabank.jpeg",
+  },
+  jago: {
+    src: "/images/banks/jago.jpg",
+    alt: "Logo Bank Jago",
+    sourcePage: "local:/public/images/banks/jago.jpg",
+  },
+  "bank jago": {
+    src: "/images/banks/jago.jpg",
+    alt: "Logo Bank Jago",
+    sourcePage: "local:/public/images/banks/jago.jpg",
   },
   biznet: {
     src: "/images/internet/logo_biznet.png",
@@ -165,6 +255,11 @@ const BRAND_LOGOS: Record<string, BrandLogoMeta> = {
     alt: "Logo Nex Parabola",
     sourcePage: "local:/public/images/tv/logo_nex.png",
   },
+  nexparabola: {
+    src: "/images/tv/logo_nex.png",
+    alt: "Logo Nex Parabola",
+    sourcePage: "local:/public/images/tv/logo_nex.png",
+  },
   okevision: {
     src: "/images/tv/logo_okevision.png",
     alt: "Logo Okevision",
@@ -191,6 +286,16 @@ const BRAND_LOGOS: Record<string, BrandLogoMeta> = {
     sourcePage: "local:/public/images/tv/logo_yestv.png",
   },
   "k-vision": {
+    src: "/images/tv/logo_kvision.png",
+    alt: "Logo K-Vision",
+    sourcePage: "local:/public/images/tv/logo_kvision.png",
+  },
+  "k vision": {
+    src: "/images/tv/logo_kvision.png",
+    alt: "Logo K-Vision",
+    sourcePage: "local:/public/images/tv/logo_kvision.png",
+  },
+  kvision: {
     src: "/images/tv/logo_kvision.png",
     alt: "Logo K-Vision",
     sourcePage: "local:/public/images/tv/logo_kvision.png",
@@ -277,10 +382,13 @@ function normalizeBrandName(name: string) {
     .trim()
     .toLowerCase()
     .replace(/\./g, "")
+    .replace(/&/g, "and")
+    .replace(/-/g, " ")
     .replace(/\s+/g, " ");
 }
 
 export function getBrandLogo(name: string): BrandLogoMeta | null {
   const key = normalizeBrandName(name);
-  return BRAND_LOGOS[key] ?? null;
+  const withoutBankPrefix = key.replace(/^bank\s+/, "");
+  return BRAND_LOGOS[key] ?? BRAND_LOGOS[withoutBankPrefix] ?? null;
 }
