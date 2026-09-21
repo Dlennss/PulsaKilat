@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { forwardAuth, requireApiBase } from "@/lib/adminApi";
+import { requireApiBase } from "@/lib/adminApi";
+import { getBackendAuthorization } from "@/lib/server-auth";
 import { verifyTurnstileToken } from "@/lib/serverTurnstile";
 
 export const runtime = "nodejs";
@@ -7,7 +8,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const base = requireApiBase();
   const incoming = new Headers(req.headers);
-  const auth = forwardAuth(incoming);
+  const auth = await getBackendAuthorization(req);
   const turnstileRequired = incoming.get("x-turnstile-required") === "1";
   const turnstileToken = incoming.get("x-turnstile-token") || "";
   const body = await req.text();

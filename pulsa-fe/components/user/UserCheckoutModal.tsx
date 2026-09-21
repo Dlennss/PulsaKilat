@@ -210,7 +210,13 @@ function isEwalletProduct(product: UserProductItem | null) {
 
 function friendlyCheckoutError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "");
-  if (/deposit qris|pulsa24jam|commands tidak didukung|internal error|\{\s*"?ok"?\s*:/i.test(message)) {
+  if (/produk (?:tidak aktif|tidak tersedia|retail wajib memakai provider Pulsa24Jam)|provider retail tidak valid/i.test(message)) {
+    return "Produk ini sudah tidak tersedia untuk pembelian. Muat ulang halaman agar daftar produk memakai katalog Pulsa24Jam terbaru.";
+  }
+  if (/pulsa24jam client belum tersedia|koneksi katalog Pulsa24Jam belum dikonfigurasi|PULSA24JAM_.*belum|missing required env: PULSA24JAM/i.test(message)) {
+    return "Koneksi Pulsa24Jam belum aktif. Isi credential Pulsa24Jam di backend dulu agar transaksi bisa dikirim ke provider.";
+  }
+  if (/deposit qris|commands tidak didukung|internal error|\{\s*"?ok"?\s*:/i.test(message)) {
     return "Layanan pembayaran sedang tidak tersedia. Transaksi belum diproses dan saldo Anda tidak terpotong.";
   }
   return message || "Terjadi kesalahan saat memproses checkout.";

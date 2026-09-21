@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { forwardAuth, requireApiBase } from "@/lib/adminApi";
+import { requireApiBase } from "@/lib/adminApi";
+import { getBackendAuthorization } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,7 @@ type RouteContext = {
 export async function POST(req: Request, { params }: RouteContext) {
   const base = requireApiBase();
   const incoming = new Headers(req.headers);
-  const auth = forwardAuth(incoming);
+  const auth = await getBackendAuthorization(req);
   const guestEmail = incoming.get("x-guest-email") || "";
   const guestPhone = incoming.get("x-guest-phone") || "";
   const { invoiceId } = await params;

@@ -10,6 +10,9 @@ import { GuestPulsaQuickOrder } from "@/components/guest/GuestPulsaQuickOrder";
 import { GuestPaketDataQuickOrder } from "@/components/guest/GuestPaketDataQuickOrder";
 import { RetailBillingEntryFlow } from "@/components/shared/RetailBillingEntryFlow";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type SessionShape = {
   user?: UserSession;
   backendToken?: string;
