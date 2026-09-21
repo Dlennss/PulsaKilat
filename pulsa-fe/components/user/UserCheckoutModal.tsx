@@ -35,6 +35,12 @@ type ApiItemResponse<T> = {
   error?: string;
 };
 
+type ApiItemsResponse<T> = {
+  ok?: boolean;
+  items?: T[];
+  error?: string;
+};
+
 type CheckoutQrisItem = {
   ref_id: string;
   amount: number;
@@ -243,6 +249,26 @@ function checkoutQrisPayment(order: UserAppOrder, qris: CheckoutQrisItem): UserA
     }),
     expired_at: qris.expired_at || null,
   };
+}
+
+async function ensureFreshProductAvailable(product: UserProductItem) {
+  const params = new URLSearchParams();
+  if (product.kategori_id) params.set("kategori_id", String(product.kategori_id));
+  if (product.brand_id) params.set("brand_id", String(product.brand_id));
+  if (!params.has("kategori_id") || !params.has("brand_id")) {
+    params.set("q", product.sku || product.nama || String(product.id));
+  }
+
+  const res = await fetch(`/api/app/produk?${params.toString()}`, { cache: "no-store" });
+  const json = (await res.json().catch(() => ({}))) as ApiItemsResponse<UserProductItem>;
+  if (!res.ok || !json.ok || !Array.isArray(json.items)) {
+    throw new Error(json.error || "Gagal memuat ulang katalog produk.");
+  }
+
+  const freshProduct = json.items.find((item) => Number(item.id) === Number(product.id));
+  if (!freshProduct || !freshProduct.aktif) {
+    throw new Error("produk tidak tersedia");
+  }
 }
 
 export function UserCheckoutModal({
@@ -524,6 +550,8 @@ export function UserCheckoutModal({
 
     setLoading(true);
     try {
+      await ensureFreshProductAvailable(currentProduct);
+
       const orderPayload = {
         produk_id: currentProduct.id,
         dest: finalDest,
